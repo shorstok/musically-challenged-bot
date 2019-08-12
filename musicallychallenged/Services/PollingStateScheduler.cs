@@ -80,6 +80,8 @@ namespace musicallychallenged.Services
                 {
                     logger.Info($"Detected state change from {lastState} to {state.State}, resetting signaled status");
 
+                    await Task.Delay(15000).ConfigureAwait(false);
+
                     lastState = state.State;
                     previewSignaled = false;
                     deadlineSignaled = false;

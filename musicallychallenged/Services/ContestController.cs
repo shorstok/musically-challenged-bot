@@ -53,8 +53,14 @@ namespace musicallychallenged.Services
 
             _subscriptions = new ISubscription[]
             {
-                _aggregator.Subscribe<MessageDeletedEvent>(OnMessageDeleted)
+                _aggregator.Subscribe<MessageDeletedEvent>(OnMessageDeleted),
+                _aggregator.Subscribe<BotBlockedEvent>(OnBotBlocked)
             };
+        }
+
+        private void OnBotBlocked(BotBlockedEvent obj)
+        {
+            _repository.DeleteUserWithPrivateChatId(obj.ChatId?.Identifier);
         }
 
         private void OnMessageDeleted(MessageDeletedEvent obj)

@@ -38,6 +38,6 @@ namespace musicallychallenged.Data
         void RemoveActiveChat(long chatId);
 
 
-        
+        void DeleteUserWithPrivateChatId(long? chatId);
     }
 }

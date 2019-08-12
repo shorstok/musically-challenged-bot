@@ -141,6 +141,7 @@ namespace musicallychallenged.Services
             //State: FinalizingVotingRound
             //System choses winner
             _stateMachine.Configure(ContestState.FinalizingVotingRound)
+                .OnActivate(OnFinalizingActivate,"d")
                 .OnEntry(EnteredFinalizingVoting)
                 .Permit(Trigger.WinnerChosen, ContestState.ChoosingNextTask)
                 .Permit(Trigger.NotEnoughVotes, ContestState.Standby)
@@ -148,13 +149,17 @@ namespace musicallychallenged.Services
 
             //State: ChoosingNextTask
             //Winner desribes next task
-            _stateMachine.Configure(ContestState.ChoosingNextTask).OnEntry(EnteredChoosingNextTask)
+            _stateMachine.Configure(ContestState.ChoosingNextTask).
+                OnActivate(ActivatedChoosingNextTask).
+                OnEntry(EnteredChoosingNextTask)
                 .Permit(Trigger.TaskSelectedByWinner, ContestState.InnerCircleVoting);
 
             //State: InnerCircleVoting
             //Administrators premoderating next task
 
-            _stateMachine.Configure(ContestState.InnerCircleVoting).OnEntry(EnteredInnerCircleVoting).
+            _stateMachine.Configure(ContestState.InnerCircleVoting).
+                OnActivate(ActivatedInnerCircleVoting).
+                OnEntry(EnteredInnerCircleVoting).
                 //on approve switch to main contest mode
                 Permit(Trigger.TaskApproved, ContestState.Contest).
                 //on decline, restart task selection
@@ -163,7 +168,9 @@ namespace musicallychallenged.Services
             //State: Contest
             //Administrators premoderating next task
 
-            _stateMachine.Configure(ContestState.Contest).OnEntry(OnContestStartedOrResumed).
+            _stateMachine.Configure(ContestState.Contest).
+                OnActivate(OnContestActivated).
+                OnEntry(OnContestStartedOrResumed).
                 //on approve switch to main contest mode
                 PermitReentry(Trigger.PreviewDeadlineHit).
                 //on decline, restart task selection
@@ -187,6 +194,15 @@ namespace musicallychallenged.Services
                 logger.Warn($"Unhandled trigger : trigger {trigger} in state {state}");               
             });
         }
+
+        private void OnContestActivated()
+        {
+            if(!_isActivating)
+                return;
+
+            logger.Info($"Reactivated in Contest state");
+        }
+
 
         private void OnKickstartContest(KickstartContestEvent kickstartContestEvent)
         {
@@ -258,16 +274,28 @@ namespace musicallychallenged.Services
             }
         }
 
-        private async void EnteredInnerCircleVoting(StateMachine<ContestState, Trigger>.Transition arg)
+        
+        private void ActivatedInnerCircleVoting()
         {
+            if(!_isActivating)
+                return;
+
+            InnerCircleVotingAsync(true);
+        }
+
+        private async void InnerCircleVotingAsync(bool reactivated)
+        {
+            if(reactivated)
+                logger.Warn($"Reactivated inner circle voting");
+
             bool verdict;
             var icvc = _innerCircleVoteGenerator();
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
-            
+
             try
             {
-                verdict = await icvc.PremoderateTaskForNewRound();
+                verdict = await icvc.PremoderateTaskForNewRound(reactivated);
             }
             finally
             {
@@ -279,15 +307,36 @@ namespace musicallychallenged.Services
             _stateMachine.Fire(verdict ? Trigger.TaskApproved : Trigger.TaskDeclined);
         }
 
-
-
-        private async void EnteredChoosingNextTask(StateMachine<ContestState, Trigger>.Transition arg)
+        private void EnteredInnerCircleVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
+            InnerCircleVotingAsync(false);
+        }
+
+        private void EnteredChoosingNextTask(StateMachine<ContestState, Trigger>.Transition arg)
+        {
+            ChooseNewTaskAsyncInternal(arg.Trigger== Trigger.TaskDeclined, false);
+        }
+
+        private void ActivatedChoosingNextTask()
+        {
+            if(!_isActivating)
+                return;
+
+            ChooseNewTaskAsyncInternal(false, true);
+        }
+
+        private async void ChooseNewTaskAsyncInternal(bool wasDeclined, bool isReactivation)
+        {
+            if(isReactivation)
+                logger.Warn($"ChooseNewTaskAsyncInternal reactivated");
+
             var state = _repository.GetOrCreateCurrentState();
 
             if (null == state.CurrentWinnerId)
             {
                 logger.Error("state.CurrentWinnerId == null unexpected");
+                _repository.UpdateState(s => s.CurrentTaskTemplate, NewTaskSelectorController.RandomTaskCallbackId);
+                _stateMachine.Fire(Trigger.TaskSelectedByWinner);
                 return;
             }
 
@@ -296,22 +345,29 @@ namespace musicallychallenged.Services
             if (null == winner)
             {
                 logger.Error("_repository.GetUserWithTgId(state.CurrentWinnerId.Value) == null unexpected");
+                _repository.UpdateState(s => s.CurrentTaskTemplate, NewTaskSelectorController.RandomTaskCallbackId);
+                _stateMachine.Fire(Trigger.TaskSelectedByWinner);
                 return;
             }
 
-            string template;
+            string template = NewTaskSelectorController.RandomTaskCallbackId;
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
 
             try
             {
-                if (arg.Trigger == Trigger.TaskDeclined)
+                if(isReactivation)
+                    await _client.SendTextMessageAsync(winner.ChatId,
+                        _loc.GeneralReactivationDueToErrorsMessage,
+                        ParseMode.Html);
+
+                if (wasDeclined)
                 {
                     await _client.SendTextMessageAsync(winner.ChatId,
                         _loc.ChooseWiselyPrivateMessage,
                         ParseMode.Html);
                 }
-                else if (arg.Trigger == Trigger.WinnerChosen)
+                else
                 {
                     await _client.SendTextMessageAsync(winner.ChatId,
                         _loc.CongratsPrivateMessage,
@@ -320,11 +376,11 @@ namespace musicallychallenged.Services
 
                 if (winner.ChatId == null)
                 {
-                    logger.Error("No ChatId found for current winner (winner.ChatId == null), cant start next task negotiation");
-                    return;
+                    logger.Error(
+                        "No ChatId found for current winner (winner.ChatId == null), cant start next task negotiation");
                 }
-
-                template = await _taskSelectorGenerator().SelectTaskAsync(winner);
+                else
+                    template = await _taskSelectorGenerator().SelectTaskAsync(winner);
             }
             finally
             {
@@ -332,16 +388,33 @@ namespace musicallychallenged.Services
             }
 
             _repository.UpdateState(s => s.CurrentTaskTemplate, template);
-
             _stateMachine.Fire(Trigger.TaskSelectedByWinner);
         }
 
+        
+        private async void OnFinalizingActivate()
+        {
+            if(!_isActivating)
+                return;
+
+            OnFinalizingRoundInternal();
+        }
+
+        
         private async void EnteredFinalizingVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
-            var result = Tuple.Create<VotingController.FinalizationResult, User>(VotingController.FinalizationResult.NotEnoughContesters, null);
+            OnFinalizingRoundInternal();
+        }
+
+
+        private async void OnFinalizingRoundInternal()
+        {
+            var result =
+                Tuple.Create<VotingController.FinalizationResult, User>(VotingController.FinalizationResult.NotEnoughContesters,
+                    null);
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
-            
+
             try
             {
                 result = await _votingController.FinalizeVoting();
@@ -363,18 +436,28 @@ namespace musicallychallenged.Services
                     _stateMachine.Fire(Trigger.NotEnoughContesters);
                     break;
                 case VotingController.FinalizationResult.Halt:
-                    _stateMachine.Fire(_explicitStateSwitchTrigger,ContestState.Standby);
+                    _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            
         }
+
+        //Double-check to circumvent Stateless crippled OnActivate/OnEnter logic
+        //and avoid OnActivate acting as 2x OnEnter in transition
+        private bool _isActivating = true;
 
         public async void Start()
         {
+            _isActivating = true;
+
             await _stateMachine.ActivateAsync();
+
+            _isActivating = false;
+
             await _scheduler.Activate();
+
+            
         }
 
         private void SetCurrentState(ContestState currentState)

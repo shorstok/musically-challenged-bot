@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using Dapper;
 using Dapper.Contrib;
 using Dapper.Contrib.Extensions;
+using log4net;
+using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
 using NodaTime;
 
@@ -19,6 +21,8 @@ namespace musicallychallenged.Data
 {
     public abstract class RepositoryBase : IRepository
     {
+        private static readonly ILog logger = Log.Get(typeof(RepositoryBase));
+
         private readonly IClock _clock;
         
         
@@ -411,6 +415,8 @@ namespace musicallychallenged.Data
 
         }
 
+
+
         public void UpdateUser(User user, long chatId)
         {
             using (var connection = CreateOpenConnection())
@@ -419,6 +425,16 @@ namespace musicallychallenged.Data
                 user.ChatId = chatId;
 
                 connection.Update<User>(user);
+            }
+        }
+
+        public void DeleteUserWithPrivateChatId(long? chatId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var qty = connection.Execute(@"DELETE FROM User WHERE ChatId = @Id", new {Id = chatId});
+
+                logger.Info($"{qty} user(s) with ChatId {chatId} deleted");
             }
         }
 

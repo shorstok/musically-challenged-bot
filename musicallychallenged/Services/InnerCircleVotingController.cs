@@ -49,29 +49,30 @@ namespace musicallychallenged.Services
             _configuration = configuration;
         }
 
-        public async Task<bool> PremoderateTaskForNewRound()
+        public async Task<bool> PremoderateTaskForNewRound(bool isReactivation)
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            var user = _repository.GetExistingUserWithTgId(state.CurrentWinnerId ?? 0);
+            var winner = _repository.GetExistingUserWithTgId(state.CurrentWinnerId ?? 0);
 
-            if (null == user)
+            if (winner?.ChatId == null)
             {
-                logger.Error($"User with Id = {state.CurrentWinnerId} not found");
+                logger.Error($"User with Id = {state.CurrentWinnerId} not found / his ChatId = null, falling to ModerateWithoutWinner mode");
+
+                var result = await PremoderateTaskForNewRoundInternal(state,isReactivation, true);
+                
+                logger.Info($"Finally, voting resulted in following task: {state.CurrentTaskTemplate}");
+                
+                _repository.UpdateState(_=>_.CurrentTaskTemplate, result.Item2);
+
                 return true;
             }
             
-            if (null == user.ChatId)
-            {
-                logger.Error($"Chat for user with Id = {state.CurrentWinnerId} not found");
-                return true;
-            }
-
-            using (var dialog = _dialogManager.StartNewDialogExclusive(user.ChatId.Value, user.Id))
+            using (var dialog = _dialogManager.StartNewDialogExclusive(winner.ChatId.Value, winner.Id))
             {
                 try
                 {
-                    var result = await PremoderateTaskForNewRoundInternal(state);
+                    var result = await PremoderateTaskForNewRoundInternal(state,isReactivation, false);
 
                     if (result.Item1 == false)
                     {
@@ -111,7 +112,8 @@ namespace musicallychallenged.Services
             Skipped
         }
       
-        private async Task<Tuple<bool?, string>> PremoderateTaskForNewRoundInternal(SystemState state)
+        private async Task<Tuple<bool?, string>> PremoderateTaskForNewRoundInternal(SystemState state,
+            bool isReactivation, bool isVotingWithoutWinner)
         {
             var allAdmins = _repository.GetAllActiveUsersWithCredentials(UserCredentials.Admin);
 
@@ -137,7 +139,9 @@ namespace musicallychallenged.Services
             var completedTasks = await Task.WhenAll(allAdmins.Select(admin => VoteAsync(admin,
                 taskTemplate,
                 isOptedForRandomTask,
-                preliminaryVotingCompletionSource,cts.Token).
+                preliminaryVotingCompletionSource,
+                isReactivation,isVotingWithoutWinner,
+                    cts.Token).
                 ContinueWith(task => NotifyOthersReturnResult(task.Result, allAdmins, cts,preliminaryVotingCompletionSource), CancellationToken.None)));
 
             //here we can use Result because all tasks are guaranteed to complete
@@ -227,7 +231,9 @@ namespace musicallychallenged.Services
         private async Task<Tuple<User, VotingResult, string>> VoteAsync(User admin,
             string taskTemplate,
             bool isOptedForRandomTask,
-            TaskCompletionSource<VotingResult> preliminaryVotingCompletionSource, CancellationToken token)
+            TaskCompletionSource<VotingResult> preliminaryVotingCompletionSource, bool isReactivation,
+            bool isVotingWithoutWinner,
+            CancellationToken token)
         {
             if (admin.ChatId == null)
             {
@@ -248,13 +254,22 @@ namespace musicallychallenged.Services
                 {
                     var inlineKeyboardButtons = new List<InlineKeyboardButton>
                     {
-                        InlineKeyboardButton.WithCallbackData(_loc.AdminApproveLabel, callback.approve),
-                        InlineKeyboardButton.WithCallbackData(_loc.AdminDeclineLabel, callback.decline),
+                        InlineKeyboardButton.WithCallbackData(_loc.AdminApproveLabel, callback.approve),                        
                     };
+
+                    if (!isVotingWithoutWinner)
+                        InlineKeyboardButton.WithCallbackData(_loc.AdminDeclineLabel, callback.decline);
 
                     if (admin.Credentials.HasFlag(UserCredentials.Supervisor))
                         inlineKeyboardButtons.Add(
                             InlineKeyboardButton.WithCallbackData(_loc.AdminOverrideLabel, callback.overrideId));
+
+                    if(isReactivation)
+                        await _client.SendTextMessageAsync(dialog.ChatId,_loc.GeneralReactivationDueToErrorsMessage,
+                            ParseMode.Html, cancellationToken: token);
+                    if(isVotingWithoutWinner)
+                        await _client.SendTextMessageAsync(dialog.ChatId,_loc.VotingWithoutWinnerSituation,
+                            ParseMode.Html, cancellationToken: token);
 
                     var message = await _client.SendTextMessageAsync(dialog.ChatId, LocTokens.SubstituteTokens(
                             _loc.AdminVotingPrivateStarted,

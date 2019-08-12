@@ -287,6 +287,8 @@ namespace musicallychallenged.Services.Telegram
                 //Why Telegram didnt implement any codes for errors? What if error text changes? :/
                 if (apiRequestException.Message?.Contains("message to edit not found") == true)
                     _eventAggregator.Publish(new MessageDeletedEvent(identifiers.SourceChat, identifiers.MessageId));
+                if(apiRequestException.ErrorCode == 403 && apiRequestException.Message?.Contains("blocked by the user") == true)
+                    _eventAggregator.Publish(new BotBlockedEvent(identifiers.SourceChat, identifiers.MessageId));
 
                 return default(T);
             }
