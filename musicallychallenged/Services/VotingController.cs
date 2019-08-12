@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 using musicallychallenged.Commands;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
+using musicallychallenged.Helpers;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
@@ -52,6 +54,8 @@ namespace musicallychallenged.Services
             _client = client;         
         }
 
+        private Throttle _votingStatsUpdateThrottle = new Throttle(TimeSpan.FromSeconds(20));
+
         public async Task ExecuteQuery(CallbackQuery callbackQuery)
         {
             var data = CommandManager.ExtractQueryData(this, callbackQuery);
@@ -81,41 +85,32 @@ namespace musicallychallenged.Services
                     Tuple.Create(LocTokens.VoteCount,voteVal.ToString())), 
                 retracted);
 
-            await UpdateVotingIndicatorForEntry(entryId);
-            //var t = MaybePingAllEntries(); //detach
-            await UpdateVotingStats();
+            _votingStatsUpdateThrottle.WaitAsync(UpdateAllVothesThrottled, CancellationToken.None).ConfigureAwait(false);
         }
 
-        private DateTime? _lastContestEntryPingTime = null;
+        private async Task UpdateAllVothesThrottled()
+        {
+            await UpdateVotingStats();
+            await MaybePingAllEntries();
+        }
+
 
         public async Task MaybePingAllEntries()
         {
-            if (_lastContestEntryPingTime!=null && (DateTime.UtcNow - _lastContestEntryPingTime.Value).TotalSeconds < 30)
-                return;
-
-            _lastContestEntryPingTime = DateTime.UtcNow;
-
             var activeEntries = _repository.GetActiveContestEntries().ToArray();
 
             //Slowly walk over all contest entries
             foreach (var activeContestEntry in activeEntries)
             {
                 await UpdateVotingIndicatorForEntry(activeContestEntry.Id);
-                _lastContestEntryPingTime = DateTime.UtcNow;    //to avoid full semaphore
                 await Task.Delay(1000).ConfigureAwait(false);
             }
         }
 
-        private DateTime? _lastStatsUpdateTime = null;
 
         public async Task UpdateVotingStats()
         {
             var state = _repository.GetOrCreateCurrentState();
-
-            if (_lastStatsUpdateTime!=null && (DateTime.UtcNow - _lastStatsUpdateTime.Value).TotalSeconds < 30)
-                return;
-
-            _lastStatsUpdateTime = DateTime.UtcNow;
 
             if(null == state.CurrentVotingStatsMessageId || null == state.VotingChannelId)
                 return;
