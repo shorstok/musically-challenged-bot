@@ -1,4 +1,35 @@
 BEGIN TRANSACTION;
+DROP TABLE IF EXISTS "ActiveContestEntry";
+CREATE TABLE IF NOT EXISTS "ActiveContestEntry" (
+	"Id"	INTEGER,
+	"AuthorUserId"	INTEGER NOT NULL,
+	"ChallengeRoundNumber"	INTEGER NOT NULL,
+	"Timestamp"	TEXT NOT NULL,
+	"ConsolidatedVoteCount"	INTEGER,
+	"ContainerChatId"	INTEGER NOT NULL,
+	"ContainerMesssageId"	INTEGER NOT NULL,
+	"ForwardedPayloadMessageId"	INTEGER NOT NULL,
+	"Description"	TEXT,
+	PRIMARY KEY("Id")
+);
+DROP TABLE IF EXISTS "SystemState";
+CREATE TABLE IF NOT EXISTS "SystemState" (
+	"Id"	INTEGER,
+	"State"	INTEGER NOT NULL,
+	"CurrentChallengeRoundNumber"	INTEGER NOT NULL,
+	"Timestamp"	TEXT NOT NULL,
+	"VotingChannelId"	INTEGER,
+	"MainChannelId"	INTEGER,
+	"CurrentWinnerId"	INTEGER,
+	"CurrentTaskTemplate"	TEXT,
+	"ContestDurationDays"	float,
+	"VotingDurationDays"	float,
+	"NextDeadlineUTC"	TEXT NOT NULL,
+	"PayloadJSON"	TEXT,
+	"CurrentTaskMessagelId"	INTEGER,
+	"CurrentVotingStatsMessageId"	INTEGER,
+	PRIMARY KEY("Id")
+);
 DROP TABLE IF EXISTS "Vote";
 CREATE TABLE IF NOT EXISTS "Vote" (
 	"Id"	INTEGER,
@@ -18,34 +49,6 @@ CREATE TABLE IF NOT EXISTS "User" (
 	"ReceivesNotificatons"	bit NOT NULL,
 	"State"	INTEGER NOT NULL,
 	"Credentials"	INTEGER NOT NULL,
-	PRIMARY KEY("Id")
-);
-DROP TABLE IF EXISTS "ActiveContestEntry";
-CREATE TABLE IF NOT EXISTS "ActiveContestEntry" (
-	"Id"	INTEGER,
-	"AuthorUserId"	INTEGER NOT NULL,
-	"ChallengeRoundNumber"	INTEGER NOT NULL,
-	"Timestamp"	TEXT NOT NULL,
-	"ConsolidatedVoteCount"	INTEGER,
-	"ContainerChatId"	INTEGER NOT NULL,
-	"ContainerMesssageId"	INTEGER NOT NULL,
-	"ForwardedPayloadMessageId"	INTEGER NOT NULL,
-	PRIMARY KEY("Id")
-);
-DROP TABLE IF EXISTS "SystemState";
-CREATE TABLE IF NOT EXISTS "SystemState" (
-	"Id"	INTEGER,
-	"State"	INTEGER NOT NULL,
-	"CurrentChallengeRoundNumber"	INTEGER NOT NULL,
-	"Timestamp"	TEXT NOT NULL,
-	"VotingChannelId"	INTEGER,
-	"MainChannelId"	INTEGER,
-	"CurrentWinnerId"	INTEGER,
-	"CurrentTaskTemplate"	TEXT,
-	"ContestDurationDays"	float,
-	"VotingDurationDays"	float,
-	"NextDeadlineUTC"	TEXT NOT NULL,
-	"PayloadJSON"	TEXT,
 	PRIMARY KEY("Id")
 );
 DROP TABLE IF EXISTS "ActiveChat";
