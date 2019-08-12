@@ -14,6 +14,7 @@ using musicallychallenged.Services.Events;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using User = musicallychallenged.Domain.User;
 
@@ -71,7 +72,9 @@ namespace musicallychallenged.Commands
 
             var response = await dialog.GetCallbackQueryAsync(
                 new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token);
-            await dialog.TelegramClient.EditMessageReplyMarkupAsync(message.Chat.Id,message.MessageId,replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); //remove
+
+            await dialog.TelegramClient.EditMessageReplyMarkupAsync(message.Chat.Id,message.MessageId,
+                replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); //remove
 
             if (response?.Data != "y")
             {
@@ -83,23 +86,22 @@ namespace musicallychallenged.Commands
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Confirmed");
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                $"Send hours till new deadline as integer (like, 3.5 hours). " +
-                $"Decimal separator is dot (.)");
+                $"Send next deadline date and time (like, <code>11.01.2019 21:00</code>), " +
+                $"date & time specified in <code>{_configuration.AnnouncementTimeZone}</code> timezone!", 
+                parseMode:ParseMode.Html);
 
             var date = await dialog.GetMessageInThreadAsync(
                 new CancellationTokenSource(TimeSpan.FromMinutes(_configuration.SubmissionTimeoutMinutes)).Token);
-
-            if (!double.TryParse(date.Text, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
-                out var deltaHours))
+            
+            if(!_timeService.TryParseLocalTimeInAnnouncementTimeZone(date.Text,out var overriddenDeadline))
             {
-                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,"Failed date parsing :(");
+                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,"Failed to parse your message, try again :(");
                 return;
             }
-
-            var overriddenDeadline = _clock.GetCurrentInstant().Plus(Duration.FromHours(deltaHours));
-
+            
             message = await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                $"Confirm your intentions -- set deadline to {_timeService.FormatDateAndTimeToAnnouncementTimezone(overriddenDeadline)}?", 
+                $"Confirm your intentions -- set deadline to <code>{_timeService.FormatDateAndTimeToAnnouncementTimezone(overriddenDeadline)}</code>?", 
+                ParseMode.Html,
                 replyMarkup: new InlineKeyboardMarkup(new[]
                 {
                     InlineKeyboardButton.WithCallbackData("YES","y"),
@@ -109,7 +111,8 @@ namespace musicallychallenged.Commands
             response = await dialog.GetCallbackQueryAsync(
                 new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token);
 
-            await dialog.TelegramClient.EditMessageReplyMarkupAsync(message.Chat.Id,message.MessageId,replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); //remove
+            await dialog.TelegramClient.EditMessageReplyMarkupAsync(message.Chat.Id,message.MessageId,
+                replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); //remove
 
             if (response?.Data != "y")
             {

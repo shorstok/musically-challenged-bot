@@ -100,6 +100,7 @@
     <Compile Include="Commands\SubmitContestEntryCommandHandler.cs" />
     <Compile Include="Data\InMemerySqliteRepository.cs" />
     <Compile Include="Data\IRepository.cs" />
+    <Compile Include="Data\NodaTimeInstantHandler.cs" />
     <Compile Include="Data\RepositoryBase.cs" />
     <Compile Include="Data\SqliteRepository.cs" />
     <Compile Include="Domain\ActiveChat.cs" />
@@ -131,6 +132,7 @@
     <Compile Include="Services\Events\IAggregateMessage.cs" />
     <Compile Include="Services\Events\IEventAggregator.cs" />
     <Compile Include="Services\Events\KickstartContestEvent.cs" />
+    <Compile Include="Services\Events\MessageDeletedEvent.cs" />
     <Compile Include="Services\InnerCircleVotingController.cs" />
     <Compile Include="Services\Events\ISubscription.cs" />
     <Compile Include="Services\IStateScheduler.cs" />

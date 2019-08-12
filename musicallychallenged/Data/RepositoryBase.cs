@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
 using musicallychallenged.Domain;
 using System.Data.SQLite;
 using System.Diagnostics;
@@ -10,67 +8,29 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Dapper;
 using Dapper.Contrib;
 using Dapper.Contrib.Extensions;
+using musicallychallenged.Services.Events;
 using NodaTime;
-using NodaTime.Text;
 
 namespace musicallychallenged.Data
 {
-    public class InstantHandler : SqlMapper.TypeHandler<Instant>
-    {
-        public static readonly InstantHandler Default = new InstantHandler();
-
-        public override void SetValue(IDbDataParameter parameter, Instant value)
-        {
-            parameter.Value = InstantPattern.General.Format(value);
-
-            if (parameter is SqlParameter sqlParameter)
-            {
-                sqlParameter.SqlDbType = SqlDbType.Text;
-            }
-        }
-
-        public override Instant Parse(object value)
-        {
-            if (value is DateTime dateTime)
-            {
-                var dt = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
-                return Instant.FromDateTimeUtc(dt);
-            }
-
-            if (value is string iso)
-            {
-                try
-                {
-                    return InstantPattern.General.Parse(iso).Value;
-                }
-                catch (Exception e)
-                {
-                    return Instant.MinValue;                    
-                }
-            }
-
-            if (value is DateTimeOffset dateTimeOffset)
-            {
-                return Instant.FromDateTimeOffset(dateTimeOffset);
-            }
-
-            throw new DataException("Cannot convert " + value.GetType() + " to NodaTime.Instant");
-        }
-    }
-
     public abstract class RepositoryBase : IRepository
     {
         private readonly IClock _clock;
+        
+        
         protected abstract DbConnection CreateOpenConnection();
-     
+
+
         protected RepositoryBase(IClock clock)
         {
             _clock = clock;
             SqlMapper.AddTypeHandler(new InstantHandler());
         }
+
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {
@@ -287,6 +247,14 @@ namespace musicallychallenged.Data
             }
         }
 
+        public void DeleteContestEntry(int deletedEntryId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                connection.Delete(new ActiveContestEntry{Id = deletedEntryId});
+            }
+        }
+
 
         public void SetOrRetractVote(User voter, int activeEntryId, int voteValue, out bool retracted)
         {
@@ -453,6 +421,8 @@ namespace musicallychallenged.Data
                 connection.Update<User>(user);
             }
         }
+
+       
     }
 
 }

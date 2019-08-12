@@ -26,6 +26,7 @@ namespace musicallychallenged.Data
         ActiveContestEntry GetExistingEntry(int entryId);
         ActiveContestEntry GetActiveContestEntryForUser(int userId);
         void UpdateContestEntry(ActiveContestEntry entry);
+        void DeleteContestEntry(int deletedEntryId);
 
         void SetOrRetractVote(User voter, int activeEntryId, int voteValue, out bool retracted);
         

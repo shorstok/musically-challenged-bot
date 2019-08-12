@@ -21,7 +21,7 @@ using User = musicallychallenged.Domain.User;
 
 namespace musicallychallenged.Services
 {
-    public class ContestController
+    public sealed class ContestController  : IDisposable
     {
         private readonly BroadcastController _broadcastController;
         private readonly TimeService _timeService;
@@ -32,6 +32,8 @@ namespace musicallychallenged.Services
         private readonly IRepository _repository;
 
         private static readonly ILog logger = Log.Get(typeof(ContestController));
+
+        private ISubscription[] _subscriptions;
 
         public ContestController(BroadcastController broadcastController, 
             TimeService timeService,
@@ -48,6 +50,26 @@ namespace musicallychallenged.Services
             _client = client;
             _configuration = configuration;
             _repository = repository;
+
+            _subscriptions = new ISubscription[]
+            {
+                _aggregator.Subscribe<MessageDeletedEvent>(OnMessageDeleted)
+            };
+        }
+
+        private void OnMessageDeleted(MessageDeletedEvent obj)
+        {
+            var deletedEntry = _repository.
+                GetActiveContestEntries().
+                ToArray().
+                FirstOrDefault(e=>e.ContainerMesssageId == obj.MessageId && e.ContainerChatId == obj.ChatId.Identifier);
+
+            if(null == deletedEntry)
+                return;
+
+            logger.Info($"Detected that containing message was deleted for entry {deletedEntry.Id}, deleting entry itself");
+
+            _repository.DeleteContestEntry(deletedEntry.Id);
         }
 
         private readonly SemaphoreSlim _messageSemaphoreSlim = new SemaphoreSlim(1,1);
@@ -224,6 +246,10 @@ namespace musicallychallenged.Services
             }
         }
 
-        
+
+        public void Dispose()
+        {
+
+        }
     }
 }

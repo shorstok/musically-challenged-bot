@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using log4net;
 using musicallychallenged.Config;
@@ -44,6 +45,51 @@ namespace musicallychallenged.Services
         public ZonedDateTime GetInstantInBotTime(Instant instant)
         {
             return instant.InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone]);
+        }
+
+        public bool TryParseLocalTimeInAnnouncementTimeZone(string input, out Instant result)
+        {
+            result = Instant.MinValue;
+
+            var optionalYearLocalDtRegex =
+                new Regex(
+                    "(?<day>\\d+)[.\\/](?<mon>\\d+)([.\\/](?<year>\\d\\d|\\d\\d\\d\\d))?\\s+" +
+                    "(?<hr>\\d+)[:;](?<min>\\d+)");
+
+            try
+            {
+                var timeZone = DateTimeZoneProviders.
+                    Tzdb[_configuration.AnnouncementTimeZone];
+                
+                var match = optionalYearLocalDtRegex.Match(input);
+
+                if (!match.Success)
+                    return false;
+
+                //Required matches, throw on missing
+
+                var day = int.Parse(match.Groups["day"].Value);
+                var mon = int.Parse(match.Groups["mon"].Value);
+                var hr = int.Parse(match.Groups["hr"].Value);
+                var min = int.Parse(match.Groups["min"].Value);
+
+                var year = match.Groups["year"]?.Success == true ? int.Parse(match.Groups["year"].Value) : (int?) null;
+
+                if (year == null)
+                    year = _clock.GetCurrentInstant().InZone(timeZone).Year;
+                if (year < 100)
+                    year = year + ((_clock.GetCurrentInstant().InZone(timeZone).Year) / 100) * 100;
+
+                result = timeZone.
+                    AtLeniently(new LocalDateTime(year.Value,mon,day,hr,min)).
+                    ToInstant();            
+
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }      
         }
 
         public string FormatDateAndTimeToAnnouncementTimezone(Instant date)

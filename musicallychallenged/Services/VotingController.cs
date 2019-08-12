@@ -79,10 +79,33 @@ namespace musicallychallenged.Services
             await _client.AnswerCallbackQueryAsync(callbackQuery.Id, 
                 LocTokens.SubstituteTokens(retracted ? _loc.VoteRemoved: _loc.ThankYouForVote,
                     Tuple.Create(LocTokens.VoteCount,voteVal.ToString())), 
-                true);
+                retracted);
 
             await UpdateVotingIndicatorForEntry(entryId);
+            var t = MaybePingAllEntries(); //detach
             await UpdateVotingStats();
+        }
+
+        private DateTime? _lastContestEntryPingTime = null;
+
+        public async Task MaybePingAllEntries()
+        {
+            if (_lastContestEntryPingTime!=null && (DateTime.UtcNow - _lastContestEntryPingTime.Value).TotalSeconds < 30)
+                return;
+
+            _lastContestEntryPingTime = DateTime.UtcNow;
+
+            var activeEntries = _repository.GetActiveContestEntries().ToArray();
+
+            //Slowly walk over all contest entries
+            foreach (var activeContestEntry in activeEntries)
+            {
+                await UpdateVotingIndicatorForEntry(activeContestEntry.Id);
+                _lastContestEntryPingTime = DateTime.UtcNow;    //to avoid full semaphore
+                await Task.Delay(1000).ConfigureAwait(false);
+            }
+
+            
         }
 
         public async Task UpdateVotingStats()
@@ -91,7 +114,7 @@ namespace musicallychallenged.Services
 
             if(null == state.CurrentVotingStatsMessageId || null == state.VotingChannelId)
                 return;
-
+            
             var activeEntries = _repository.GetActiveContestEntries().ToArray();
 
             var builder = new StringBuilder();
