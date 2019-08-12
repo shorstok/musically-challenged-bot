@@ -100,15 +100,21 @@ namespace musicallychallenged.Services
 
         public async Task SubmitNewEntry(Message response, User user)
         {
-            var state = _repository.GetOrCreateCurrentState();
-
-            if(state.VotingChannelId == null)
-                throw new InvalidOperationException($"Voting channel {state.VotingChannelId} not set! Nowhere to forward");
-
             await _messageSemaphoreSlim.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token).ConfigureAwait(false);
             
             try
             {
+                var state = _repository.GetOrCreateCurrentState();
+
+                if(state.State != ContestState.Contest)
+                    return;
+
+                if (state.VotingChannelId == null)
+                {
+                    logger.Error($"Voting channel {state.VotingChannelId} not set! Nowhere to forward");
+                    return;
+                }
+                
                 var forwared = await _client.ForwardMessageAsync(state.VotingChannelId.Value, response.Chat.Id, response.MessageId);
 
                 if(null == forwared)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using musicallychallenged.Services;
@@ -6,6 +7,17 @@ using Newtonsoft.Json;
 
 namespace musicallychallenged.Config
 {
+    [DataContract]
+    public class BotDeployment
+    {
+        [JsonProperty("Name")]
+        public string Name { get;set; }
+        [JsonProperty("VotingChatId")]
+        public long VotingChatId { get;set; }
+        [JsonProperty("MainChatId")]
+        public long MainChatId { get;set; }
+    }
+
     [DataContract]
     public class BotConfiguration
     {
@@ -71,6 +83,14 @@ namespace musicallychallenged.Config
 
         [JsonProperty("VotingDeadlineEventPreviewTimeHours")]
         public double VotingDeadlineEventPreviewTimeHours { get; set; } = 12;
+
+        [JsonProperty("Deployment")]
+        public BotDeployment[] Deployments { get; set; } = new BotDeployment[]
+        {
+            new BotDeployment{Name = "Production",MainChatId = 1, VotingChatId = 1},
+            new BotDeployment{Name = "Staging",MainChatId = 1, VotingChatId = 1},
+            new BotDeployment{Name = "Alpha",MainChatId = 1, VotingChatId = 1},
+        };
 
         public static BotConfiguration LoadOrCreate(bool saveIfNew = false)
         {

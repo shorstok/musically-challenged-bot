@@ -74,7 +74,7 @@ namespace musicallychallenged.Services
 
             _repository.SetOrRetractVote(user,entryId,voteVal, out var retracted);
 
-            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} voted {voteVal} for entry {entryId}");
+            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} {(retracted?"retracted vote":"voted")} {voteVal} for entry {entryId}");
 
             await _client.AnswerCallbackQueryAsync(callbackQuery.Id, 
                 LocTokens.SubstituteTokens(retracted ? _loc.VoteRemoved: _loc.ThankYouForVote,
@@ -82,7 +82,7 @@ namespace musicallychallenged.Services
                 retracted);
 
             await UpdateVotingIndicatorForEntry(entryId);
-            var t = MaybePingAllEntries(); //detach
+            //var t = MaybePingAllEntries(); //detach
             await UpdateVotingStats();
         }
 
@@ -104,13 +104,18 @@ namespace musicallychallenged.Services
                 _lastContestEntryPingTime = DateTime.UtcNow;    //to avoid full semaphore
                 await Task.Delay(1000).ConfigureAwait(false);
             }
-
-            
         }
+
+        private DateTime? _lastStatsUpdateTime = null;
 
         public async Task UpdateVotingStats()
         {
             var state = _repository.GetOrCreateCurrentState();
+
+            if (_lastStatsUpdateTime!=null && (DateTime.UtcNow - _lastStatsUpdateTime.Value).TotalSeconds < 30)
+                return;
+
+            _lastStatsUpdateTime = DateTime.UtcNow;
 
             if(null == state.CurrentVotingStatsMessageId || null == state.VotingChannelId)
                 return;

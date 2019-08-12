@@ -87,9 +87,15 @@ namespace musicallychallenged.Services.Telegram
         {
             var message = e.Update.Message;
 
+            if (e.Update.Type == UpdateType.ChannelPost && e.Update.ChannelPost!=null)
+            {
+                _repository.AddOrUpdateActiveChat(e.Update.ChannelPost.Chat.Id, e.Update.ChannelPost.Chat.Title);
+                return;
+            }
+
             if(null == message)
                 return;
-
+            
             if (message.Type == MessageType.ChatMembersAdded && message.NewChatMembers?.Any() == true)
             {
                 foreach (var member in message.NewChatMembers)

@@ -79,8 +79,6 @@ namespace musicallychallenged.Services.Telegram
                 {
                     if (user.Credentials.HasFlag(required))
                         continue;
-
-                    logger.Info($"User '{user.Username ?? user.Name}' misses credential '{required}'");
                     
                     return false;
                 }                

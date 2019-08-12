@@ -98,6 +98,9 @@ namespace musicallychallenged.Commands
             if (string.IsNullOrWhiteSpace(text))
                 return false;
 
+            if (text.Length > 512)
+                return false;
+
             return true;
         }
     }

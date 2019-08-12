@@ -32,6 +32,6 @@ namespace musicallychallenged.Domain
 
         public string GetUsernameOrNameWithCircumflex() => string.IsNullOrEmpty(Username) ? Name : $"@{Username}";
 
-        public string GetHtmlUserLink() => $"<a href=\"tg://user?id={Id}\">[{Username ?? Name}]</a>";
+        public string GetHtmlUserLink() => $"<a href=\"tg://user?id={Id}\">🎧{Username ?? Name}</a>";
     }
 }
