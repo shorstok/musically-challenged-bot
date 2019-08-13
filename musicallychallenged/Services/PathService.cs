@@ -5,12 +5,12 @@ namespace musicallychallenged.Services
 {
     public static class PathService
     {
-        public static string AppData { get; }
+        public static string AppData =>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "music-challenge-bot");
 
         static PathService()
         {
-            AppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "music-challenge-bot");
+            
         }
 
         public static void EnsurePathExists()

@@ -16,7 +16,7 @@ namespace musicallychallenged.Logging
     {
         static Log()
         {
-            Log4NetCfgFilename = Path.Combine(PathService.AppData, "/log4net.config");
+            Log4NetCfgFilename = Path.Combine(PathService.AppData, "log4net.config");
 
             if (File.Exists(Log4NetCfgFilename))
             {
