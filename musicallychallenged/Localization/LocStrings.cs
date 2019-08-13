@@ -127,8 +127,8 @@ namespace musicallychallenged.Localization
         public string VotigStatsHeader{ get; set; } =
             $"<code>Статистика участников:</code>";
 
-        public string ThankYouForVote { get; set; } = $"Спасибо, ваш голос ({LocTokens.VoteCount}) учтен. Статистика может обновляться не сразу.";
-        public string VoteRemoved { get; set; } = $"Ваш голос ({LocTokens.VoteCount}) отменен. Статистика может обновляться не сразу.";
+        public string ThankYouForVote { get; set; } = $"{LocTokens.User}, ваш голос ({LocTokens.VoteCount}) учтен. Статистика может обновляться не сразу.";
+        public string VoteRemoved { get; set; } = $"{LocTokens.User}, ваш голос ({LocTokens.VoteCount}) отменен. Статистика может обновляться не сразу.";
 
         public string AnonymousAuthor { get; set; } = "🤖";
 

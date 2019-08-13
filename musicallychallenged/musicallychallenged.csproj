@@ -121,6 +121,7 @@
     <Compile Include="Logging\Log.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\CrypticNameResolver.cs" />
     <Compile Include="Services\Events\AggregateSubscription.cs" />
     <Compile Include="Services\BroadcastController.cs" />
     <Compile Include="Services\ConnectivityService.cs" />

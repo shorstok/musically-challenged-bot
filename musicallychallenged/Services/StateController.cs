@@ -276,7 +276,7 @@ namespace musicallychallenged.Services
                         return;
                     }
 
-                    await _votingController.InitiateVotingAsync();
+                    await _votingController.StartVotingAsync();
                 }
             }
             finally

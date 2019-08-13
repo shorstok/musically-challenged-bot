@@ -25,7 +25,8 @@ namespace musicallychallenged
             
             builder.RegisterType<NewTaskSelectorController>().AsSelf().InstancePerDependency();
             builder.RegisterType<InnerCircleVotingController>().AsSelf().InstancePerDependency();
-
+            
+            builder.RegisterType<CrypticNameResolver>().AsSelf().SingleInstance();
             builder.RegisterType<StateController>().As<IStartable>().AsSelf().SingleInstance();
 
             builder.RegisterType<EventAggregator>().As<IEventAggregator>().SingleInstance();

@@ -31,6 +31,7 @@ namespace musicallychallenged.Services
         private readonly BotConfiguration _botConfiguration;
         private readonly TimeService _timeService;
         private readonly LocStrings _loc;
+        private readonly CrypticNameResolver _crypticNameResolver;
         private readonly ContestController _contestController;
         private readonly BroadcastController _broadcastController;
         private readonly ITelegramClient _client;
@@ -41,6 +42,7 @@ namespace musicallychallenged.Services
             BotConfiguration botConfiguration,
             TimeService timeService,
             LocStrings loc,
+            CrypticNameResolver crypticNameResolver,
             ContestController contestController,
             BroadcastController broadcastController,
             ITelegramClient client)
@@ -49,6 +51,7 @@ namespace musicallychallenged.Services
             _botConfiguration = botConfiguration;
             _timeService = timeService;
             _loc = loc;
+            _crypticNameResolver = crypticNameResolver;
             _contestController = contestController;
             _broadcastController = broadcastController;
             _client = client;         
@@ -82,7 +85,9 @@ namespace musicallychallenged.Services
 
             await _client.AnswerCallbackQueryAsync(callbackQuery.Id, 
                 LocTokens.SubstituteTokens(retracted ? _loc.VoteRemoved: _loc.ThankYouForVote,
-                    Tuple.Create(LocTokens.VoteCount,voteVal.ToString())), 
+                    Tuple.Create(LocTokens.VoteCount,voteVal.ToString()),
+                    Tuple.Create(LocTokens.User,_crypticNameResolver.GetCrypticNameFor(user))
+                    ), 
                 retracted);
 
             _votingStatsUpdateThrottle.WaitAsync(UpdateAllVothesThrottled, CancellationToken.None).ConfigureAwait(false);
@@ -215,7 +220,7 @@ namespace musicallychallenged.Services
                         heartBuider.Append(voteDescr);
                     }
 
-                    builder.AppendLine($"<code>{tuple.Item2.Username ?? tuple.Item2.Name}</code>: <b>{heartBuider.ToString()}</b>");
+                    builder.AppendLine($"<code>{_crypticNameResolver.GetCrypticNameFor(tuple.Item2)}</code>: <b>{heartBuider.ToString()}</b>");
                 }
             }
             
@@ -275,10 +280,12 @@ namespace musicallychallenged.Services
         /// Create voting controls in voting channel, announce about voting start
         /// </summary>
         /// <returns></returns>
-        public async Task InitiateVotingAsync()
+        public async Task StartVotingAsync()
         {
             var activeEntries = _repository.GetActiveContestEntries();
             var state = _repository.GetOrCreateCurrentState();
+
+            _crypticNameResolver.Reset();
             
             var deadline = _timeService.ScheduleNextDeadlineIn(state.VotingDurationDays ?? 2, 22);
 
