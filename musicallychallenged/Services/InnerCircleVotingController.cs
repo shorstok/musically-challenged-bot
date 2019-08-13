@@ -258,7 +258,7 @@ namespace musicallychallenged.Services
                     };
 
                     if (!isVotingWithoutWinner)
-                        InlineKeyboardButton.WithCallbackData(_loc.AdminDeclineLabel, callback.decline);
+                        inlineKeyboardButtons.Add(InlineKeyboardButton.WithCallbackData(_loc.AdminDeclineLabel, callback.decline));
 
                     if (admin.Credentials.HasFlag(UserCredentials.Supervisor))
                         inlineKeyboardButtons.Add(
