@@ -93,7 +93,6 @@
   <ItemGroup>
     <Compile Include="Commands\DescribeContestEntryCommandHandler.cs" />
     <Compile Include="Commands\FastForwardCommandHandler.cs" />
-    <Compile Include="Commands\FloodTestCommandHandler.cs" />
     <Compile Include="Commands\KickstartCommandHandler.cs" />
     <Compile Include="Commands\SetDeadlineTimeToCommandHandler.cs" />
     <Compile Include="Commands\SetDeploymentCommandHandler.cs" />
