@@ -10,6 +10,7 @@ using musicallychallenged.Commands;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Logging;
+using musicallychallenged.Services.Events;
 using Newtonsoft.Json;
 using Telegram.Bot;
 using Telegram.Bot.Args;
@@ -26,6 +27,7 @@ namespace musicallychallenged.Services.Telegram
         private static readonly ILog logger = Log.Get(typeof(ServiceHost));
 
         private readonly Lazy<ITelegramClient> _telegramClientProvider;
+        private readonly IEventAggregator _eventAggregator;
         private readonly DialogManager _dialogManager;
         private readonly BotConfiguration _configuration;
         private readonly IRepository _repository;
@@ -33,13 +35,15 @@ namespace musicallychallenged.Services.Telegram
         
         public ITelegramClient Client { get; private set; }
         
-        public ServiceHost(Lazy<ITelegramClient> telegramClientProvider,                
+        public ServiceHost(Lazy<ITelegramClient> telegramClientProvider,                               
+            IEventAggregator eventAggregator,
             DialogManager dialogManager,
             BotConfiguration configuration,
             IRepository repository,
             CommandManager commandManager)
         {
             _telegramClientProvider = telegramClientProvider;
+            _eventAggregator = eventAggregator;
             _dialogManager = dialogManager;
             _configuration = configuration;
             _repository = repository;
@@ -92,9 +96,17 @@ namespace musicallychallenged.Services.Telegram
                 _repository.AddOrUpdateActiveChat(e.Update.ChannelPost.Chat.Id, e.Update.ChannelPost.Chat.Title);
                 return;
             }
-
+            
             if(null == message)
                 return;
+
+            if (message.MigrateFromChatId != 0 || message.MigrateToChatId != 0 || 
+                message.Type == MessageType.MigratedToSupergroup||
+                message.Type == MessageType.MigratedFromGroup)
+            {
+                HandleChatMigrationEvent(message);
+                return;
+            }
             
             if (message.Type == MessageType.ChatMembersAdded && message.NewChatMembers?.Any() == true)
             {
@@ -133,6 +145,52 @@ namespace musicallychallenged.Services.Telegram
                 }
             }
             
+        }
+
+        private void HandleChatMigrationEvent(Message message)
+        {
+            if (message.MigrateFromChatId == 0 && message.Chat?.Id == null)
+            {
+                logger.Error($"Chat migration failed (can't guess source chat id), manual migration required");
+                return;
+            }
+
+            if (message.MigrateToChatId == 0)
+            {
+                logger.Error($"Chat migration failed (can't guess target chat id), manual migration required");
+                return;
+            }
+
+            var fromId = message.MigrateFromChatId != 0 ? message.MigrateFromChatId : message.Chat.Id;
+            var toId = message.MigrateToChatId;
+
+            if (!_repository.MigrateChat(fromId, toId))
+            {
+                logger.Error($"Chat migration failed, manual migration required");
+                _eventAggregator.Publish(new ChatMigrationFailedEvent(message));
+                return;
+            }
+
+            _configuration.Reload();
+
+            foreach (var deployment in _configuration.Deployments)
+            {
+                if (deployment.MainChatId == fromId)
+                {
+                    deployment.MainChatId = toId;
+                    logger.Info($"Updated deployment {deployment.Name} MainChatId");
+                }
+
+                if (deployment.VotingChatId == fromId)
+                {
+                    deployment.VotingChatId = toId;
+                    logger.Info($"Updated deployment {deployment.Name} VotingChatId");
+                }
+            }
+
+            _configuration.Save(); 
+            
+            logger.Info($"Chat migration complete");
         }
 
 

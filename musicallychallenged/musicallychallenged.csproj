@@ -129,6 +129,7 @@
     <Compile Include="Commands\ITelegramQueryHandler.cs" />
     <Compile Include="Services\ContestController.cs" />
     <Compile Include="Services\Events\BotBlockedEvent.cs" />
+    <Compile Include="Services\Events\ChatMigrationFailedEvent.cs" />
     <Compile Include="Services\Events\DemandFastForwardEvent.cs" />
     <Compile Include="Services\Events\DemandStandbyEvent.cs" />
     <Compile Include="Services\Events\EventAggregator.cs" />

@@ -99,6 +99,7 @@ namespace musicallychallenged.Services
             _subscriptions = new ISubscription[]
             {
                 _eventAggregator.Subscribe<KickstartContestEvent>(OnKickstartContest),
+                _eventAggregator.Subscribe<ChatMigrationFailedEvent>(OnChatMigrationFailed),
                 _eventAggregator.Subscribe<DemandStandbyEvent>((s) =>
                     _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby))
             };
@@ -193,6 +194,16 @@ namespace musicallychallenged.Services
             {
                 logger.Warn($"Unhandled trigger : trigger {trigger} in state {state}");               
             });
+        }
+
+        /// <summary>
+        /// Event is currently not used
+        /// </summary>
+        /// <param name="obj"></param>
+        private void OnChatMigrationFailed(ChatMigrationFailedEvent obj)
+        {
+            logger.Info($"Putting bot to standby");
+            _stateMachine.Fire(_explicitStateSwitchTrigger,ContestState.Standby);
         }
 
         private void OnContestActivated()

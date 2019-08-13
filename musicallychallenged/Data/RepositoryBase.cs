@@ -35,6 +35,46 @@ namespace musicallychallenged.Data
             SqlMapper.AddTypeHandler(new InstantHandler());
         }
 
+        
+        public bool MigrateChat(long fromId, long toId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var state = GetOrCreateSystemStateInternal(connection, tx);
+
+                    if (state.VotingChannelId == fromId)
+                    {
+                        logger.Info($"Replaced VotingChannelId in SystemState");
+                        state.VotingChannelId = toId;
+                    }
+                    if (state.MainChannelId == fromId)
+                    {
+                        logger.Info($"Replaced MainChannelId in SystemState");
+                        state.MainChannelId = toId;
+                    }
+
+                    connection.Update<SystemState>(state, transaction: tx);
+
+                    //Update contest entries migration
+                    
+                    var qty = connection.Execute(@"UPDATE ActiveContestEntry set ContainerChatId=@MigrateToId WHERE ContainerChatId=@FromId", 
+                        new
+                        {
+                            MigrateToId = toId,
+                            FromId = fromId
+                        });
+
+                    logger.Info($"{qty} contest entries updated");
+
+                    tx.Commit();
+                }
+            }
+
+            return true;
+        }
+
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {
@@ -438,7 +478,6 @@ namespace musicallychallenged.Data
             }
         }
 
-       
     }
 
 }
