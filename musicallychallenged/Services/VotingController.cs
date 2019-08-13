@@ -285,13 +285,21 @@ namespace musicallychallenged.Services
             foreach (var activeEntry in activeEntries)
                 await CreateVotingControlsForEntry(activeEntry);
 
-            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(deadline);
+            var votingMesasge =await _broadcastController.AnnounceInMainChannel(GetVotingStartedMessage(state), true);
 
-            await _broadcastController.AnnounceInMainChannel(_loc.VotingStarted, true,
-                Tuple.Create(LocTokens.VotingChannelLink,_botConfiguration.VotingChannelInviteLink),
-                Tuple.Create(LocTokens.Deadline,deadlineText));
-            
+            if (null != votingMesasge)
+                _repository.UpdateState(x => x.CurrentVotingDeadlineMessageId, votingMesasge.MessageId);
+
             await CreateVotingStatsMessageAsync();
+        }
+
+        private string GetVotingStartedMessage(SystemState state)
+        {
+            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
+
+            return LocTokens.SubstituteTokens(_loc.VotingStarted,
+                Tuple.Create(LocTokens.VotingChannelLink, _botConfiguration.VotingChannelInviteLink),
+                Tuple.Create(LocTokens.Deadline, deadlineText));
         }
 
         public async Task CreateVotingStatsMessageAsync()
@@ -493,5 +501,38 @@ namespace musicallychallenged.Services
 
         private string CreateQueryDataForEntryAndValue(int i, ActiveContestEntry activeEntry) => 
             CommandManager.ConstructQueryData(this, $"{i}{QuerySeparatorChar}{activeEntry.Id}");
+
+        public async Task UpdateCurrentTaskMessage()
+        {
+            var state = _repository.GetOrCreateCurrentState();
+
+            if(state.State != ContestState.Voting)
+                return;
+
+            if (state.VotingChannelId == null)
+            {
+                logger.Error($"state.VotingChannelId == null - cant updte current voting deadline");
+                return;
+            }
+
+            if (state.CurrentVotingDeadlineMessageId == null)
+            {
+                logger.Error($"state.CurrentVotingDeadlineMessageId == null - cant updte current voting deadline");
+                return;
+            }
+
+            try
+            {
+                await _client.EditMessageTextAsync(
+                    state.VotingChannelId.Value,
+                    state.CurrentVotingDeadlineMessageId.Value,
+                    GetVotingStartedMessage(state),
+                    ParseMode.Html);
+            }
+            catch (Exception e)
+            {
+                logger.Error($"UpdateCurrentTaskMessage:EditMessageTextAsync exception",e);
+            }
+        }
     }
 }

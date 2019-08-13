@@ -38,6 +38,7 @@ namespace musicallychallenged.Domain
         public string CurrentTaskTemplate { get; set; }
         public int? CurrentTaskMessagelId { get; set; }
         public int? CurrentVotingStatsMessageId { get; set; }
+        public int? CurrentVotingDeadlineMessageId { get; set; }
 
         public int? ContestDurationDays { get; set; }
         public int? VotingDurationDays { get; set; }

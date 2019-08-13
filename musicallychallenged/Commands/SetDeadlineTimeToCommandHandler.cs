@@ -27,6 +27,7 @@ namespace musicallychallenged.Commands
         private readonly BotConfiguration _configuration;
         private readonly IClock _clock;
         private readonly TimeService _timeService;
+        private readonly VotingController _votingController;
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
@@ -39,6 +40,7 @@ namespace musicallychallenged.Commands
             BotConfiguration configuration,
             IClock clock,
             TimeService timeService,
+            VotingController votingController,
             ContestController contestController,
             LocStrings loc)
         {
@@ -46,6 +48,7 @@ namespace musicallychallenged.Commands
             _configuration = configuration;
             _clock = clock;
             _timeService = timeService;
+            _votingController = votingController;
             _contestController = contestController;
             _loc = loc;
         }
@@ -122,6 +125,7 @@ namespace musicallychallenged.Commands
             
             _repository.UpdateState(x=>x.NextDeadlineUTC,overriddenDeadline);           
             await _contestController.UpdateCurrentTaskMessage();
+            await _votingController.UpdateCurrentTaskMessage();
 
             logger.Info($"Deadline submitted");
         }
