@@ -75,11 +75,12 @@ namespace musicallychallenged.Commands
             await dialog.TelegramClient.AnswerCallbackQueryAsync(response.Id);           
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Confirmed");
 
+            var current = _configuration.Deployments.FirstOrDefault(d =>
+                d.VotingChatId == state.VotingChannelId && d.MainChatId == state.MainChannelId);
 
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                $"Send next deadline date and time (like, <code>11.01.2019 21:00</code>), " +
-                $"date & time specified in <code>{_configuration.AnnouncementTimeZone}</code> timezone!", 
+                $"Select deployment target. Bot is currently in <code>{current?.Name??"unkown"}</code>", 
                 parseMode:ParseMode.Html,
                 replyMarkup: 
                 new InlineKeyboardMarkup(_configuration.Deployments.Select(d=>InlineKeyboardButton.WithCallbackData(d.Name,d.Name))));
