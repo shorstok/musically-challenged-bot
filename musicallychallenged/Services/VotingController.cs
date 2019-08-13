@@ -516,9 +516,9 @@ namespace musicallychallenged.Services
             if(state.State != ContestState.Voting)
                 return;
 
-            if (state.VotingChannelId == null)
+            if (state.MainChannelId == null)
             {
-                logger.Error($"state.VotingChannelId == null - cant updte current voting deadline");
+                logger.Error($"state.MainChannelId == null - cant updte current voting deadline");
                 return;
             }
 
@@ -531,7 +531,7 @@ namespace musicallychallenged.Services
             try
             {
                 await _client.EditMessageTextAsync(
-                    state.VotingChannelId.Value,
+                    state.MainChannelId.Value,
                     state.CurrentVotingDeadlineMessageId.Value,
                     GetVotingStartedMessage(state),
                     ParseMode.Html);
