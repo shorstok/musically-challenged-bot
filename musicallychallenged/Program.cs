@@ -33,7 +33,19 @@ namespace musicallychallenged
 
             logger.Info($"Service data resides in `{PathService.AppData}`");
 
-            var container = CreateDiContainer();
+            IContainer container;
+
+            try
+            {
+                container = CreateDiContainer();
+            }
+            catch (Exception e)
+            {
+                logger.Fatal($"Startup error",e);
+
+                Environment.Exit(-1);
+                return;
+            }
 
             HostFactory.Run(configurator =>
             {
