@@ -132,7 +132,7 @@ namespace musicallychallenged.Localization
 
         public string AnonymousAuthor { get; set; } = "🤖";
 
-        public string Contest_FreshEntryTemplate { get; set; } = $"⬆️ Работа от {LocTokens.User} ⬆️{LocTokens.Details}";
+        public string Contest_FreshEntryTemplate { get; set; } = $"<b>⬆️ работа </b>{LocTokens.User}{Environment.NewLine}{LocTokens.Details}";
 
         public string ContestDeadline_EnoughEntriesTemplate { get; set; } = $"Внимание, до конца приема работ на Писец осталось <b>{LocTokens.Time}</b>. После этого начнется этап голосования. Подавайте работы вовремя, ведь бот неумолим! 😊";
         public string ContestDeadline_NotEnoughEntriesTemplate { get; set; } = $"Внимание, до конца приема работ на Писец осталось <b>{LocTokens.Time}</b>, и на данный момент работ на конкурс подали совсем мало. " +

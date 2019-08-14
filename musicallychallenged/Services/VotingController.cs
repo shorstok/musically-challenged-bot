@@ -202,7 +202,6 @@ namespace musicallychallenged.Services
             if (votes.Any())
             {
                 builder.AppendLine();
-                builder.AppendLine();
 
                 foreach (var tuple in votes)
                 {
