@@ -3,59 +3,51 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using log4net;
+using musicallychallenged.Data;
+using musicallychallenged.Logging;
+using NodaTime;
 
 namespace musicallychallenged.Services
 {
     public class RandomTaskRepository
     {
-        private readonly string[] _hardcodedRepository = new[]
-        {
-            "Сделать композицию со сменной размера на каждый такт (или n тактов) без повторений размеров",
-            "Сделать мэшап из мотивов 3+ композиций (можно известных, можно своих (только уже записанных))",
-            "Написать комопзицию используя только синусоидный осцилятор",
-            "можно взять нарандомить несоклько чисел от 1-12, это будут ступени хроматического ряда, и надо сделать мелодию из этих ступеней (там сритмом играться и тд) ну и гармонизовать/аранжировтаь это все",
-            "Акомп в целотоновом ладу, а мелодия в уменьшенном. ",
-            "One chord song — один аккорд, но чтоб казалось движение",
-            "Все партии в разных несочетаемых темпах",
-            "Ритм пентоли поверх триолей",
-            "Композиция без использования пиано-ролла и метронома (каждый трек записывается только под предыдущий)",
-            "Все инструменты должны быть пропущены через реверс",
-            "Использовать только натуральный звукоряд",
-            "Регармонизировать любую песню Цоя",
-            "Сделать кавер на любую композицию из прошлых челленджей",
-            "Написать песню на стихи Маяковского или Хлебникова (я когда-то писал)",
-            "Сделать Нойз-эмбиент",
-            "Все партии должны быть пропущены через реверберацию с dry=0, wet=100",
-            "24-ступенная микрохроматика (даже на обычной гитаре можно)",
-            "Останантные партии: мелодия и бас остинантны, остальное меняется",
-            "Хорошая идея для челенджа взять сложный прог типо Yes, Genesis, KK и переделать в 4/4 в натуральном мажоре на трезвучиях",
-            "Написать романс в стиле начала прошлого века, но в 7/8 и целотоновом ладу.",
-            "написать сифонию в стиле классиков",
-            "4 пьесы на одну ноту",
-            "Записать все треки вслепую: без метронома и с выключенными другими треками. Двигать время при сведении нельзя.",
-            "Сделать трек по «партитуре» этого видео (оригинальный звук убрать): https://youtu.be/O0yVYHV85dM",
-            "Превратить попсовую песню в металл или в вообще перенести жанр",
-            "Рассказать анекдот посредством музыки",
-            "Музыка, где паузы в каждой партии длятся значительно дольше нот",
-            "В композиции должно быть 4+ инструмента, ни ни в один момент времени не должно звучать больше одного",
-            "5 модуляций на композицию, каждая должна модулировать как тональность, так и размер. Например, 1 часть 4/4 в Am, вторая — 7/8 в F#m и тп",
-            "Ограничение по времени: на создание композиции должно уйти не больше 30 минут.",
-            "Нельзя сводить и мастерить: записываем все инструменты как есть, никаких эффектов вообще",
-            "Размер песни — квадрат, а последовательность аккордов рассчитана на 5 тактов. В итоге получается длинный полиметр.",
-            "Длинночеллендж: композиция должна быть в 7 частях, каждая не меньше 3 минут.",
-            "Композиция, подходящая к картине Дали.",
-            "Написать мантру.",
-            "Трижды аранжировать I-vi-IV-V (или какую другую банальщину), каждый раз по-разному.",
-            "вот такая идея пришла: дан только MIDI-луп с постоянным пульсом одной нотой в 4/4. задача только midi-эффектами, делеями, фидбеками, сделать композицию",
-            "Ещё идея для челленджа: сделать трек на основе мелодии «баю баюшки баю», но в вариативной форме"
-        };
+        private readonly IRepository _repository;
+        private readonly IClock _clock;
+
+        private static readonly ILog logger = Log.Get(typeof(RandomTaskRepository));
+
+        private const string FallbackTask = "One chord song — один аккорд, но чтоб казалось движение";
 
         private static readonly Random Generator = new Random();
 
+        public RandomTaskRepository(IRepository repository, IClock clock)
+        {
+            _repository = repository;
+            _clock = clock;
+        }
+
         public string GetRandomTaskDescription()
         {
-            //Just so for now
-            return _hardcodedRepository[Generator.Next(_hardcodedRepository.Length - 1)];
+            var availableTasks = _repository.GetLeastUsedRandomTasks();
+
+            var priorityGroups = availableTasks.GroupBy(g => g.Priority).OrderByDescending(g => g.Key);
+            var source = priorityGroups.FirstOrDefault()?.ToArray();
+
+            if (source?.Any()!=true)
+            {
+                logger.Error($"GetRandomTaskDescription: No available random tasks in repository!");
+                return FallbackTask;
+            }
+            
+            var selected = source.Length > 1 ? source[Generator.Next(availableTasks.Length - 1)] : source[0];
+
+            selected.LastUsed = _clock.GetCurrentInstant();
+            selected.UsedCount++;
+
+            _repository.UpdateRandomTask(selected);
+
+            return selected.Description;
         }
     }
 }

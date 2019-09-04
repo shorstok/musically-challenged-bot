@@ -40,5 +40,8 @@ namespace musicallychallenged.Data
 
         void DeleteUserWithPrivateChatId(long? chatId);
         bool MigrateChat(long fromId, long toId);
+
+        RandomTask[] GetLeastUsedRandomTasks();
+        void UpdateRandomTask(RandomTask task);
     }
 }

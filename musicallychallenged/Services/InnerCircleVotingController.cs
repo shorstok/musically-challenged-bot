@@ -175,14 +175,17 @@ namespace musicallychallenged.Services
                 logger.Info($"Admin {issuedBy.GetUsernameOrNameWithCircumflex()} voting result : skipped");
                 
                 //fire timeout timer anyway (for case when admin terminated voting dialog)
-                cts.CancelAfter(TimeSpan.FromHours(_configuration.MaxAdminVotingTimeHoursSinceFirstVote));
+                
+                if(!cts.IsCancellationRequested)
+                    cts.CancelAfter(TimeSpan.FromHours(_configuration.MaxAdminVotingTimeHoursSinceFirstVote));
+                
                 return taskResult;
             }
 
             //Cancel other's selection process
             if (taskResult.Item2 != VotingResult.Approve)
                 preliminaryVotingCompletionSource.TrySetResult(taskResult.Item2);
-            else
+            else if(!cts.IsCancellationRequested)
                 cts.CancelAfter(TimeSpan.FromHours(_configuration.MaxAdminVotingTimeHoursSinceFirstVote));
 
             foreach (var admin in allAdmins)

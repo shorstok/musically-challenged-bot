@@ -58,4 +58,15 @@ CREATE TABLE IF NOT EXISTS "ActiveChat" (
 	"Timestamp"	DATETIME NOT NULL,
 	PRIMARY KEY("Id")
 );
+
+CREATE TABLE "RandomTask" (
+	"Id"	INTEGER UNIQUE,
+	"Description"	TEXT,
+	"LastUsed"	TEXT,
+	"UsedCount"	INTEGER NOT NULL DEFAULT 0,
+	"Priority"	INTEGER NOT NULL DEFAULT 0,
+	"OriginalAuthorName"	TEXT,
+	PRIMARY KEY("Id")
+);
+
 COMMIT;

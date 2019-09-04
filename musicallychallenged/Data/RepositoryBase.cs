@@ -75,6 +75,33 @@ namespace musicallychallenged.Data
             return true;
         }
 
+        public RandomTask[] GetLeastUsedRandomTasks()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                //Selects all least used random tasks
+
+                var query = @"select * from RandomTask r
+                inner join (select min(UsedCount) mincount from RandomTask) m
+                on r.UsedCount = m.mincount
+                order by Priority DESC";
+                
+                return connection.Query<RandomTask>(query).ToArray();
+            }
+        }
+
+        public void UpdateRandomTask(RandomTask task)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    connection.Update(task, transaction: tx);
+                    tx.Commit();
+                }
+            }
+        }
+
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {

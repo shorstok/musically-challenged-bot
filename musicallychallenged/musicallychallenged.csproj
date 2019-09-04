@@ -105,6 +105,7 @@
     <Compile Include="Data\SqliteRepository.cs" />
     <Compile Include="Domain\ActiveChat.cs" />
     <Compile Include="Domain\ActiveContestEntry.cs" />
+    <Compile Include="Domain\RandomTask.cs" />
     <Compile Include="Domain\SystemState.cs" />
     <Compile Include="Domain\User.cs" />
     <Compile Include="Domain\Vote.cs" />

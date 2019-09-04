@@ -279,6 +279,7 @@ namespace musicallychallenged.Services.Telegram
             {
                 logger.Error($"Got HttpRequestException {e.Message}");
                 
+                //nb: this will make sure _messageSemaphoreSlim stays locked
                 await HandleInternetConnectionLostAysnc();
 
                 return default(T);

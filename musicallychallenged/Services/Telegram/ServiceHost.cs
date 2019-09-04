@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
@@ -48,7 +49,7 @@ namespace musicallychallenged.Services.Telegram
             _configuration = configuration;
             _repository = repository;
             _commandManager = commandManager;
-
+            
             configuration.Save();
         }
 
