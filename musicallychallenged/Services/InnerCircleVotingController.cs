@@ -173,6 +173,9 @@ namespace musicallychallenged.Services
             if (taskResult.Item2 == VotingResult.Skipped)
             {
                 logger.Info($"Admin {issuedBy.GetUsernameOrNameWithCircumflex()} voting result : skipped");
+                
+                //fire timeout timer anyway (for case when admin terminated voting dialog)
+                cts.CancelAfter(TimeSpan.FromHours(_configuration.MaxAdminVotingTimeHoursSinceFirstVote));
                 return taskResult;
             }
 
