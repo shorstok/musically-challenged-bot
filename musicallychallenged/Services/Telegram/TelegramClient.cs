@@ -275,6 +275,14 @@ namespace musicallychallenged.Services.Telegram
 
                 return retval;
             }
+            catch (System.Net.Http.HttpRequestException e)
+            {
+                logger.Error($"Got HttpRequestException {e.Message}");
+                
+                await HandleInternetConnectionLostAysnc();
+
+                return default(T);
+            }
             catch (MessageIsNotModifiedException)
             {
                 logger.Warn($"Telegram squeak about MessageIsNotModified");
@@ -305,6 +313,25 @@ namespace musicallychallenged.Services.Telegram
                 if (_messageSendTimes.Count > _configuration.TelegramMaxMessagesPerSecond)
                     _messageSendTimes.TryTake(out var _);
             }
+        }
+
+        private async Task HandleInternetConnectionLostAysnc()
+        {
+            bool connectionLossDetected = false;
+
+            while (!await ConnectivityService.CheckIsConnected())
+            {
+                if (!connectionLossDetected)
+                {
+                    logger.Info($"Detected internet connection lost, halting bot for good");
+                    connectionLossDetected = true;
+                }
+
+                await Task.Delay(15000).ConfigureAwait(false);
+            }
+
+            if(connectionLossDetected)
+                logger.Info($"Connection seems to be restored");
         }
     }
 }
