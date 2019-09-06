@@ -82,9 +82,8 @@ namespace musicallychallenged.Data
                 //Selects all least used random tasks
 
                 var query = @"select * from RandomTask r
-                inner join (select min(UsedCount) mincount from RandomTask) m
-                on r.UsedCount = m.mincount
-                order by Priority DESC";
+                inner join (select min(UsedCount - Priority) mincount from RandomTask) m
+                on r.UsedCount-Priority = m.mincount";
                 
                 return connection.Query<RandomTask>(query).ToArray();
             }

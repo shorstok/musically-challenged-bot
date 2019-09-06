@@ -30,17 +30,14 @@ namespace musicallychallenged.Services
         public string GetRandomTaskDescription()
         {
             var availableTasks = _repository.GetLeastUsedRandomTasks();
-
-            var priorityGroups = availableTasks.GroupBy(g => g.Priority).OrderByDescending(g => g.Key);
-            var source = priorityGroups.FirstOrDefault()?.ToArray();
-
-            if (source?.Any()!=true)
+            
+            if (availableTasks?.Any()!=true)
             {
                 logger.Error($"GetRandomTaskDescription: No available random tasks in repository!");
                 return FallbackTask;
             }
             
-            var selected = source.Length > 1 ? source[Generator.Next(availableTasks.Length - 1)] : source[0];
+            var selected = availableTasks.Length > 1 ? availableTasks[Generator.Next(availableTasks.Length - 1)] : availableTasks[0];
 
             selected.LastUsed = _clock.GetCurrentInstant();
             selected.UsedCount++;
