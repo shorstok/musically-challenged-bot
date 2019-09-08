@@ -165,6 +165,7 @@ namespace musicallychallenged.Localization
         public string Never { get; set; } = "Никогда";
         public string NotAvailable { get; set; } = "н/д";
         public string Now { get; set; } = "Сейчас";
+        public string AlmostNothing { get; set; } = "Почти ничего";
 
         public string DimDays { get; set; } = "дн.";
         public string DimHours { get; set; } = "ч.";

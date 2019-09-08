@@ -123,22 +123,25 @@ namespace musicallychallenged.Services
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            var duration = state.NextDeadlineUTC -_clock.GetCurrentInstant();
+            var period = Period.Between(
+                _clock.GetCurrentInstant().
+                    InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone]).LocalDateTime,
+                state.NextDeadlineUTC.
+                    InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone]).LocalDateTime, 
+                PeriodUnits.Days | PeriodUnits.Hours);
 
-            if(duration.TotalSeconds <= 0)
-                return _loc.Now;
+            if(period.Days == 0 && period.Hours == 0)
+                return _loc.AlmostNothing;
 
             var builder = new StringBuilder();           
 
-            if (duration.Days > 0)
-                builder.Append($"{duration.Days}{_loc.DimDays} ");            
-            if (duration.Hours > 0)
-                builder.Append($"{duration.Hours}{_loc.DimHours} ");            
-            if (duration.Minutes > 0 && builder.Length == 0)
-                builder.Append($"{duration.Minutes}{_loc.DimMinutes} ");
+            if (period.Days > 0)
+                builder.Append($"{period.Days}{_loc.DimDays} ");            
+            if (period.Hours > 0)
+                builder.Append($"{period.Hours}{_loc.DimHours} ");            
 
             if (builder.Length == 0)
-                return _loc.Now;
+                return _loc.AlmostNothing;
 
             return builder.ToString().Trim();
         }
