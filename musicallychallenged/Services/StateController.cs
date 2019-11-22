@@ -245,6 +245,12 @@ namespace musicallychallenged.Services
                 else if (arg.Trigger == Trigger.TaskApproved)
                     await _contestController.InitiateContestAsync();
             }
+            catch (Exception e)
+            {
+                logger.Error($"Exception while starting contest - {e.Message}");
+                await _broadcastController.SqueakToAdministrators(e.Message);
+                _stateMachine.Fire(_explicitStateSwitchTrigger,ContestState.Standby);
+            }
             finally
             {
                 _transitionSemaphoreSlim.Release();

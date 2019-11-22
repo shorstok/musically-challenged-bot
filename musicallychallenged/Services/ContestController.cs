@@ -222,6 +222,9 @@ namespace musicallychallenged.Services
                 _loc.ContestStartMessageTemplateForVotingChannel,
                 Tuple.Create(LocTokens.Details,state.CurrentChallengeRoundNumber.ToString())), false);
 
+            if (null == pin)
+                throw new Exception("Invalid bot configuration -- couldnt post contest message");
+
             _repository.UpdateState(x=>x.CurrentTaskMessagelId, (int?)pin.MessageId);
         }
 
