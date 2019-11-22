@@ -342,6 +342,12 @@ namespace musicallychallenged.Services
                 return Tuple.Create<FinalizationResult, User>(FinalizationResult.NotEnoughContesters,null);
             }
 
+            if (entries.Count > 2)
+            {
+                //Exclude last winner from new voting, if there are enough competitors
+                entries.RemoveAll(e => e.AuthorUserId == state.CurrentWinnerId);
+            }
+
             var winnersGroup = entries.GroupBy(e => e.ConsolidatedVoteCount ?? 0).OrderByDescending(g => g.Key)
                 .FirstOrDefault();
 
