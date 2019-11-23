@@ -291,6 +291,9 @@ namespace musicallychallenged.Services
             foreach (var activeEntry in activeEntries)
                 await CreateVotingControlsForEntry(activeEntry);
 
+            //Get new deadline
+            state = _repository.GetOrCreateCurrentState();
+
             var votingMesasge =await _broadcastController.AnnounceInMainChannel(GetVotingStartedMessage(state), true);
 
             if (null != votingMesasge)
