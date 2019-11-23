@@ -123,22 +123,25 @@ namespace musicallychallenged.Services
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            var period = Period.Between(
-                _clock.GetCurrentInstant().
-                    InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone]).LocalDateTime,
-                state.NextDeadlineUTC.
-                    InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone]).LocalDateTime, 
-                PeriodUnits.Days | PeriodUnits.Hours);
+            var duration = Period.Between(
+                _clock.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
+                    .LocalDateTime,
+                state.NextDeadlineUTC.InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
+                    .LocalDateTime).ToDuration();
 
-            if(period.Days == 0 && period.Hours == 0)
+            var rounded = Duration.FromMinutes(Math.Round(duration.TotalMinutes / 15) * 15);
+
+            if(rounded.Days == 0 && rounded.Hours == 0 && rounded.Minutes == 0)
                 return _loc.AlmostNothing;
 
             var builder = new StringBuilder();           
 
-            if (period.Days > 0)
-                builder.Append($"{period.Days}{_loc.DimDays} ");            
-            if (period.Hours > 0)
-                builder.Append($"{period.Hours}{_loc.DimHours} ");            
+            if (rounded.Days > 0)
+                builder.Append($"{rounded.Days}{_loc.DimDays} ");            
+            if (rounded.Hours > 0)
+                builder.Append($"{rounded.Hours}{_loc.DimHours} ");            
+            if (rounded.Minutes > 0)
+                builder.Append($"{rounded.Minutes}{_loc.DimMinutes} ");            
 
             if (builder.Length == 0)
                 return _loc.AlmostNothing;
