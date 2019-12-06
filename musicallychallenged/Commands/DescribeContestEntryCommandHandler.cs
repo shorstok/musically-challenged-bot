@@ -69,11 +69,9 @@ namespace musicallychallenged.Commands
                 new CancellationTokenSource(TimeSpan.FromMinutes(_configuration.SubmissionTimeoutMinutes)).Token);
 
 
-            if (!isValidContestMessage(response))
+            if (!await ValidateContestMessage(response, dialog))
             {
                 logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} failed description validation");
-                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                    _loc.DescribeContestEntryCommandHandler_SubmissionFailed);
                 return;
             }
 
@@ -91,15 +89,23 @@ namespace musicallychallenged.Commands
             logger.Info($"Contest entry description submitted");
         }
 
-        private bool isValidContestMessage(Message message)
+        private async Task<bool> ValidateContestMessage(Message message, Dialog dialog)
         {
             var text = message.Text;
 
             if (string.IsNullOrWhiteSpace(text))
+            {
+                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
+                    _loc.DescribeContestEntryCommandHandler_SubmissionFailed);
                 return false;
+            }
 
             if (text.Length > 512)
+            {
+                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
+                    _loc.DescribeContestEntryCommandHandler_SubmissionTooLong);
                 return false;
+            }
 
             return true;
         }

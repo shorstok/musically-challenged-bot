@@ -107,6 +107,7 @@ namespace musicallychallenged.Localization
         public string DescribeContestEntryCommandHandler_SendEntryFirst { get; set; } = "Вначале нужно отправить работу на конкурс (с помощью команды /submit)";
         public string DescribeContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте описание следующим сообщением (в виде текста!) ⬇️";
         public string DescribeContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только текстовые описания";
+        public string DescribeContestEntryCommandHandler_SubmissionTooLong { get; set; } = "Допустимы только короткие текстовые описания (512 символов максимум) 🧐";
         public string DescribeContestEntryCommandHandler_SubmissionSucceeded { get; set; } = "Спасибо за участие! Ваше описание принято";
 
         public string SubmitContestEntryCommandHandler_Description { get; set; } = "Отправить работу на текущий конкурс";
