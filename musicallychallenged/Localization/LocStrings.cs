@@ -105,7 +105,7 @@ namespace musicallychallenged.Localization
         public string DescribeContestEntryCommandHandler_Description { get; set; } = "Добавить описание к отправленной работе";
         public string DescribeContestEntryCommandHandler_OnlyAvailableInContestState { get; set; } = "Прием работ (пока) закрыт. Дождитесь начала следующего раунда!";
         public string DescribeContestEntryCommandHandler_SendEntryFirst { get; set; } = "Вначале нужно отправить работу на конкурс (с помощью команды /submit)";
-        public string DescribeContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте описание следующим сообщением (в текста!) ⬇️";
+        public string DescribeContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте описание следующим сообщением (в виде текста!) ⬇️";
         public string DescribeContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только текстовые описания";
         public string DescribeContestEntryCommandHandler_SubmissionSucceeded { get; set; } = "Спасибо за участие! Ваше описание принято";
 
