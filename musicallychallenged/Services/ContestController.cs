@@ -220,7 +220,9 @@ namespace musicallychallenged.Services
             var pin = await _broadcastController.AnnounceInMainChannel(MaterializeTaskUsingCurrentTemplate(), true);
             await _broadcastController.AnnounceInVotingChannel(LocTokens.SubstituteTokens(
                 _loc.ContestStartMessageTemplateForVotingChannel,
-                Tuple.Create(LocTokens.Details,state.CurrentChallengeRoundNumber.ToString())), false);
+                Tuple.Create(LocTokens.Details,state.CurrentChallengeRoundNumber.ToString()),
+                Tuple.Create(LocTokens.TaskDescription,EscapeTgHtml(state.CurrentTaskTemplate))),
+                false);
 
             if (null == pin)
                 throw new Exception("Invalid bot configuration -- couldnt post contest message");

@@ -139,7 +139,9 @@ namespace musicallychallenged.Localization
         public string ContestDeadline_NotEnoughEntriesTemplate { get; set; } = $"Внимание, до конца приема работ на Писец осталось <b>{LocTokens.Time}</b>, и на данный момент работ на конкурс подали совсем мало. " +
                                                                                $"К сожалению, если так и будет на момент окончания приема работ, бот будет вынужден прекратить челленджи из-за инактива 😐";
 
-        public string ContestStartMessageTemplateForVotingChannel { get; set; } = $"🎉 <b>Начался новый ({LocTokens.Details}й) раунд челленджа!</b> 🎉";
+        public string ContestStartMessageTemplateForVotingChannel { get; set; } = $"🎉 <b>Начался новый ({LocTokens.Details}й) раунд челленджа!</b> 🎉{Environment.NewLine}" +
+                                                                                  $"Задание:{Environment.NewLine}{Environment.NewLine}" +
+                                                                                  $"{LocTokens.TaskDescription}";
 
         public string ContestStartMessageTemplateForMainChannelPin { get; set; } = $@"Задание от {LocTokens.User}:
 
