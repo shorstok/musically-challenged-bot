@@ -79,16 +79,22 @@ namespace musicallychallenged.Services
                 return;
             }
 
-            _repository.SetOrRetractVote(user,entryId,voteVal, out var retracted);
+            //If no votes were cast in this tour, create default values for all entries except entryId
 
-            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} {(retracted?"retracted vote":"voted")} {voteVal} for entry {entryId}");
+            var defaultVoteValue = GetDefaultVoteForUser(user);
+
+            if (_repository.MaybeCreateVoteForAllActiveEntriesExcept(user, entryId, defaultVoteValue))
+                logger.Info($"Set default vote value of {defaultVoteValue} for user {user.GetUsernameOrNameWithCircumflex()} for all active entries except {entryId}");
+
+            _repository.SetOrUpdateVote(user,entryId,voteVal, out var updated);
+
+            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} {(updated?"updated vote":"voted")} {voteVal} for entry {entryId}");
 
             await _client.AnswerCallbackQueryAsync(callbackQuery.Id, 
-                LocTokens.SubstituteTokens(retracted ? _loc.VoteRemoved: _loc.ThankYouForVote,
+                LocTokens.SubstituteTokens(updated ? _loc.VoteUpdated: _loc.ThankYouForVote,
                     Tuple.Create(LocTokens.VoteCount,voteVal.ToString()),
                     Tuple.Create(LocTokens.User,_crypticNameResolver.GetCrypticNameFor(user))
-                    ), 
-                retracted);
+                    ),updated);
 
             _votingStatsUpdateThrottle.WaitAsync(UpdateAllVothesThrottled, CancellationToken.None).ConfigureAwait(false);
         }
@@ -99,6 +105,12 @@ namespace musicallychallenged.Services
             await MaybePingAllEntries();
         }
 
+        public int GetDefaultVoteForUser(User user)
+        {
+            double? average = _repository.GetAverageVoteForUser(user);                               
+
+            return (int) Math.Round(average??_botConfiguration.MinVoteValue * 0.5 + _botConfiguration.MaxVoteValue * 0.5);
+        }
 
         public async Task MaybePingAllEntries()
         {

@@ -28,7 +28,7 @@ namespace musicallychallenged.Data
         void UpdateContestEntry(ActiveContestEntry entry);
         void DeleteContestEntry(int deletedEntryId);
 
-        void SetOrRetractVote(User voter, int activeEntryId, int voteValue, out bool retracted);
+        void SetOrUpdateVote(User voter, int activeEntryId, int voteValue, out bool updated);
         
         SystemState GetOrCreateCurrentState();
         void UpdateState<T>(Expression<Func<SystemState, T>> propertyExpression, T value);
@@ -43,5 +43,8 @@ namespace musicallychallenged.Data
 
         RandomTask[] GetLeastUsedRandomTasks();
         void UpdateRandomTask(RandomTask task);
+        double? GetAverageVoteForUser(User user);
+        int GetVoteCountForActiveEntriesForUser(User user);
+        bool MaybeCreateVoteForAllActiveEntriesExcept(User user, int entryId, int defaultVoteValue);
     }
 }

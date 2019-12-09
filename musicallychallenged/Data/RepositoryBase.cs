@@ -101,6 +101,65 @@ namespace musicallychallenged.Data
             }
         }
 
+        public double? GetAverageVoteForUser(User user)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                return connection.Query<double?>(
+                    @"select avg(v.Value) from Vote v where v.UserId = @Id",
+                    new {Id = user.Id}).FirstOrDefault();
+            }
+        }
+
+        public int GetVoteCountForActiveEntriesForUser(User user)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var qry = @"select count(v.Value) from Vote v
+                inner join ActiveContestEntry ace on ace.Id = v.ContestEntryId
+                where v.UserId = @Id and ace.ConsolidatedVoteCount is null";
+
+                return connection.Query<int?>(qry,new {Id = user.Id}).FirstOrDefault() ?? 0;
+            }
+        }
+
+        public bool MaybeCreateVoteForAllActiveEntriesExcept(User user, int entryId, int defaultVoteValue)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var qry = @"select count(v.Value) from Vote v
+                    inner join ActiveContestEntry ace on ace.Id = v.ContestEntryId
+                    where v.UserId = @Id and ace.ConsolidatedVoteCount is null";
+
+                    var count = connection.Query<int?>(qry,new {Id = user.Id}, transaction:tx).
+                                    FirstOrDefault() ?? 0;
+
+                    //Votes present
+                    if (0 != count)
+                        return false;
+
+                    var multiInsertQry = @"insert into Vote(UserId, ContestEntryId,Value,Timestamp)
+                    select @UserID,e.Id,@VoteVal, @Timestamp from ActiveContestEntry e
+                    where e.ConsolidatedVoteCount is NULL and e.Id != @EntryId";
+
+                    connection.Execute(multiInsertQry, 
+                        new
+                        {
+                            UserID = user.Id,
+                            VoteVal =defaultVoteValue,
+                            Timestamp = _clock.GetCurrentInstant(),
+                            EntryId = entryId,
+                        }, transaction:tx);
+
+                    tx.Commit();
+
+                    return true;
+                }
+            }
+        }
+
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {
@@ -326,9 +385,9 @@ namespace musicallychallenged.Data
         }
 
 
-        public void SetOrRetractVote(User voter, int activeEntryId, int voteValue, out bool retracted)
+        public void SetOrUpdateVote(User voter, int activeEntryId, int voteValue, out bool updated)
         {
-            retracted = false;
+            updated = false;
 
             using (var connection = CreateOpenConnection())
             {
@@ -360,17 +419,16 @@ namespace musicallychallenged.Data
                     {
                         if (existing.Value == voteValue)
                         {
-                            connection.Delete<Vote>(existing);
-                            retracted = true;
+                            //do nothing
+                            updated = true;
+                            return;
                         }
-                        else
-                        {
 
-                            existing.Timestamp = _clock.GetCurrentInstant();
-                            existing.Value = voteValue;
+                        updated = true;
+                        existing.Timestamp = _clock.GetCurrentInstant();
+                        existing.Value = voteValue;
 
-                            connection.Update<Vote>(existing, tx);
-                        }
+                        connection.Update<Vote>(existing, tx);
                     }
 
                     tx.Commit();
