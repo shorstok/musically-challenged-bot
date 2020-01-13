@@ -241,7 +241,7 @@ namespace musicallychallenged.Services
             try
             {
                 if (arg.Trigger == Trigger.PreviewDeadlineHit)
-                    await _contestController.WarnAboutVotingDeadlineSoon();
+                    await _contestController.WarnAboutContestDeadlineSoon();
                 else if (arg.Trigger == Trigger.TaskApproved)
                     await _contestController.InitiateContestAsync();
             }

@@ -94,6 +94,7 @@
     <Compile Include="Commands\DescribeContestEntryCommandHandler.cs" />
     <Compile Include="Commands\FastForwardCommandHandler.cs" />
     <Compile Include="Commands\KickstartCommandHandler.cs" />
+    <Compile Include="Commands\RemindCommandHandler.cs" />
     <Compile Include="Commands\SetDeadlineTimeToCommandHandler.cs" />
     <Compile Include="Commands\SetDeploymentCommandHandler.cs" />
     <Compile Include="Commands\StandbyCommandHandler.cs" />

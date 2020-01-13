@@ -147,18 +147,24 @@ namespace musicallychallenged.Services
         }
 
 
-        public async Task WarnAboutVotingDeadlineSoon()
+        public async Task WarnAboutContestDeadlineSoon(bool isFinal = true)
         {
             var active = _repository.GetActiveContestEntries().ToArray();
 
             var timeLeft = _timeService.FormatTimeLeftTillDeadline();
             
-            var template = _loc.ContestDeadline_EnoughEntriesTemplate;
+            var template = isFinal
+                ? _loc.ContestDeadline_EnoughEntriesTemplateFinal
+                : _loc.ContestDeadline_EnoughEntriesTemplateIntermediate;
 
             if(active.Length < _configuration.MinAllowedContestEntriesToStartVoting)
-                template = _loc.ContestDeadline_NotEnoughEntriesTemplate;
+                template = isFinal
+                    ? _loc.ContestDeadline_NotEnoughEntriesTemplateFinal
+                    : _loc.ContestDeadline_NotEnoughEntriesTemplateIntermediate;
 
-            var announcement = LocTokens.SubstituteTokens(template, Tuple.Create(LocTokens.Time, timeLeft));
+            var announcement = LocTokens.SubstituteTokens(template,
+                Tuple.Create(LocTokens.Time, timeLeft),
+                Tuple.Create(LocTokens.Details, active.Length.ToString()));
 
             await _broadcastController.AnnounceInMainChannel(announcement, false);            
         }
