@@ -106,7 +106,7 @@ namespace musicallychallenged.Services
 
         public async Task SubmitNewEntry(Message response, User user)
         {
-            await _messageSemaphoreSlim.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token).ConfigureAwait(false);
+            await _messageSemaphoreSlim.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(25)).Token).ConfigureAwait(false);
             
             try
             {
