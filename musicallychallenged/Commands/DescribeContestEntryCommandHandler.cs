@@ -100,13 +100,6 @@ namespace musicallychallenged.Commands
                 return false;
             }
 
-            if (text.Length > 512)
-            {
-                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                    _loc.DescribeContestEntryCommandHandler_SubmissionTooLong);
-                return false;
-            }
-
             return true;
         }
     }
