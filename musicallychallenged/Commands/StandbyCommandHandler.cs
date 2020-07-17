@@ -23,7 +23,7 @@ namespace musicallychallenged.Commands
         private readonly IEventAggregator _eventAggregator;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = "standby";
+        public string CommandName { get; } =Scheme.StandbyCommandName;
         public string UserFriendlyDescription => _loc.StandbyCommandHandler_Description;
 
         private static readonly ILog logger = Log.Get(typeof(StandbyCommandHandler));

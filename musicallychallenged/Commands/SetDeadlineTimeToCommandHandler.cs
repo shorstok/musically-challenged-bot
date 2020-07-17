@@ -31,7 +31,7 @@ namespace musicallychallenged.Commands
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = "deadline";
+        public string CommandName { get; } = Scheme.DeadlineCommandName;
         public string UserFriendlyDescription => "Set deadline to date & time";
 
         private static readonly ILog logger = Log.Get(typeof(SetDeadlineTimeToCommandHandler));

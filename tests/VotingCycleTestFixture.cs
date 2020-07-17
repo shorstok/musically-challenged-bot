@@ -24,7 +24,6 @@ namespace tests
         [Test]
         public async Task ShouldSwitchToVotingWhenEnoughContestEntries()
         {
-
             using (var compartment = new MockupTgCompartment())
             {
                 async Task ContesterUserScenario(UserScenarioContext context)
@@ -48,13 +47,15 @@ namespace tests
                     Assert.That(forwrdedMessage,Is.Not.Null, "Contest entry was not forwarded");
                     Assert.That(forwrdedMessage.Audio,Is.Not.Null, "Contest entry has no audiofile");
                     Assert.That(forwrdedMessage.Audio.Title,Is.EqualTo(fakeFileTitle), "Contest entry audio mismatch");
+
+
                 }
                 
                 //Setup
 
                 await compartment.StartUserScenario(async context =>
                 {
-                    context.SendMessage($"/{KickstartCommandHandler.KickstartCommandName}", context.PrivateChat);
+                    context.SendMessage($"/{Scheme.KickstartCommandName}", context.PrivateChat);
 
                     var prompt = await context.ReadTillMessageReceived();
 
@@ -77,6 +78,23 @@ namespace tests
                 };
 
                 await Task.WhenAll(users.Select(u=>u.ScenarioTask)); //wait for all user scenarios to complete
+
+                //Set deadline to 'now'
+
+                await compartment.StartUserScenario(async context =>
+                {
+                    context.SendMessage($"/{Scheme.KickstartCommandName}", context.PrivateChat);
+
+                    var prompt = await context.ReadTillMessageReceived();
+
+                    Assert.That(prompt.Text, Contains.Substring("send task template"));
+
+                    context.SendMessage($"task template!", context.PrivateChat);
+
+                    var response = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+
+                    Assert.That(response.Text, Contains.Substring("all OK"));
+                }, UserCredentials.Supervisor).ScenarioTask;
             }
         }
     }
