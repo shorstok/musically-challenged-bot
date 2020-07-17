@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -175,6 +176,8 @@ namespace musicallychallenged.Services.Telegram
 
         public static string ExtractQueryData(ITelegramQueryHandler handler, CallbackQuery query) =>
             query.Data.Replace(handler.Prefix + ":", String.Empty);
+
+        public IEnumerable<ITelegramCommandHandler> GetAvailableCommandHandlers(User user) => _commandHandlers.Where(ch=>IsAllowedToExecuteCommand(ch, user));
 
         public async Task DescribeUsageAndAvailableCommands(User user, Message message)
         {
