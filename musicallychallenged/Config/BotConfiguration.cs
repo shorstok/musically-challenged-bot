@@ -92,6 +92,9 @@ namespace musicallychallenged.Config
             new BotDeployment{Name = "Alpha",MainChatId = 1, VotingChatId = 1},
         };
 
+        [JsonProperty("DeadlinePollingPeriodMs")]
+        public int DeadlinePollingPeriodMs { get; set; } = 15000;
+
         public static BotConfiguration LoadOrCreate(bool saveIfNew = false)
         {
             lock (_configReaderWriterLock)

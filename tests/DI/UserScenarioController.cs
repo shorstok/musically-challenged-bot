@@ -5,16 +5,11 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Autofac;
 using Dapper.Contrib.Extensions;
 using log4net;
-using musicallychallenged;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
-using musicallychallenged.Localization;
 using musicallychallenged.Logging;
-using musicallychallenged.Services.Telegram;
-using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using tests.Mockups;
 using tests.Mockups.Messaging;
@@ -22,81 +17,46 @@ using User = Telegram.Bot.Types.User;
 
 namespace tests.DI
 {
-    public class MockupTgCompartment : IDisposable
+    public class UserScenarioController : IDisposable
     {
-        private static readonly ILog Logger = Log.Get(typeof(MockupTgCompartment));
+        private readonly UserScenarioContext.Factory _userScenarioFactory;
+        private readonly IRepository _repository;
 
-        public IContainer Container { get; private set; }
-
-        private MockTelegramClient _mockTelegramClient;
-        private UserScenarioContext.Factory _userScenarioFactory;
-
-        private ServiceHost _serviceHost;
-
-        public LocStrings Localization { get; private set; }
-        public IRepository Repository { get; private set; }
+        private static readonly ILog Logger = Log.Get(typeof(UserScenarioController));
 
         private readonly ConcurrentDictionary<long, UserScenarioContext> _contexts =
             new ConcurrentDictionary<long, UserScenarioContext>();
 
-        public MockupTgCompartment()
+        public UserScenarioController(UserScenarioContext.Factory userScenarioFactory, IRepository repository)
         {
-            BuildMockContainer();
-            ResolveServices();
-            RunMockService();
+            _userScenarioFactory = userScenarioFactory;
+            _repository = repository;
         }
 
-        private void RunMockService()
+
+        public void Dispose()
         {
-            //Setup defaults
-
-            Repository.UpdateState(state => state.VotingChannelId, MockConfiguration.VotingChat.Id);
-            Repository.UpdateState(state => state.MainChannelId, MockConfiguration.MainChat.Id);
-            Repository.UpdateState(state => state.ContestDurationDays, 1);
-            Repository.UpdateState(state => state.VotingDurationDays, 1);
-
-            _serviceHost.Start();
-        }
-
-        private void ResolveServices()
-        {
-            _mockTelegramClient = Container.Resolve<MockTelegramClient>();
-            _serviceHost = Container.Resolve<ServiceHost>();
-            _userScenarioFactory = Container.Resolve<UserScenarioContext.Factory>();
-
-            Repository = Container.Resolve<IRepository>();
-            Localization = Container.Resolve<LocStrings>();
-        }
-
-        private void BuildMockContainer()
-        {
-            var containerBuilder = new ContainerBuilder();
-
-            containerBuilder.RegisterModule<ProductionModule>();
-            containerBuilder.RegisterModule<MockModule>();
-
-            containerBuilder.RegisterInstance(this).AsSelf().SingleInstance();
-
-            Container = containerBuilder.Build();
+            foreach (var userScenarioContext in _contexts.Values)
+                userScenarioContext.Dispose();
         }
 
         private void SetUserCredentials(UserCredentials credentials, User mockUser)
         {
-            Repository.CreateOrGetUserByTgIdentity(mockUser);
+            _repository.CreateOrGetUserByTgIdentity(mockUser);
 
             //This should be inaccessible from outside, but currently we have no way
             //to set user credentials (they are set externally, in DB)
             //so we have to use reflection to get connection to DB and execute
             //sql command to set it manually
 
-            var createOpenConnectionMethodInfo = Repository.GetType().GetMethod("CreateOpenConnection",
+            var createOpenConnectionMethodInfo = _repository.GetType().GetMethod("CreateOpenConnection",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
             if (null == createOpenConnectionMethodInfo)
                 throw new Exception(
-                    $"Could not find CreateOpenConnection method in {Repository?.GetType()}, maybe it was refactored?");
+                    $"Could not find CreateOpenConnection method in {_repository?.GetType()}, maybe it was refactored?");
 
-            using (var connection = createOpenConnectionMethodInfo.Invoke(Repository, null) as DbConnection)
+            using (var connection = createOpenConnectionMethodInfo.Invoke(_repository, null) as DbConnection)
             {
                 using (var tx = connection.BeginTransaction())
                 {
@@ -115,7 +75,7 @@ namespace tests.DI
         }
 
         public UserScenarioContext StartUserScenario(Func<UserScenarioContext, Task> scenario,
-                UserCredentials credentials = UserCredentials.User)
+            UserCredentials credentials = UserCredentials.User)
         {
             var context = _userScenarioFactory();
 
@@ -127,13 +87,16 @@ namespace tests.DI
             {
                 try
                 {
-                    Logger.Info($"Starting {context.MockUser.Id}/{context.MockUser.Username} {credentials} user scenario");
+                    Logger.Info($">Starting {context.MockUser.Id}/{context.MockUser.Username}({credentials}) user scenario");
                     await scenario(context).ConfigureAwait(false);
 
+                    Logger.Info(
+                        $">{context.MockUser.Id}/{context.MockUser.Username}({credentials}) user scenario finished OK");
                     context.SetCompleted();
                 }
                 catch (Exception e)
                 {
+                    Logger.Error($"User {context.MockUser.Id} / {context.MockUser.Username} scenario resulted in exception");
                     //Marshal exception from thread pool to awaiting thread (should be test runner)
                     context.SetException(e);
                 }
@@ -162,7 +125,7 @@ namespace tests.DI
 
             await context.AddMessageToUserQueue(message, token);
         }
-        
+
         internal async Task SendMessageToMockUser(int userId, MockMessage message, CancellationToken token)
         {
             var user = _contexts.Values.FirstOrDefault(u => u.MockUser.Id == userId);
@@ -173,28 +136,6 @@ namespace tests.DI
                 throw new Exception($"MockUser with id {userId} not registered with this MockTelegramClient");
 
             await user.AddMessageToUserQueue(message, token);
-        }
-
-        internal static UpdateEventArgs CreateMockUpdateEvent(Update source)
-        {
-            var type = typeof(UpdateEventArgs);
-
-            var constructor = type.GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance,
-                null, new[]
-                {
-                    typeof(Update)
-                }, null);
-
-            return (UpdateEventArgs) constructor.Invoke(new object[] {source});
-        }
-
-        public void Dispose()
-        {
-            foreach (var userScenarioContext in _contexts.Values)
-                userScenarioContext.Dispose();
-
-            Container?.Dispose();
-            Container = null;
         }
     }
 }

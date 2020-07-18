@@ -62,7 +62,7 @@ namespace musicallychallenged.Services
 
             if (message == null)
             {
-                logger.Error($"Bot having trouble sending messages to main channel id {channelId}");
+                logger.Error($"Bot having trouble sending messages to channel id {channelId}");
                 return null;
             }
 

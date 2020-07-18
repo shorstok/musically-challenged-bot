@@ -24,11 +24,11 @@ namespace tests
         [Test]
         public async Task ShouldSendUsageCasesForAnonymousUser()
         {
-            using (var compartment = new MockupTgCompartment())
+            using (var compartment = new TestCompartment())
             {
                 async Task UserScenario(UserScenarioContext context)
                 {
-                    context.SendMessage("/nonexistent-command-"+Guid.NewGuid(), MockConfiguration.MainChat);
+                    context.SendCommand("nonexistent - command - " + Guid.NewGuid());
 
                     var answer = await context.ReadTillMessageReceived();
 
@@ -55,7 +55,7 @@ namespace tests
                     }
                 }
 
-                var ctx = compartment.StartUserScenario(UserScenario);
+                var ctx = compartment.ScenarioController.StartUserScenario(UserScenario);
 
                 await ctx.ScenarioTask; //wait for user scenario to complete
             }
@@ -66,13 +66,13 @@ namespace tests
         {
             var setupComplete = new TaskCompletionSource<object>();
             
-            using (var compartment = new MockupTgCompartment())
+            using (var compartment = new TestCompartment())
             {
                 async Task UserScenario(UserScenarioContext context)
                 {
                     await setupComplete.Task;
 
-                    context.SendMessage("/nonexistent-command-"+Guid.NewGuid(), MockConfiguration.MainChat);
+                    context.SendCommand("nonexistent - command - "+Guid.NewGuid());
 
                     var answer = await context.ReadTillMessageReceived();
 
@@ -101,7 +101,7 @@ namespace tests
                     Logger.Info($"Ok, administrative response contains [{string.Join(", ",allCommands.Select(q=>q.CommandName))}] commands");
                 }
 
-                var ctx = compartment.StartUserScenario(UserScenario, UserCredentials.Supervisor);
+                var ctx = compartment.ScenarioController.StartUserScenario(UserScenario, UserCredentials.Supervisor);
 
                 setupComplete.SetResult(true);
 

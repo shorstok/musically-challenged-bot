@@ -23,7 +23,7 @@ namespace musicallychallenged.Commands
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = Scheme.DescribeCommandName;
+        public string CommandName { get; } = Schema.DescribeCommandName;
         public string UserFriendlyDescription => _loc.DescribeContestEntryCommandHandler_Description;
 
         private static readonly ILog logger = Log.Get(typeof(DescribeContestEntryCommandHandler));

@@ -473,8 +473,6 @@ namespace musicallychallenged.Services
             _isActivating = false;
 
             await _scheduler.Activate();
-
-            
         }
 
         private void SetCurrentState(ContestState currentState)
@@ -490,6 +488,8 @@ namespace musicallychallenged.Services
 
         public void Dispose()
         {
+            _scheduler.Stop();
+
             foreach (var subscription in _subscriptions)
                 subscription.Dispose();
         }

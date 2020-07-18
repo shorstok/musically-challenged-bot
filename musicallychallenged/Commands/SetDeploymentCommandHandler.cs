@@ -27,7 +27,7 @@ namespace musicallychallenged.Commands
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = Scheme.DeployCommandName;
+        public string CommandName { get; } = Schema.DeployCommandName;
         public string UserFriendlyDescription => "Choose where bot is active";
 
         private static readonly ILog logger = Log.Get(typeof(SetDeploymentCommandHandler));

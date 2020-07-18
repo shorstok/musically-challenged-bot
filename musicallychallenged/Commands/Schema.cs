@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace musicallychallenged.Commands
 {
-    public static class Scheme
+    public static class Schema
     {
         public const string StandbyCommandName = "standby";
         public const string DeadlineCommandName = "deadline";

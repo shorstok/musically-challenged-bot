@@ -16,6 +16,7 @@ namespace tests.DI
             builder.RegisterType<InMemorySqliteRepository>().As<IRepository>().SingleInstance();
             builder.RegisterType<MockTelegramClient>().AsSelf().As<ITelegramClient>().SingleInstance();
             builder.RegisterType<UserScenarioContext>().AsSelf().InstancePerDependency();
+            builder.RegisterType<UserScenarioController>().AsSelf().SingleInstance();
         }
     }
 }

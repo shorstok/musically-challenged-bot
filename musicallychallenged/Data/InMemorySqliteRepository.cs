@@ -69,6 +69,7 @@ namespace musicallychallenged.Data
 
         public void Dispose()
         {
+            logger.Info($"Closing keepalive connection");
             _keepaliveConnection?.Close();
             _keepaliveConnection = null;
         }

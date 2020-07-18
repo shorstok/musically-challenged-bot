@@ -21,7 +21,8 @@ namespace musicallychallenged.Services
         private readonly IEventAggregator _eventAggregator;
         private readonly BotConfiguration _botConfiguration;
         private volatile bool _stopIssued = false;
-        
+
+
         public event Action PreviewDeadlineHit;
         public event Action DeadlineHit;
 
@@ -69,8 +70,11 @@ namespace musicallychallenged.Services
 
             do
             {
-                await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromMilliseconds(_botConfiguration.DeadlinePollingPeriodMs)).ConfigureAwait(false);
                 
+                if(_stopIssued)
+                    return;
+
                 var state = _repository.GetOrCreateCurrentState();
                 
                 if(!IsTimeBoundState(state.State))
@@ -80,7 +84,7 @@ namespace musicallychallenged.Services
                 {
                     logger.Info($"Detected state change from {lastState} to {state.State}, resetting signaled status");
 
-                    await Task.Delay(15000).ConfigureAwait(false);
+                    await Task.Delay(_botConfiguration.DeadlinePollingPeriodMs).ConfigureAwait(false);
 
                     lastState = state.State;
                     previewSignaled = false;

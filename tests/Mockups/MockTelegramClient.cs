@@ -18,6 +18,7 @@ namespace tests.Mockups
 {
     public class MockTelegramClient : ITelegramClient
     {
+        private readonly UserScenarioController _userScenarioController;
         private static readonly ILog Logger = Log.Get(typeof(MockTelegramClient));
 
         private readonly ConcurrentDictionary<Tuple<long, int>, Message> _mockMessages =
@@ -26,12 +27,11 @@ namespace tests.Mockups
         private readonly ConcurrentDictionary<string, int> _userIdForPendingCallbackQueries =
             new ConcurrentDictionary<string, int>();
 
-        private readonly Lazy<MockupTgCompartment> _tgCompartment;
 
 
-        public MockTelegramClient(Lazy<MockupTgCompartment> tgCompartment)
+        public MockTelegramClient(UserScenarioController userScenarioController)
         {
-            _tgCompartment = tgCompartment;
+            _userScenarioController = userScenarioController;
         }
 
 
@@ -58,7 +58,7 @@ namespace tests.Mockups
                 throw new Exception(
                     $"Answer callback query {callbackQueryId} -- callback query with such id is not registered");
 
-            await _tgCompartment.Value.SendMessageToMockUser(target,
+            await _userScenarioController.SendMessageToMockUser(target,
                 new AnswerCallbackQueryMock(callbackQueryId, text, showAlert, url, cacheTime), cancellationToken);
         }
 
@@ -67,7 +67,7 @@ namespace tests.Mockups
             bool disableWebPagePreview = false, InlineKeyboardMarkup replyMarkup = null,
             CancellationToken cancellationToken = default)
         {
-            await _tgCompartment.Value.SendMessageToMockUsers(chatId,
+            await _userScenarioController.SendMessageToMockUsers(chatId,
                 new MessageEditedMock(chatId, messageId, text, parseMode, disableWebPagePreview, replyMarkup),
                 cancellationToken);
 
@@ -86,7 +86,7 @@ namespace tests.Mockups
         {
             _mockMessages.TryRemove(Tuple.Create(chatId.Identifier, messageId), out _);
 
-            await _tgCompartment.Value.SendMessageToMockUsers(chatId, new MessageDeletedMock(chatId, messageId),
+            await _userScenarioController.SendMessageToMockUsers(chatId, new MessageDeletedMock(chatId, messageId),
                 cancellationToken);
         }
 
@@ -105,7 +105,7 @@ namespace tests.Mockups
                     (tuple, existing) => result);
             }
 
-            await _tgCompartment.Value.SendMessageToMockUsers(chatId,
+            await _userScenarioController.SendMessageToMockUsers(chatId,
                 new MessageForwardedMock(fromChatId, chatId, messageId, disableNotification),
                 cancellationToken);
 
@@ -116,7 +116,7 @@ namespace tests.Mockups
             InlineKeyboardMarkup replyMarkup = null,
             CancellationToken cancellationToken = default)
         {
-            await _tgCompartment.Value.SendMessageToMockUsers(chatId,
+            await _userScenarioController.SendMessageToMockUsers(chatId,
                 new MessageMarkupEditedMock(chatId, messageId, replyMarkup),
                 cancellationToken);
 
@@ -132,7 +132,7 @@ namespace tests.Mockups
         public async Task PinChatMessageAsync(ChatId chatId, int messageId, bool disableNotification = false,
             CancellationToken cancellationToken = default)
         {
-            await _tgCompartment.Value.SendMessageToMockUsers(chatId,
+            await _userScenarioController.SendMessageToMockUsers(chatId,
                 new MessagePinnedMock(chatId, messageId, disableNotification),
                 cancellationToken);
         }
@@ -158,7 +158,7 @@ namespace tests.Mockups
 
             _mockMessages.AddOrUpdate(Tuple.Create(chatId.Identifier, id), message, (tuple, existing) => message);
 
-            await _tgCompartment.Value.SendMessageToMockUsers(chatId,
+            await _userScenarioController.SendMessageToMockUsers(chatId,
                 new MessageSentMock(chatId, id, text, parseMode, disableWebPagePreview, disableNotification,
                     replyToMessageId, replyMarkup),
                 cancellationToken);

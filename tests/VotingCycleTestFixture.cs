@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,11 +29,11 @@ namespace tests
         [Test]
         public async Task ShouldSwitchToVotingWhenEnoughContestEntries()
         {
-            using (var compartment = new MockupTgCompartment())
+            using (var compartment = new TestCompartment())
             {
                 async Task ContesterUserScenario(UserScenarioContext context)
                 {
-                    context.SendMessage("/submit", context.PrivateChat);
+                    context.SendCommand(Schema.SubmitCommandName);
 
                     var answer = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
@@ -51,15 +52,13 @@ namespace tests
                     Assert.That(forwrdedMessage,Is.Not.Null, "Contest entry was not forwarded");
                     Assert.That(forwrdedMessage.Audio,Is.Not.Null, "Contest entry has no audiofile");
                     Assert.That(forwrdedMessage.Audio.Title,Is.EqualTo(fakeFileTitle), "Contest entry audio mismatch");
-
-
                 }
                 
                 //Setup
 
-                await compartment.StartUserScenario(async context =>
+                await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    context.SendMessage($"/{Scheme.KickstartCommandName}", context.PrivateChat);
+                    context.SendCommand(Schema.KickstartCommandName);
 
                     var prompt = await context.ReadTillMessageReceived();
 
@@ -70,34 +69,48 @@ namespace tests
                     var response = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
                     Assert.That(response.Text, Contains.Substring("all OK"));
+
+                    Logger.Info(
+                        $"Test: contest kickstarted ok!");
+
+                    var announce = await context.ReadTillMessageReceived(mock =>
+                        mock.ChatId.Identifier == MockConfiguration.MainChat.Id && 
+                        mock.Text.Contains("template!"));
+
+                    Assert.That(announce,Is.Not.Null);
+
                 }, UserCredentials.Supervisor).ScenarioTask;
 
                 //Run generic users
 
+                Logger.Info($"Running 'submit' scenarios");
+
                 var users = new[]
                 {
-                    compartment.StartUserScenario(ContesterUserScenario),
-                    compartment.StartUserScenario(ContesterUserScenario),
-                    compartment.StartUserScenario(ContesterUserScenario)
+                    compartment.ScenarioController.StartUserScenario(ContesterUserScenario),
+                    compartment.ScenarioController.StartUserScenario(ContesterUserScenario),
+                    compartment.ScenarioController.StartUserScenario(ContesterUserScenario)
                 };
-
+                
                 await Task.WhenAll(users.Select(u=>u.ScenarioTask)); //wait for all user scenarios to complete
 
                 //Set deadline to 'now'
 
                 var clock = compartment.Container.Resolve<IClock>();
                 var timeService  = compartment.Container.Resolve<TimeService>();
-                
-                await compartment.StartUserScenario(async context =>
-                {
-                    context.SendMessage($"/{Scheme.DeadlineCommandName}", context.PrivateChat);
 
-                    var prompt = await context.ReadTillMessageReceived();
+                Logger.Info($"Running 'set deadline' scenario");
+
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    context.SendCommand(Schema.DeadlineCommandName);
+
+                    var prompt = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
                     Assert.That(prompt.Text, Contains.Substring("Confirm"), "Didn't get deadline confirmation");
                     Assert.That(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),
                         Is.True,
-                        $"/{Scheme.DeadlineCommandName} didnt send confirmation buttons in reply");
+                        $"/{Schema.DeadlineCommandName} didnt send confirmation buttons in reply");
 
                     var yesButton = prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                         FirstOrDefault(b => b.Text == "YES");
@@ -127,7 +140,7 @@ namespace tests
                     Assert.That(prompt.Text, Contains.Substring("Confirm"), "Didn't get deadline confirmation");
                     Assert.That(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),
                         Is.True,
-                        $"/{Scheme.DeadlineCommandName} didnt send confirmation buttons in reply");
+                        $"/{Schema.DeadlineCommandName} didnt send confirmation buttons in reply");
 
                     yesButton = prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                         FirstOrDefault(b => b.Text == "YES");
@@ -143,8 +156,12 @@ namespace tests
                     Assert.That(votingPinEdited.Text, Contains.Substring(timeService.FormatDateAndTimeToAnnouncementTimezone(zonedDateTime.ToInstant())),
                         "didnt modify voting message");
 
+                    Logger.Info($"Test: set deadline to {preNow}/{MockConfiguration.Snapshot.AnnouncementTimeZone} ok!");
+
                 }, UserCredentials.Supervisor).ScenarioTask;
 
+                
+                Assert.That(await compartment.WaitTillStateTransition(ContestState.Voting),Is.True, "Failed switching to Voting state after deadline hit");
 
             }
         }

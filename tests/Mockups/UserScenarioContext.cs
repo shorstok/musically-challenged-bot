@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,10 +19,9 @@ namespace tests.Mockups
 {
     public class UserScenarioContext : IDisposable
     {
-        private readonly TimeSpan _defaultReadTimeout = TimeSpan.FromSeconds(1);
+        private TimeSpan DefaultReadTimeout => Debugger.IsAttached ? TimeSpan.MaxValue : TimeSpan.FromSeconds(1);
 
         private readonly BufferBlock<MockMessage> _messagesToUser;
-        private readonly IRepository _repository;
         private readonly MockTelegramClient _mockTelegramClient;
 
         private readonly TaskCompletionSource<object> _taskCompletion = new TaskCompletionSource<object>();
@@ -32,9 +33,9 @@ namespace tests.Mockups
 
         public Chat PrivateChat { get; }
 
-        internal delegate UserScenarioContext Factory();
+        public delegate UserScenarioContext Factory();
 
-        public UserScenarioContext(IRepository repository, MockTelegramClient mockTelegramClient)
+        public UserScenarioContext(MockTelegramClient mockTelegramClient)
         {
             var mockUserId = MockConfiguration.GetNewMockUserId();
 
@@ -50,7 +51,6 @@ namespace tests.Mockups
                 Id = MockConfiguration.CreateNewPrivateChatId(),
             };
 
-            _repository = repository;
             _mockTelegramClient = mockTelegramClient;
 
             _messagesToUser = new BufferBlock<MockMessage>(new DataflowBlockOptions
@@ -69,11 +69,14 @@ namespace tests.Mockups
             _messagesToUser?.Complete();
         }
 
-       
+        public void SendCommand(string command)
+        {
+            SendMessage("/"+command,PrivateChat);
+        }
 
         public void SendMessage(string text, Chat destinationChat)
         {
-            _mockTelegramClient.InvokeOnMessage(MockupTgCompartment.CreateMockUpdateEvent(new Update
+            _mockTelegramClient.InvokeOnMessage(TestCompartment.CreateMockUpdateEvent(new Update
             {
                 Message = new Message
                 {
@@ -88,7 +91,7 @@ namespace tests.Mockups
 
         public void SendAudioFile(Audio audio, Chat chat)
         {
-            _mockTelegramClient.InvokeOnMessage(MockupTgCompartment.CreateMockUpdateEvent(new Update
+            _mockTelegramClient.InvokeOnMessage(TestCompartment.CreateMockUpdateEvent(new Update
             {
                 Message = new Message
                 {
@@ -102,7 +105,7 @@ namespace tests.Mockups
 
         public void SendQuery(string queryData, Message sourceMessage)
         {
-            _mockTelegramClient.InvokeOnCallbackQuery(MockupTgCompartment.CreateMockUpdateEvent(new Update
+            _mockTelegramClient.InvokeOnCallbackQuery(TestCompartment.CreateMockUpdateEvent(new Update
             {
                 CallbackQuery = new CallbackQuery
                 {
@@ -115,12 +118,10 @@ namespace tests.Mockups
 
         }
 
-        public async Task<Message> ReadTillMessageReceived(long? channelFilter = null,  TimeSpan? readTimeOut = null)
+        internal async Task<Message> ReadTillMessageReceived(Func<MessageSentMock,bool> filter,  TimeSpan? readTimeOut = null)
         {
-
-            var messageSent = await ReadMockMessage<MessageSentMock>(mock =>
-                    channelFilter == null || mock.ChatId.Identifier == channelFilter, 
-                readTimeOut ?? _defaultReadTimeout);
+            var messageSent = await ReadMockMessage(filter, 
+                readTimeOut ?? DefaultReadTimeout);
 
             return new Message
             {
@@ -132,13 +133,20 @@ namespace tests.Mockups
                 From = MockConfiguration.MockBotUser
             };
         }
-        
+
+
+        public async Task<Message> ReadTillMessageReceived(long? channelFilter = null, TimeSpan? readTimeOut = null)
+        {
+            return await ReadTillMessageReceived(mock =>
+                channelFilter == null || mock.ChatId.Identifier == channelFilter, readTimeOut);
+        }
+
         public async Task<Message> ReadTillMessageEdited(long? channelFilter = null,  TimeSpan? readTimeOut = null)
         {
 
             var messageEdited = await ReadMockMessage<MessageEditedMock>(mock =>
                     channelFilter == null || mock.ChatId.Identifier == channelFilter, 
-                readTimeOut ?? _defaultReadTimeout);
+                readTimeOut ?? DefaultReadTimeout);
 
             return new Message
             {
@@ -155,7 +163,7 @@ namespace tests.Mockups
         internal async Task<Message> ReadTillMessageForwardedEvent(Func<MessageForwardedMock, bool> filter, TimeSpan? readTimeOut = null)
         {
             var messageSent = await ReadMockMessage<MessageForwardedMock>(filter,
-                readTimeOut ?? _defaultReadTimeout);
+                readTimeOut ?? DefaultReadTimeout);
 
             return _mockTelegramClient.GetMockMessageById(messageSent.ChatId.Identifier,messageSent.MessageId);
         }
@@ -163,17 +171,30 @@ namespace tests.Mockups
         private async Task<TMockMessage> ReadMockMessage<TMockMessage>(Func<TMockMessage, bool> filter, TimeSpan? readTimeOut)
             where TMockMessage : MockMessage
         {
+            var eatenMessages = new List<MockMessage>();
+
             do
             {
                 var mockMessage = await _messagesToUser.ReceiveAsync(
-                    readTimeOut ?? _defaultReadTimeout,
+                    readTimeOut ?? DefaultReadTimeout,
                     _cancellationTokenSource.Token);
 
                 if (!(mockMessage is TMockMessage message))
+                {
+                    eatenMessages.Add(mockMessage);
                     continue;
+                }
 
                 if (filter != null && !filter(message))
+                {
+                    eatenMessages.Add(message);
                     continue;
+                }
+
+                foreach (var eatenMessage in eatenMessages)
+                {
+                    await _messagesToUser.SendAsync(eatenMessage);
+                }
 
                 return message;
             } while (true);

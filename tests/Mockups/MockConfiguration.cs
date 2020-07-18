@@ -16,7 +16,7 @@ namespace tests.Mockups
         public static BotConfiguration Snapshot { get; } = new BotConfiguration
         {
             TelegramAnnouncerBotKey = "cleartext:dummy_botkey",
-            TelegramBotId = 741897987,
+            TelegramBotId = 1234567,
             TelegramMaxMessagesPerSecond = 15,
             DialogInactivityTimeoutMinutes = 10 * 60,
             MinAllowedVoteCountForWinners = 2,
@@ -32,6 +32,7 @@ namespace tests.Mockups
             SubmissionTimeoutMinutes = 20,
             ContestDeadlineEventPreviewTimeHours = 8,
             VotingDeadlineEventPreviewTimeHours = 12,
+            DeadlinePollingPeriodMs = 50,
 
             Deployments = new[]
             {

@@ -77,6 +77,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DI\UserScenarioController.cs" />
     <Compile Include="VotingCycleTestFixture.cs" />
     <Compile Include="WelcomeTextTestFixture.cs" />
     <Compile Include="Mockups\Messaging\MessageForwardedMock.cs" />
@@ -90,7 +91,7 @@
     <Compile Include="DI\MockModule.cs" />
     <Compile Include="Mockups\Messaging\MockMessage.cs" />
     <Compile Include="Mockups\MockTelegramClient.cs" />
-    <Compile Include="DI\MockupTgCompartment.cs" />
+    <Compile Include="DI\TestCompartment.cs" />
     <Compile Include="Mockups\UserScenarioContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
