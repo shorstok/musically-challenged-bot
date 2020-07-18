@@ -46,17 +46,18 @@ namespace tests.DI
             _serviceHost.Start();
         }
 
-        public async Task<bool> WaitTillStateTransition(ContestState targetState, long? timeoutMs = 1000)
+        public async Task<bool> WaitTillStateMatches(Func<SystemState, bool> predicate, long? timeoutMs = 1000)
         {
             var transitionStopwatch = Stopwatch.StartNew();
+
 
             do
             {
                 var state = Repository.GetOrCreateCurrentState();
 
-                if (state.State == targetState)
+                if (predicate(state))
                 {
-                    Logger.Info($"Transitioned to {targetState} state in {transitionStopwatch.ElapsedMilliseconds}ms");
+                    Logger.Info($"Transitioned to {predicate.ToString()} in {transitionStopwatch.ElapsedMilliseconds}ms");
                     return true;
                 }
 
@@ -65,6 +66,11 @@ namespace tests.DI
             } while (transitionStopwatch.ElapsedMilliseconds < timeoutMs);
 
             return false;
+        }
+        
+        public async Task<bool> WaitTillStateTransition(ContestState targetState, long? timeoutMs = 1000)
+        {
+            return await WaitTillStateMatches(state => state.State == targetState, timeoutMs);
         }
 
         private void ResolveServices()

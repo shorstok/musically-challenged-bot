@@ -82,7 +82,7 @@ namespace musicallychallenged.Services
 
                 if (lastState != state.State)
                 {
-                    logger.Info($"Detected state change from {lastState} to {state.State}, resetting signaled status");
+                    logger.Info($"Detected state change from {lastState?.ToString()??"<null state>"} to {state.State}, resetting signaled status");
 
                     await Task.Delay(_botConfiguration.DeadlinePollingPeriodMs).ConfigureAwait(false);
 
@@ -90,6 +90,9 @@ namespace musicallychallenged.Services
                     previewSignaled = false;
                     deadlineSignaled = false;
                 }
+
+                if (!_stopIssued)
+                    state = _repository.GetOrCreateCurrentState();
 
                 var deadline = state.NextDeadlineUTC;
 

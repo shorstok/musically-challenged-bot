@@ -79,7 +79,14 @@ namespace tests
 
                     Assert.That(announce,Is.Not.Null);
 
+                    Logger.Info($"Got task template in main chat");
+
                 }, UserCredentials.Supervisor).ScenarioTask;
+
+
+                Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId!=null), Is.True,
+                    "Failed switching to Voting state after deadline hit");
+
 
                 //Run generic users
 
@@ -107,7 +114,7 @@ namespace tests
 
                     var prompt = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
-                    Assert.That(prompt.Text, Contains.Substring("Confirm"), "Didn't get deadline confirmation");
+                    Assert.That(prompt.Text, Contains.Substring("Confirm"), $"Didn't get deadline confirmation in chat {context.PrivateChat.Id}");
                     Assert.That(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),
                         Is.True,
                         $"/{Schema.DeadlineCommandName} didnt send confirmation buttons in reply");
@@ -135,7 +142,7 @@ namespace tests
 
                     //Second confirmation
 
-                    prompt = await context.ReadTillMessageReceived();
+                    prompt = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
                     Assert.That(prompt.Text, Contains.Substring("Confirm"), "Didn't get deadline confirmation");
                     Assert.That(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),

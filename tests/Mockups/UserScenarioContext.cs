@@ -19,7 +19,7 @@ namespace tests.Mockups
 {
     public class UserScenarioContext : IDisposable
     {
-        private TimeSpan DefaultReadTimeout => Debugger.IsAttached ? TimeSpan.MaxValue : TimeSpan.FromSeconds(1);
+        private TimeSpan DefaultReadTimeout => Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(1);
 
         private readonly BufferBlock<MockMessage> _messagesToUser;
         private readonly MockTelegramClient _mockTelegramClient;
@@ -191,10 +191,8 @@ namespace tests.Mockups
                     continue;
                 }
 
-                foreach (var eatenMessage in eatenMessages)
-                {
+                foreach (var eatenMessage in eatenMessages) 
                     await _messagesToUser.SendAsync(eatenMessage);
-                }
 
                 return message;
             } while (true);
