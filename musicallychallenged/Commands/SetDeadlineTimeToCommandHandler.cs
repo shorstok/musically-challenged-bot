@@ -57,7 +57,7 @@ namespace musicallychallenged.Commands
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} about to submit contest entry description");
+            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} about to modify voting deadline");
 
             if (state.State != ContestState.Contest && state.State != ContestState.Voting)
             {

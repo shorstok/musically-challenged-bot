@@ -132,6 +132,24 @@ namespace tests.Mockups
                 From = MockConfiguration.MockBotUser
             };
         }
+        
+        public async Task<Message> ReadTillMessageEdited(long? channelFilter = null,  TimeSpan? readTimeOut = null)
+        {
+
+            var messageEdited = await ReadMockMessage<MessageEditedMock>(mock =>
+                    channelFilter == null || mock.ChatId.Identifier == channelFilter, 
+                readTimeOut ?? _defaultReadTimeout);
+
+            return new Message
+            {
+                Text = messageEdited.Text,
+                MessageId = messageEdited.MessageId,
+                ReplyToMessage = null, //todo: get by id from mock tg
+                ReplyMarkup = messageEdited.ReplyMarkup as InlineKeyboardMarkup,
+                Chat = new Chat {Id = messageEdited.ChatId.Identifier},
+                From = MockConfiguration.MockBotUser
+            };
+        }
 
 
         internal async Task<Message> ReadTillMessageForwardedEvent(Func<MessageForwardedMock, bool> filter, TimeSpan? readTimeOut = null)
