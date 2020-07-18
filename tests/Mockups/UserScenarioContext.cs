@@ -100,6 +100,20 @@ namespace tests.Mockups
             }));
         }
 
+        public void SendQuery(string queryData, Message sourceMessage)
+        {
+            _mockTelegramClient.InvokeOnCallbackQuery(MockupTgCompartment.CreateMockUpdateEvent(new Update
+            {
+                CallbackQuery = new CallbackQuery
+                {
+                    From = MockUser,
+                    Id = Guid.NewGuid().ToString(),
+                    Data = queryData,
+                    Message = sourceMessage,
+                }
+            }));
+
+        }
 
         public async Task<Message> ReadTillMessageReceived(long? channelFilter = null,  TimeSpan? readTimeOut = null)
         {
@@ -161,6 +175,7 @@ namespace tests.Mockups
         {
             await _messagesToUser.SendAsync(message, token);
         }
+
 
     }
 }

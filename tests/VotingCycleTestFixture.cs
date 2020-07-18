@@ -10,6 +10,7 @@ using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
 using NUnit.Framework;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using tests.DI;
 using tests.Mockups;
 using tests.Mockups.Messaging;
@@ -83,17 +84,27 @@ namespace tests
 
                 await compartment.StartUserScenario(async context =>
                 {
-                    context.SendMessage($"/{Scheme.KickstartCommandName}", context.PrivateChat);
+                    context.SendMessage($"/{Scheme.DeadlineCommandName}", context.PrivateChat);
 
                     var prompt = await context.ReadTillMessageReceived();
 
-                    Assert.That(prompt.Text, Contains.Substring("send task template"));
+                    Assert.That(prompt.Text, Contains.Substring("Confirm"), "Didn't get deadline confirmation");
+                    Assert.That(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),
+                        Is.True,
+                        $"/{Scheme.DeadlineCommandName} didnt send confirmation buttons in reply");
 
-                    context.SendMessage($"task template!", context.PrivateChat);
+                    var yesButton = prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
+                        FirstOrDefault(b => b.Text == "YES");
+
+                    Assert.That(yesButton, Is.Not.Null, "'yes' button not found in query answer");
+
+                    context.SendQuery(yesButton.CallbackData,prompt);
 
                     var response = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
-                    Assert.That(response.Text, Contains.Substring("all OK"));
+                    Assert.That(response.Text, Contains.Substring("Confirmed"), "didnt get deadline confirmation ack");
+
+
                 }, UserCredentials.Supervisor).ScenarioTask;
             }
         }
