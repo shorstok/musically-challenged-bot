@@ -10,6 +10,7 @@ using System.Threading.Tasks.Dataflow;
 using Dapper.Contrib.Extensions;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
+using musicallychallenged.Localization;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using tests.DI;
@@ -20,6 +21,7 @@ namespace tests.Mockups
 {
     public class UserScenarioContext : IDisposable
     {
+        public LocStrings Localization { get; }
         private TimeSpan DefaultReadTimeout => Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(1);
 
         private readonly BufferBlock<MockMessage> _messagesToUser;
@@ -36,8 +38,9 @@ namespace tests.Mockups
 
         public delegate UserScenarioContext Factory();
 
-        public UserScenarioContext(MockTelegramClient mockTelegramClient)
+        public UserScenarioContext(MockTelegramClient mockTelegramClient, LocStrings localization)
         {
+            Localization = localization;
             var mockUserId = MockConfiguration.GetNewMockUserId();
 
             MockUser = new User

@@ -29,6 +29,7 @@ namespace tests.DI
         public IRepository Repository { get; set; }
         public LocStrings Localization { get; private set; }
         public UserScenarioController ScenarioController { get; private set; }
+        public GenericUserScenarios GenericScenarios { get; private set; }
 
         public TestCompartment()
         {
@@ -82,7 +83,9 @@ namespace tests.DI
             Repository = Container.Resolve<IRepository>();
             Localization = Container.Resolve<LocStrings>();
             ScenarioController = Container.Resolve<UserScenarioController>();
+            GenericScenarios = Container.Resolve<GenericUserScenarios>();
         }
+
 
 
         private void BuildMockContainer()

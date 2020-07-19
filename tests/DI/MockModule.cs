@@ -17,6 +17,7 @@ namespace tests.DI
             builder.RegisterType<MockTelegramClient>().AsSelf().As<ITelegramClient>().SingleInstance();
             builder.RegisterType<UserScenarioContext>().AsSelf().InstancePerDependency();
             builder.RegisterType<UserScenarioController>().AsSelf().SingleInstance();
+            builder.RegisterType<GenericUserScenarios>().AsSelf().SingleInstance();
         }
     }
 }
