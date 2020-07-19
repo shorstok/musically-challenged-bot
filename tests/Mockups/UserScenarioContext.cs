@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -118,7 +119,7 @@ namespace tests.Mockups
 
         }
 
-        internal async Task<Message> ReadTillMessageReceived(Func<MessageSentMock,bool> filter,  TimeSpan? readTimeOut = null)
+        internal async Task<Message> ReadTillMessageReceived(Expression<Predicate<MessageSentMock>> filter,  TimeSpan? readTimeOut = null)
         {
             var messageSent = await ReadMockMessage(filter, 
                 readTimeOut ?? DefaultReadTimeout);
@@ -160,7 +161,7 @@ namespace tests.Mockups
         }
 
 
-        internal async Task<Message> ReadTillMessageForwardedEvent(Func<MessageForwardedMock, bool> filter, TimeSpan? readTimeOut = null)
+        internal async Task<Message> ReadTillMessageForwardedEvent(Expression<Predicate<MessageForwardedMock>> filter, TimeSpan? readTimeOut = null)
         {
             var messageSent = await ReadMockMessage<MessageForwardedMock>(filter,
                 readTimeOut ?? DefaultReadTimeout);
@@ -168,9 +169,11 @@ namespace tests.Mockups
             return _mockTelegramClient.GetMockMessageById(messageSent.ChatId.Identifier,messageSent.MessageId);
         }
 
-        private async Task<TMockMessage> ReadMockMessage<TMockMessage>(Func<TMockMessage, bool> filter, TimeSpan? readTimeOut)
+        private async Task<TMockMessage> ReadMockMessage<TMockMessage>(Expression<Predicate<TMockMessage>> filter, TimeSpan? readTimeOut)
             where TMockMessage : MockMessage
         {
+            var predicate = filter==null ? (m)=>true : filter.Compile();
+
             var eatenMessages = new List<MockMessage>();
 
             do
@@ -185,7 +188,7 @@ namespace tests.Mockups
                     continue;
                 }
 
-                if (filter != null && !filter(message))
+                if (!predicate(message))
                 {
                     eatenMessages.Add(message);
                     continue;

@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using Autofac;
@@ -46,18 +49,22 @@ namespace tests.DI
             _serviceHost.Start();
         }
 
-        public async Task<bool> WaitTillStateMatches(Func<SystemState, bool> predicate, long? timeoutMs = 1000)
-        {
-            var transitionStopwatch = Stopwatch.StartNew();
 
+        public async Task<bool> WaitTillStateMatches(Expression<Predicate<SystemState>> predicate, long? timeoutMs = 1000)
+        {
+            if (Debugger.IsAttached)
+                timeoutMs = 10 * 60 * 1000;
+
+            var transitionStopwatch = Stopwatch.StartNew();
+            var compiledPredicate = predicate.Compile();
 
             do
             {
                 var state = Repository.GetOrCreateCurrentState();
 
-                if (predicate(state))
+                if (compiledPredicate(state))
                 {
-                    Logger.Info($"Transitioned to {predicate.ToString()} in {transitionStopwatch.ElapsedMilliseconds}ms");
+                    Logger.Info($"State switch - satisfied predicate {(predicate.Body.ToString())} in {transitionStopwatch.ElapsedMilliseconds}ms");
                     return true;
                 }
 
@@ -68,10 +75,6 @@ namespace tests.DI
             return false;
         }
         
-        public async Task<bool> WaitTillStateTransition(ContestState targetState, long? timeoutMs = 1000)
-        {
-            return await WaitTillStateMatches(state => state.State == targetState, timeoutMs);
-        }
 
         private void ResolveServices()
         {

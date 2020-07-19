@@ -168,7 +168,7 @@ namespace tests
                 }, UserCredentials.Supervisor).ScenarioTask;
 
                 
-                Assert.That(await compartment.WaitTillStateTransition(ContestState.Voting),Is.True, "Failed switching to Voting state after deadline hit");
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),Is.True, "Failed switching to Voting state after deadline hit");
 
             }
         }
