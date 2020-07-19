@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using log4net;
 using musicallychallenged.Commands;
@@ -14,9 +16,10 @@ namespace tests.Mockups
 {
     public class GenericUserScenarios
     {
-        private static readonly ILog Logger = Log.Get(typeof(GenericUserScenarios));
         private readonly IClock _clock;
         private readonly LocStrings _localization;
+
+        private static readonly ILog Logger = Log.Get(typeof(GenericUserScenarios));
 
         public GenericUserScenarios(IClock clock, LocStrings localization)
         {
@@ -25,7 +28,7 @@ namespace tests.Mockups
         }
 
         /// <summary>
-        ///     Issues commands as supervisor to set next deadline to 'now'
+        /// Issues commands as supervisor to set next deadline
         /// </summary>
         /// <param name="context"></param>
         /// <returns></returns>
@@ -35,8 +38,7 @@ namespace tests.Mockups
 
             var prompt = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
-            Assert.That(prompt.Text, Contains.Substring("Confirm"),
-                $"Didn't get deadline confirmation in chat {context.PrivateChat.Id}");
+            Assert.That(prompt.Text, Contains.Substring("Confirm"), $"Didn't get deadline confirmation in chat {context.PrivateChat.Id}");
             Assert.That(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),
                 Is.True,
                 $"/{Schema.DeadlineCommandName} didnt send confirmation buttons in reply");
@@ -52,7 +54,7 @@ namespace tests.Mockups
 
             Assert.That(response.Text, Contains.Substring("Confirmed"), "didnt get deadline confirmation ack");
 
-            await context.ReadTillMessageReceived(context.PrivateChat.Id); //read description
+            await context.ReadTillMessageReceived(context.PrivateChat.Id);  //read description
 
             var zonedDateTime = _clock.GetCurrentInstant().
                 InZone(DateTimeZoneProviders.Tzdb[MockConfiguration.Snapshot.AnnouncementTimeZone]);
@@ -82,7 +84,7 @@ namespace tests.Mockups
         }
 
         /// <summary>
-        ///     Executes commands to run contest from Standby phase
+        /// Executes commands to run contest from Standby phase
         /// </summary>
         /// <param name="context"></param>
         /// <returns></returns>
@@ -94,13 +96,13 @@ namespace tests.Mockups
 
             Assert.That(prompt.Text, Contains.Substring("send task template"));
 
-            context.SendMessage("task template!", context.PrivateChat);
+            context.SendMessage($"task template!", context.PrivateChat);
 
             var response = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
             Assert.That(response.Text, Contains.Substring("all OK"));
 
-            Logger.Info("Test: contest kickstarted ok!");
+            Logger.Info($"Test: contest kickstarted ok!");
 
             var announce = await context.ReadTillMessageReceived(mock =>
                 mock.ChatId.Identifier == MockConfiguration.MainChat.Id &&
@@ -108,11 +110,11 @@ namespace tests.Mockups
 
             Assert.That(announce, Is.Not.Null);
 
-            Logger.Info("Got task template in main chat");
+            Logger.Info($"Got task template in main chat");
         }
 
         /// <summary>
-        ///     Submits fake file to challenge bot as contest entry
+        /// Submits fake file to challenge bot as contest entry
         /// </summary>
         /// <param name="context"></param>
         /// <returns></returns>
@@ -128,7 +130,7 @@ namespace tests.Mockups
 
             var fakeFileTitle = Guid.NewGuid().ToString();
 
-            context.SendAudioFile(new Audio {FileSize = 10000, Title = fakeFileTitle}, context.PrivateChat);
+            context.SendAudioFile(new Audio { FileSize = 10000, Title = fakeFileTitle }, context.PrivateChat);
 
             var forwrdedMessage = await context.ReadTillMessageForwardedEvent(mock =>
                 mock.ChatId.Identifier == MockConfiguration.VotingChat.Id &&

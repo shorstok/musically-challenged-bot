@@ -24,7 +24,7 @@ namespace musicallychallenged.Logging
             }
             else
             {
-                var layout = new PatternLayout("%-5level %logger{1}.%method [%ndc] - %message%newline")
+                var layout = new PatternLayout("%-5level %logger{1}.%method - %message%newline")
                 {
                     Header = "Logging started"
                 };

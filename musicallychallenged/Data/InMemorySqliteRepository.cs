@@ -60,7 +60,9 @@ namespace musicallychallenged.Data
 
         public InMemorySqliteRepository(IClock clock) : base(clock)
         {
-            _connectionString = $"FullUri=file::memory:?cache=shared;ToFullPath=false";
+            var dbToken = Guid.NewGuid().ToString();
+
+            _connectionString = $"FullUri=file:{dbToken}?mode=memory&cache=shared;ToFullPath=false";
 
             _keepaliveConnection = CreateOpenConnection() as SQLiteConnection;
 
