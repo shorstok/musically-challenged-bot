@@ -96,13 +96,13 @@ namespace musicallychallenged.Services
                     Tuple.Create(LocTokens.User,_crypticNameResolver.GetCrypticNameFor(user))
                     ),updated);
 
-            _votingStatsUpdateThrottle.WaitAsync(UpdateAllVothesThrottled, CancellationToken.None).ConfigureAwait(false);
+            _votingStatsUpdateThrottle.WaitAsync(() => UpdateAllVothesThrottled(false), CancellationToken.None).ConfigureAwait(false);
         }
 
-        private async Task UpdateAllVothesThrottled()
+        private async Task UpdateAllVothesThrottled(bool showRealVotes = false)
         {
-            await UpdateVotingStats();
-            await MaybePingAllEntries();
+            await UpdateVotingStats(showRealVotes);
+            await MaybePingAllEntries(showRealVotes);
         }
 
         public int GetDefaultVoteForUser(User user)
@@ -112,20 +112,20 @@ namespace musicallychallenged.Services
             return (int) Math.Round(average??_botConfiguration.MinVoteValue * 0.5 + _botConfiguration.MaxVoteValue * 0.5);
         }
 
-        public async Task MaybePingAllEntries()
+        public async Task MaybePingAllEntries(bool showRealVotes)
         {
             var activeEntries = _repository.GetActiveContestEntries().ToArray();
 
             //Slowly walk over all contest entries
             foreach (var activeContestEntry in activeEntries)
             {
-                await UpdateVotingIndicatorForEntry(activeContestEntry.Id);
+                await UpdateVotingIndicatorForEntry(activeContestEntry.Id, showRealVotes);
                 await Task.Delay(1000).ConfigureAwait(false);
             }
         }
 
 
-        public async Task UpdateVotingStats()
+        public async Task UpdateVotingStats(bool showRealVotes)
         {
             var state = _repository.GetOrCreateCurrentState();
 
@@ -143,12 +143,12 @@ namespace musicallychallenged.Services
             foreach (var activeContestEntry in activeEntries)
             {
                 var votes = _repository.GetVotesForEntry(activeContestEntry.Id).ToArray();
-                var user = _repository.GetExistingUserWithTgId(activeContestEntry.AuthorUserId);
+                var entryAuthor = _repository.GetExistingUserWithTgId(activeContestEntry.AuthorUserId);
 
                 if (votes.Length == 0)
-                    usersAndVoteCount[user] = 0;
+                    usersAndVoteCount[entryAuthor] = 0;
                 else
-                    usersAndVoteCount[user] = votes.Sum(v => v.Item1.Value);
+                    usersAndVoteCount[entryAuthor] = votes.Sum(v => v.Item1.Value);
             }
 
             var votesOrdered = usersAndVoteCount.
@@ -159,30 +159,37 @@ namespace musicallychallenged.Services
             var medals = new[] {"🥇","🥈","🥉"};
 
             builder.AppendLine("");
-            
-            for (int place = 0; place < votesOrdered.Length; place++)
+
+            if (showRealVotes)
             {
-                var users = votesOrdered[place].OrderBy(u=>u.Username ?? u.Name).ToArray();
-
-                for (int subitem = 0; subitem < users.Length; subitem++)
+                for (int place = 0; place < votesOrdered.Length; place++)
                 {
-                    var user = users[subitem];
-                    bool isLast = place == votesOrdered.Length - 1 && subitem == users.Length - 1;
+                    var users = votesOrdered[place].OrderBy(u => u.Username ?? u.Name).ToArray();
 
-                    builder.AppendLine("<code>│</code>");
+                    for (int subitem = 0; subitem < users.Length; subitem++)
+                    {
+                        var user = users[subitem];
+                        bool isLast = place == votesOrdered.Length - 1 && subitem == users.Length - 1;
 
-                    builder.Append(isLast?"<code>┕ </code>":"<code>┝ </code>");
+                        builder.AppendLine("<code>│</code>");
 
-                    if (medals.Length > place)
-                        builder.Append(medals[place]);
+                        builder.Append(isLast ? "<code>┕ </code>" : "<code>┝ </code>");
 
-                    builder.Append(user.Username ?? user.Name);
+                        if (medals.Length > place)
+                            builder.Append(medals[place]);
 
-                    builder.AppendLine($"<code> - {votesOrdered[place].Key}</code>");
+                        builder.Append(user.Username ?? user.Name);
+
+                        builder.AppendLine($"<code> - {votesOrdered[place].Key}</code>");
+                    }
+
                 }
-                
             }
-            
+            else
+            {
+                builder.AppendLine("Votes hidden 😏");
+            }
+
             await _client.EditMessageTextAsync(state.VotingChannelId.Value, state.CurrentVotingStatsMessageId.Value,
                 builder.ToString(), ParseMode.Html);
         }
@@ -190,7 +197,7 @@ namespace musicallychallenged.Services
         private readonly string[] _votingSmiles = new[] {"🌑", "🌘","🌗","🌖","🌕"};
         
 
-        public async Task UpdateVotingIndicatorForEntry(int entryId)
+        public async Task UpdateVotingIndicatorForEntry(int entryId, bool showRealVotes)
         {
             var votes = _repository.GetVotesForEntry(entryId).ToArray();
             var entry = _repository.GetExistingEntry(entryId);
@@ -231,12 +238,15 @@ namespace musicallychallenged.Services
                         heartBuider.Append(voteDescr);
                     }
 
-                    builder.AppendLine($"<code>{_crypticNameResolver.GetCrypticNameFor(tuple.Item2)}</code>: <b>{heartBuider.ToString()}</b>");
+                    builder.AppendLine(showRealVotes
+                        ? $"<code>{_crypticNameResolver.GetCrypticNameFor(tuple.Item2)}</code>: <b>{heartBuider.ToString()}</b>"
+                        : $"{tuple.Item2?.GetHtmlUserLink()??"??"}: <b>😏</b>");
                 }
             }
             
             await _client.EditMessageTextAsync(entry.ContainerChatId, entry.ContainerMesssageId,
-                _contestController.GetContestEntryText(author, builder.ToString(), entry.Description),ParseMode.Html,
+                _contestController.GetContestEntryText(author, builder.ToString(), entry.Description),
+                ParseMode.Html,
                 replyMarkup:new InlineKeyboardMarkup(CreateVotingButtonsForEntry(entry)));
         }
 
@@ -341,6 +351,8 @@ namespace musicallychallenged.Services
 
         public async Task<Tuple<FinalizationResult, User>> FinalizeVoting()
         {
+            await UpdateVotingStats(true);
+
             var entries = await ConsolidateActiveVotes();
             var state = _repository.GetOrCreateCurrentState();
 
