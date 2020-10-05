@@ -4,6 +4,7 @@ using Autofac;
 using musicallychallenged.Data;
 using musicallychallenged.Services.Telegram;
 using tests.Mockups;
+using tests.Mockups.Messaging;
 
 namespace tests.DI
 {
@@ -18,6 +19,7 @@ namespace tests.DI
             builder.RegisterType<UserScenarioContext>().AsSelf().InstancePerDependency();
             builder.RegisterType<UserScenarioController>().AsSelf().SingleInstance();
             builder.RegisterType<GenericUserScenarios>().AsSelf().SingleInstance();
+            builder.RegisterType<MockMessageMediatorService>().AsSelf().SingleInstance();
         }
     }
 }

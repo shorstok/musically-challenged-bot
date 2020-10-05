@@ -2,7 +2,9 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Autofac;
+using Dapper;
 using log4net;
+using musicallychallenged.Commands;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
@@ -10,6 +12,7 @@ using musicallychallenged.Services;
 using NUnit.Framework;
 using tests.DI;
 using tests.Mockups;
+using tests.Mockups.Messaging;
 
 namespace tests
 {
@@ -17,6 +20,40 @@ namespace tests
     public class VotingCycleTestFixture
     {
         private static readonly ILog Logger = Log.Get(typeof(VotingCycleTestFixture));
+
+        [Test]
+        public async Task ShouldDenySumbissionsInNonContestStats()
+        {
+            var deniedStates = new[]
+            {
+                ContestState.Standby,
+                ContestState.ChoosingNextTask,
+                ContestState.FinalizingVotingRound,
+                ContestState.InnerCircleVoting,
+                ContestState.Voting
+            };
+
+            using (var compartment = new TestCompartment())
+            {
+                foreach (var contestState in deniedStates)
+                {
+                    compartment.Repository.UpdateState(state => state.State, contestState);
+
+                    await compartment.ScenarioController.StartUserScenario(async context =>
+                    {
+                        context.SendCommand(Schema.SubmitCommandName);
+
+                        var answer = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+
+                        Assert.That(answer?.Text, Contains.Substring(context.Localization.
+                                DescribeContestEntryCommandHandler_OnlyAvailableInContestState),
+                            "/submit command response should be 'denied' message");
+
+                        Logger.Info($"Submission denied in {contestState} state - OK");
+                    }).ScenarioTask;
+                }
+            }
+        }
 
         [Test]
         public async Task ShouldSwitchToStandbyWhenNotEnoughContestEntries()
@@ -140,6 +177,110 @@ namespace tests
 
                 Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
                     Is.True, "Failed switching to Voting state after deadline hit");
+            }
+        }
+
+        [Test]
+        public async Task ShouldWinMostVotedUser()
+        {
+            using (var compartment = new TestCompartment())
+            {
+                //Setup
+
+                var mediator = compartment.Container.Resolve<MockMessageMediatorService>();
+                var votingController = compartment.Container.Resolve<VotingController>();
+
+                var votingEntities = compartment.GenericScenarios.
+                    PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
+                    ToArray();
+
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                        Is.True, "Failed switching to Voting state after deadline hit");
+
+                    await context.ReadTillMessageReceived(mock =>
+                        mock.ChatId.Identifier == MockConfiguration.VotingChat.Id &&
+                        mock.Text.Contains(context.Localization.VotigStatsHeader));
+
+                    //Check that system created voting buttons markup on voting start
+
+                    foreach (var votingEntity in votingEntities)
+                    {
+                        var votingMessage =
+                            mediator.GetMockMessage(votingEntity.Item2.Chat.Id, votingEntity.Item2.MessageId);
+
+                        Assert.That(votingMessage.ReplyMarkup?.InlineKeyboard?.SelectMany(buttons => buttons)?.Count(),
+                            Is.EqualTo(5),
+                            $"Didnt create five voting buttons for entry {votingEntity.Item2.Text}");
+                    }
+                }).ScenarioTask;
+
+                //Vote for entry 1 with 5 users with max vote
+
+                var voterCount = 5;
+
+                for (var nuser = 0; nuser < voterCount; nuser++)
+                {
+                    await compartment.ScenarioController.StartUserScenario(async context =>
+                    {
+                        var maxVoteSmile = VotingController._votingSmiles.Last();
+                        var button = votingEntities[1].Item2.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
+                            FirstOrDefault(b => b.Text == maxVoteSmile);
+
+                        Assert.That(button, Is.Not.Null,
+                            $"Max voting value button (labelled {maxVoteSmile}) not found in reply markup");
+
+                        context.SendQuery(button.CallbackData, votingEntities[1].Item2);
+                    }).ScenarioTask;
+                }
+
+                //Ffwd voting
+
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    await compartment.GenericScenarios.SupervisorSetDeadlineToNow(context);
+
+                    var votingPinEdited =
+                        await context.ReadTillMessageEdited(MockConfiguration.MainChat.Id, TimeSpan.FromSeconds(10));
+                }, UserCredentials.Supervisor).ScenarioTask;
+
+                Assert.That(await compartment.WaitTillStateMatches(state =>
+                        state.State == ContestState.ChoosingNextTask || state.State == ContestState.Contest),
+                    Is.True, "Failed switching to ChoosingNextTask or Contest state after deadline hit");
+
+                //Ensure author for entry 1 won
+
+                Assert.That(
+                    compartment.Repository.GetOrCreateCurrentState().CurrentWinnerId,
+                    Is.EqualTo(votingEntities[1].Item1.From.Id),
+                    "Wrong user won");
+
+                //Ensure votes calculated correctly
+
+                using (var connection = TestCompartment.GetRepositoryDbConnection(compartment.Repository))
+                {
+                    var winnerId = votingEntities[1].Item1.From.Id;
+
+                    var winnerVoteCount = connection.Query<decimal?>(
+                            @"select ConsolidatedVoteCount from ActiveContestEntry where AuthorUserId = @UserId",
+                            new {UserId = winnerId}).
+                        FirstOrDefault();
+
+                    Assert.That(winnerVoteCount,
+                        Is.EqualTo(voterCount * MockConfiguration.Snapshot.MaxVoteValue),
+                        "Wrong vote sum");
+                    
+                    var otherVotes = connection.Query<decimal?>(
+                            @"select ConsolidatedVoteCount from ActiveContestEntry where AuthorUserId != @UserId",
+                            new {UserId = winnerId}).ToArray();
+
+                    var averageVoteValue = votingController.GetDefaultVoteForUser(new User {Id = 0xffffff});
+
+                    Assert.That(otherVotes,
+                        Is.All.EqualTo(voterCount * averageVoteValue),
+                        "Wrong vote sum for non-winners");
+                }
             }
         }
     }

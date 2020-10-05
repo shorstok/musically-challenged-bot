@@ -171,6 +171,9 @@ namespace musicallychallenged.Services
 
         public static string EscapeTgHtml(string source)
         {
+            if(string.IsNullOrWhiteSpace(source))
+                return String.Empty;
+
             return source.
                 Replace("&", "&amp;").
                 Replace("<", "&lt;").

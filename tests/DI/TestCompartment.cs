@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -50,6 +51,25 @@ namespace tests.DI
             _serviceHost.Start();
         }
 
+        internal static DbConnection GetRepositoryDbConnection(IRepository repository)
+        {
+            if (repository == null) 
+                throw new ArgumentNullException(nameof(repository));
+
+            //This (CreateOpenConnection) should be inaccessible from outside, but currently we have no way
+            //to set user credentials (they are set externally, in DB)
+            //so we have to use reflection to get connection to DB and execute
+            //sql command to set it manually
+
+            var createOpenConnectionMethodInfo = repository.GetType().GetMethod("CreateOpenConnection",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (null == createOpenConnectionMethodInfo)
+                throw new Exception(
+                    $"Could not find CreateOpenConnection method in {repository?.GetType()}, maybe it was refactored?");
+
+            return createOpenConnectionMethodInfo.Invoke(repository, null) as DbConnection;
+        }
 
         public async Task<bool> WaitTillStateMatches(Expression<Predicate<SystemState>> predicate, long? timeoutMs = 1000)
         {

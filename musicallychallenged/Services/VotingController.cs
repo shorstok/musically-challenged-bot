@@ -187,7 +187,7 @@ namespace musicallychallenged.Services
                 builder.ToString(), ParseMode.Html);
         }
 
-        private readonly string[] _votingSmiles = new[] {"🌑", "🌘","🌗","🌖","🌕"};
+        public static readonly string[] _votingSmiles = new[] {"🌑", "🌘","🌗","🌖","🌕"};
         
 
         public async Task UpdateVotingIndicatorForEntry(int entryId)

@@ -19,6 +19,7 @@ namespace tests.Mockups
     public class MockTelegramClient : ITelegramClient
     {
         private readonly UserScenarioController _userScenarioController;
+        private readonly MockMessageMediatorService _mediatorService;
         private static readonly ILog Logger = Log.Get(typeof(MockTelegramClient));
 
         private readonly ConcurrentDictionary<Tuple<long, int>, Message> _mockMessages =
@@ -29,12 +30,25 @@ namespace tests.Mockups
 
 
 
-        public MockTelegramClient(UserScenarioController userScenarioController)
+        public MockTelegramClient(UserScenarioController userScenarioController, MockMessageMediatorService mediatorService)
         {
             _userScenarioController = userScenarioController;
+            _mediatorService = mediatorService;
+
+            _mediatorService.OnInsertMockMessage += _mediatorService_OnInsertMockMessage;
+            _mediatorService.OnGetMockMessage += _mediatorService_OnGetMockMessage;
         }
 
+        private void _mediatorService_OnGetMockMessage(long chatId, int messageId, out Message message)
+        {
+            _mockMessages.TryGetValue(Tuple.Create<long, int>(chatId, messageId), out message);
+        }
 
+        private void _mediatorService_OnInsertMockMessage(Message message)
+        {
+            _mockMessages.AddOrUpdate(Tuple.Create(message.Chat.Id, message.MessageId), message,
+                (tuple, existing) => message);
+        }
 
         public Task ConnectAsync()
         {
@@ -94,16 +108,17 @@ namespace tests.Mockups
             bool disableNotification = false,
             CancellationToken cancellationToken = default)
         {
-            if (_mockMessages.TryGetValue(Tuple.Create(fromChatId.Identifier, messageId), out var result))
-            {
-                result.Chat = new Chat
-                {
-                    Id = chatId.Identifier
-                };
+            if (!_mockMessages.TryGetValue(Tuple.Create(fromChatId.Identifier, messageId), out var result))
+                return null;
 
-                _mockMessages.AddOrUpdate(Tuple.Create(chatId.Identifier, messageId), result,
-                    (tuple, existing) => result);
-            }
+            result.Chat = new Chat
+            {
+                Id = chatId.Identifier
+            };
+
+            _mockMessages.AddOrUpdate(Tuple.Create(chatId.Identifier, messageId), result,
+                (tuple, existing) => result);
+
 
             await _userScenarioController.SendMessageToMockUsers(chatId,
                 new MessageForwardedMock(fromChatId, chatId, messageId, disableNotification),

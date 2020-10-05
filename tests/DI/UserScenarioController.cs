@@ -5,11 +5,13 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Autofac.Features.OwnedInstances;
 using Dapper.Contrib.Extensions;
 using log4net;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Logging;
+using NUnit.Framework.Internal;
 using Telegram.Bot.Types;
 using tests.Mockups;
 using tests.Mockups.Messaging;
@@ -44,19 +46,7 @@ namespace tests.DI
         {
             _repository.CreateOrGetUserByTgIdentity(mockUser);
 
-            //This should be inaccessible from outside, but currently we have no way
-            //to set user credentials (they are set externally, in DB)
-            //so we have to use reflection to get connection to DB and execute
-            //sql command to set it manually
-
-            var createOpenConnectionMethodInfo = _repository.GetType().GetMethod("CreateOpenConnection",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-
-            if (null == createOpenConnectionMethodInfo)
-                throw new Exception(
-                    $"Could not find CreateOpenConnection method in {_repository?.GetType()}, maybe it was refactored?");
-
-            using (var connection = createOpenConnectionMethodInfo.Invoke(_repository, null) as DbConnection)
+            using (var connection = TestCompartment.GetRepositoryDbConnection(_repository))
             {
                 using (var tx = connection.BeginTransaction())
                 {
@@ -77,7 +67,7 @@ namespace tests.DI
         public UserScenarioContext StartUserScenario(Func<UserScenarioContext, Task> scenario,
             UserCredentials credentials = UserCredentials.User)
         {
-            var context = _userScenarioFactory();
+            var context = _userScenarioFactory().Value;
 
             SetUserCredentials(credentials, context.MockUser);
 
@@ -87,7 +77,8 @@ namespace tests.DI
             {
                 try
                 {
-                    Logger.Info($">Starting {context.MockUser.Id}/{context.MockUser.Username}({credentials}) user scenario");
+                    Logger.Info(
+                        $">Starting {context.MockUser.Id}/{context.MockUser.Username}({credentials}) user scenario");
                     await scenario(context).ConfigureAwait(false);
 
                     Logger.Info(
@@ -96,9 +87,15 @@ namespace tests.DI
                 }
                 catch (Exception e)
                 {
-                    Logger.Error($"User {context.MockUser.Id} / {context.MockUser.Username} scenario resulted in exception");
+                    Logger.Error(
+                        $"User {context.MockUser.Id} / {context.MockUser.Username} scenario resulted in exception");
                     //Marshal exception from thread pool to awaiting thread (should be test runner)
                     context.SetException(e);
+                }
+                finally
+                {
+                    _contexts.TryRemove(context.PrivateChat.Id, out _);
+                    context.Dispose();
                 }
             });
 

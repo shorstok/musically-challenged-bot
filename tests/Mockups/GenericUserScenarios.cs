@@ -6,25 +6,38 @@ using System.Text;
 using System.Threading.Tasks;
 using log4net;
 using musicallychallenged.Commands;
+using musicallychallenged.Data;
+using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using NodaTime;
 using NUnit.Framework;
 using Telegram.Bot.Types;
+using tests.Mockups.Messaging;
 
 namespace tests.Mockups
 {
     public class GenericUserScenarios
     {
         private readonly IClock _clock;
+        private readonly MockTelegramClient _telegramClient;
         private readonly LocStrings _localization;
+        private readonly IRepository _repository;
+        private readonly MockMessageMediatorService _messageMediator;
 
         private static readonly ILog Logger = Log.Get(typeof(GenericUserScenarios));
 
-        public GenericUserScenarios(IClock clock, LocStrings localization)
+        public GenericUserScenarios(IClock clock, 
+            MockTelegramClient telegramClient,
+            LocStrings localization, 
+            IRepository repository,
+            MockMessageMediatorService messageMediator)
         {
             _clock = clock;
+            _telegramClient = telegramClient;
             _localization = localization;
+            _repository = repository;
+            _messageMediator = messageMediator;
         }
 
         /// <summary>
@@ -139,6 +152,67 @@ namespace tests.Mockups
             Assert.That(forwrdedMessage, Is.Not.Null, "Contest entry was not forwarded");
             Assert.That(forwrdedMessage.Audio, Is.Not.Null, "Contest entry has no audiofile");
             Assert.That(forwrdedMessage.Audio.Title, Is.EqualTo(fakeFileTitle), "Contest entry audio mismatch");
+
+            //Should get 'all ok' message
+
+            var ackMessage = await context.ReadTillMessageReceived(mock =>
+                mock.ChatId.Identifier == context.PrivateChat.Id &&
+                mock.Text.Contains(_localization.SubmitContestEntryCommandHandler_SubmissionSucceeded));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<Tuple<Message,Message>> PrepareVotingCycle(int submissionCount)
+        {
+            if(submissionCount < 1)
+                throw new ArgumentException("Submission count should be greater than 0", nameof(submissionCount));
+
+            var currentState = _repository.GetOrCreateCurrentState();
+
+            //Seed mock voting channel with some entries
+
+            for (int i = 0; i < submissionCount; i++)
+            {
+                var userid = MockConfiguration.GetNewMockUserId();
+                var msgid = MockConfiguration.CreateNewMockMessageId();
+                var controlsMsgid = MockConfiguration.CreateNewMockMessageId();
+
+                var user = new Telegram.Bot.Types.User{Id = userid, Username = $"fake user {userid}"};
+                var message = new Message
+                {
+                    Chat = new Chat{Id = MockConfiguration.VotingChat.Id},
+                    MessageId = msgid,
+                    From = user,
+                    Text = $"Fake contest entry {i}",
+                    Audio = new Audio{FileSize = 10, Title = $"Fake contest entryfile"}
+                };
+
+                var votingControlsContainerMessage = new Message
+                {
+                    Chat = new Chat{Id = MockConfiguration.VotingChat.Id},
+                    MessageId = controlsMsgid,
+                    From = MockConfiguration.MockBotUser,
+                    Text = $"description for entry {i}",
+                };
+
+                _messageMediator.InsertMockMessage(message);
+                _messageMediator.InsertMockMessage(votingControlsContainerMessage);
+
+                _repository.GetOrCreateContestEntry(_repository.CreateOrGetUserByTgIdentity(user),
+                    message.Chat.Id, message.MessageId, votingControlsContainerMessage.MessageId,
+                    currentState.CurrentChallengeRoundNumber, out var previous);
+
+                yield return Tuple.Create(message, votingControlsContainerMessage);
+            }
+
+            _repository.UpdateState(state => state.NextDeadlineUTC,
+                _clock.GetCurrentInstant());
+
+            _repository.UpdateState(state => state.State, ContestState.Contest);
+
+            Logger.Info($"Voting cycle set with {submissionCount} submissions");
         }
     }
 }

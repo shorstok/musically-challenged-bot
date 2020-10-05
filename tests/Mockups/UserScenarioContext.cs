@@ -7,10 +7,13 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Autofac.Features.OwnedInstances;
 using Dapper.Contrib.Extensions;
+using log4net;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
+using musicallychallenged.Logging;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using tests.DI;
@@ -24,6 +27,8 @@ namespace tests.Mockups
         public LocStrings Localization { get; }
         private TimeSpan DefaultReadTimeout => Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(1);
 
+        private static readonly ILog Logger = Log.Get(typeof(UserScenarioContext));
+
         private readonly BufferBlock<MockMessage> _messagesToUser;
         private readonly MockTelegramClient _mockTelegramClient;
 
@@ -36,7 +41,7 @@ namespace tests.Mockups
 
         public Chat PrivateChat { get; }
 
-        public delegate UserScenarioContext Factory();
+        public delegate Owned<UserScenarioContext> Factory();
 
         public UserScenarioContext(MockTelegramClient mockTelegramClient, LocStrings localization)
         {

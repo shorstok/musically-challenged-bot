@@ -91,8 +91,10 @@ namespace musicallychallenged.Services
                     deadlineSignaled = false;
                 }
 
-                if (!_stopIssued)
-                    state = _repository.GetOrCreateCurrentState();
+                if (_stopIssued)
+                    return;
+                
+                state = _repository.GetOrCreateCurrentState();
 
                 var deadline = state.NextDeadlineUTC;
 
