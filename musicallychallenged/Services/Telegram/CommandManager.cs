@@ -93,7 +93,7 @@ namespace musicallychallenged.Services.Telegram
         {
             var chatId = message.Chat.Id;
 
-            using (var dialog = _dialogManager.StartNewDialogExclusive(chatId,message.From.Id))
+            using (var dialog = _dialogManager.StartNewDialogExclusive(chatId,message.From.Id, "RunCommandChatAsync"))
             {
                 try
                 {

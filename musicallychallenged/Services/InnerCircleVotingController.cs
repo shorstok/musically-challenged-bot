@@ -59,20 +59,21 @@ namespace musicallychallenged.Services
             {
                 logger.Error($"User with Id = {state.CurrentWinnerId} not found / his ChatId = null, falling to ModerateWithoutWinner mode");
 
-                var result = await PremoderateTaskForNewRoundInternal(state,isReactivation, true);
-                
+                var result = await PremoderateTaskForNewRoundInternal(state, isReactivation, true);
+
                 logger.Info($"Finally, voting resulted in following task: {state.CurrentTaskTemplate}");
-                
-                _repository.UpdateState(_=>_.CurrentTaskTemplate, result.Item2);
+
+                _repository.UpdateState(_ => _.CurrentTaskTemplate, result.Item2);
 
                 return true;
             }
-            
-            using (var dialog = _dialogManager.StartNewDialogExclusive(winner.ChatId.Value, winner.Id))
+
+            using (var dialog = _dialogManager.StartNewDialogExclusive(winner.ChatId.Value, winner.Id, "PremoderateTaskForNewRound"))
             {
+                dialog.Tag = "PremoderateTaskForNewRound";
                 try
                 {
-                    var result = await PremoderateTaskForNewRoundInternal(state,isReactivation, false);
+                    var result = await PremoderateTaskForNewRoundInternal(state, isReactivation, false);
 
                     if (result.Item1 == false)
                     {
@@ -88,18 +89,18 @@ namespace musicallychallenged.Services
                     if (result.Item1 == true)
                         await _client.SendTextMessageAsync(dialog.ChatId, _loc.InnerCircleApprovedTaskMessage,
                             ParseMode.Html);
-            
+
                     //(Say nothing to CurrentWinnerId on override)
 
                     logger.Info($"Finally, voting resulted in following task: {state.CurrentTaskTemplate}");
-                
-                    _repository.UpdateState(_=>_.CurrentTaskTemplate, result.Item2);
+
+                    _repository.UpdateState(_ => _.CurrentTaskTemplate, result.Item2);
                 }
                 finally
                 {
                     _dialogManager.RecycleDialog(dialog);
                 }
-            }            
+            }
 
             return true;
         }
@@ -111,7 +112,7 @@ namespace musicallychallenged.Services
             Approve,
             Skipped
         }
-      
+
         private async Task<Tuple<bool?, string>> PremoderateTaskForNewRoundInternal(SystemState state,
             bool isReactivation, bool isVotingWithoutWinner)
         {
@@ -120,7 +121,7 @@ namespace musicallychallenged.Services
             if (allAdmins.Length == 0)
             {
                 logger.Warn($"Lol, no active administrators found, lol. Auto-approve...");
-                return Tuple.Create<bool?, string>(true,null);
+                return Tuple.Create<bool?, string>(true, null);
             }
 
             var taskTemplate = state.CurrentTaskTemplate;
@@ -140,9 +141,9 @@ namespace musicallychallenged.Services
                 taskTemplate,
                 isOptedForRandomTask,
                 preliminaryVotingCompletionSource,
-                isReactivation,isVotingWithoutWinner,
+                isReactivation, isVotingWithoutWinner,
                     cts.Token).
-                ContinueWith(task => NotifyOthersReturnResult(task.Result, allAdmins, cts,preliminaryVotingCompletionSource), CancellationToken.None)));
+                ContinueWith(task => NotifyOthersReturnResult(task.Result, allAdmins, cts, preliminaryVotingCompletionSource), CancellationToken.None)));
 
             //here we can use Result because all tasks are guaranteed to complete
             var results = completedTasks.Select(t => t.Result).ToArray();
@@ -153,9 +154,9 @@ namespace musicallychallenged.Services
             //we got override
             if (ovrResult != null)
                 return Tuple.Create<bool?, string>(null, ovrResult.Item3);
-            
+
             var denyResult = results.FirstOrDefault(r => r.Item2 == VotingResult.Deny);
-            
+
             //we got denial
             if (denyResult != null)
                 return Tuple.Create<bool?, string>(false, denyResult.Item3);
@@ -173,24 +174,24 @@ namespace musicallychallenged.Services
             if (taskResult.Item2 == VotingResult.Skipped)
             {
                 logger.Info($"Admin {issuedBy.GetUsernameOrNameWithCircumflex()} voting result : skipped");
-                
+
                 //fire timeout timer anyway (for case when admin terminated voting dialog)
-                
-                if(!cts.IsCancellationRequested)
+
+                if (!cts.IsCancellationRequested)
                     cts.CancelAfter(TimeSpan.FromHours(_configuration.MaxAdminVotingTimeHoursSinceFirstVote));
-                
+
                 return taskResult;
             }
 
             //Cancel other's selection process
             if (taskResult.Item2 != VotingResult.Approve)
                 preliminaryVotingCompletionSource.TrySetResult(taskResult.Item2);
-            else if(!cts.IsCancellationRequested)
+            else if (!cts.IsCancellationRequested)
                 cts.CancelAfter(TimeSpan.FromHours(_configuration.MaxAdminVotingTimeHoursSinceFirstVote));
 
             foreach (var admin in allAdmins)
             {
-                if(admin.Id== issuedBy.Id)
+                if (admin.Id == issuedBy.Id)
                     continue;
 
                 if (admin.ChatId == null)
@@ -218,7 +219,7 @@ namespace musicallychallenged.Services
                     case VotingResult.Approve:
 
                         details = _loc.AdminVotingDetailsApproved;
-                        
+
                         break;
                     default:
                         break;
@@ -253,28 +254,29 @@ namespace musicallychallenged.Services
                 decline = "no",
                 overrideId = "ovr"
             };
-
-            try
+            using (var dialog = _dialogManager.StartNewDialogExclusive(admin.ChatId.Value, admin.Id, "VoteAsync"))
             {
-                using (var dialog = _dialogManager.StartNewDialogExclusive(admin.ChatId.Value, admin.Id))
+                try
                 {
+
                     var inlineKeyboardButtons = new List<InlineKeyboardButton>
                     {
-                        InlineKeyboardButton.WithCallbackData(_loc.AdminApproveLabel, callback.approve),                        
+                        InlineKeyboardButton.WithCallbackData(_loc.AdminApproveLabel, callback.approve),
                     };
 
                     if (!isVotingWithoutWinner)
-                        inlineKeyboardButtons.Add(InlineKeyboardButton.WithCallbackData(_loc.AdminDeclineLabel, callback.decline));
+                        inlineKeyboardButtons.Add(
+                            InlineKeyboardButton.WithCallbackData(_loc.AdminDeclineLabel, callback.decline));
 
                     if (admin.Credentials.HasFlag(UserCredentials.Supervisor))
                         inlineKeyboardButtons.Add(
                             InlineKeyboardButton.WithCallbackData(_loc.AdminOverrideLabel, callback.overrideId));
 
-                    if(isReactivation)
-                        await _client.SendTextMessageAsync(dialog.ChatId,_loc.GeneralReactivationDueToErrorsMessage,
+                    if (isReactivation)
+                        await _client.SendTextMessageAsync(dialog.ChatId, _loc.GeneralReactivationDueToErrorsMessage,
                             ParseMode.Html, cancellationToken: token);
-                    if(isVotingWithoutWinner)
-                        await _client.SendTextMessageAsync(dialog.ChatId,_loc.VotingWithoutWinnerSituation,
+                    if (isVotingWithoutWinner)
+                        await _client.SendTextMessageAsync(dialog.ChatId, _loc.VotingWithoutWinnerSituation,
                             ParseMode.Html, cancellationToken: token);
 
                     var message = await _client.SendTextMessageAsync(dialog.ChatId, LocTokens.SubstituteTokens(
@@ -284,12 +286,14 @@ namespace musicallychallenged.Services
 
                     if (null == message)
                     {
-                        logger.Warn($"Couldnt send voting initiation to {admin.GetUsernameOrNameWithCircumflex()}, skipping admin in voting sequence");
+                        logger.Warn(
+                            $"Couldnt send voting initiation to {admin.GetUsernameOrNameWithCircumflex()}, skipping admin in voting sequence");
                         return Tuple.Create(admin, VotingResult.Skipped, String.Empty);
                     }
 
                     if (isOptedForRandomTask)
-                        await _client.SendTextMessageAsync(dialog.ChatId, _loc.AdminVotingTaskFromRandomTaskRepository,parseMode:ParseMode.Html,
+                        await _client.SendTextMessageAsync(dialog.ChatId, _loc.AdminVotingTaskFromRandomTaskRepository,
+                            parseMode: ParseMode.Html,
                             cancellationToken: token);
 
                     //this either gets us callback, or perliminary voting result ('deny' or 'override' from some admin)
@@ -308,7 +312,7 @@ namespace musicallychallenged.Services
                         //this admin pressed button
                         case CallbackQuery query:
 
-                            await _client.AnswerCallbackQueryAsync(query.Id, "got ya",cancellationToken:token);
+                            await _client.AnswerCallbackQueryAsync(query.Id, "got ya", cancellationToken: token);
 
                             if (query.Data == callback.approve)
                             {
@@ -347,21 +351,29 @@ namespace musicallychallenged.Services
                     }
 
 
+
                 }
-            }
-            catch (TaskCanceledException)
-            {
-                return Tuple.Create(admin, VotingResult.Skipped, String.Empty);
-            }
-            catch (BadRequestException e)
-            {
-                logger.Error($"One of admin workers voting ({admin.GetUsernameOrNameWithCircumflex()}) resulted in BadRequestException: {e.Message}");
-                return Tuple.Create(admin, VotingResult.Skipped, String.Empty);
-            }
-            catch (Exception e)
-            {
-                logger.Error($"One of admin workers voting ({admin.GetUsernameOrNameWithCircumflex()}) resulted in exception",e);
-                return Tuple.Create(admin, VotingResult.Skipped, String.Empty);
+                catch (TaskCanceledException)
+                {
+                    return Tuple.Create(admin, VotingResult.Skipped, String.Empty);
+                }
+                catch (BadRequestException e)
+                {
+                    logger.Error(
+                        $"One of admin workers voting ({admin.GetUsernameOrNameWithCircumflex()}) resulted in BadRequestException: {e.Message}");
+                    return Tuple.Create(admin, VotingResult.Skipped, String.Empty);
+                }
+                catch (Exception e)
+                {
+                    logger.Error(
+                        $"One of admin workers voting ({admin.GetUsernameOrNameWithCircumflex()}) resulted in exception",
+                        e);
+                    return Tuple.Create(admin, VotingResult.Skipped, String.Empty);
+                }
+                finally
+                {
+                    _dialogManager.RecycleDialog(dialog);
+                }
             }
 
             logger.Warn($"Somehow fallen through all admin voting options : {admin.GetUsernameOrNameWithCircumflex()}");

@@ -210,6 +210,11 @@ namespace tests.Mockups
             return _mockTelegramClient.GetMockMessageById(messageSent.ChatId.Identifier,messageSent.MessageId);
         }
 
+        public void ClearMessages()
+        {
+            _messagesToUser.TryReceiveAll(out _);
+        }
+
         private async Task<TMockMessage> ReadMockMessage<TMockMessage>(Expression<Predicate<TMockMessage>> filter, TimeSpan? readTimeOut)
             where TMockMessage : MockMessage
         {

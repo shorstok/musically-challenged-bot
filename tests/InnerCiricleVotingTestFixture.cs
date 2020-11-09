@@ -100,8 +100,12 @@ namespace tests
 
                 var adminTasks = new List<Task<object>>();
 
-                foreach (var admin in admins)
+                for (var i = 0; i < admins.Length; i++)
                 {
+                    var admin = admins[i];
+
+                    
+
                     var task = compartment.ScenarioController.StartUserScenarioForExistingUser(
                         admin.MockUser.Id,
                         async context =>
@@ -131,6 +135,17 @@ namespace tests
                             Assert.That(await compartment.WaitTillStateMatches(state =>
                                     state.State == ContestState.Contest),
                                 Is.True, "Failed switching to Contest");
+
+                            //Check that admin dialog gets recycled 
+
+                            context.ClearMessages();
+
+                            context.SendCommand("hello hello");
+
+                            var reply = await context.ReadTillPrivateMessageReceived(t => true,
+                                TimeSpan.FromSeconds(1));
+
+                            Logger.Info($"got {reply.Text}");
                         }, UserCredentials.Admin).ScenarioTask;
 
                     adminTasks.Add(task);
@@ -179,6 +194,7 @@ namespace tests
                     compartment.Repository.GetOrCreateCurrentState().CurrentTaskTemplate,
                     Contains.Substring(mockTaskText),
                     "Invalid task chosen for next round");
+
             }
         }
     }

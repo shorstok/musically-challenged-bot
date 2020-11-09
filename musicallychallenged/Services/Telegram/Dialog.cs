@@ -17,6 +17,8 @@ namespace musicallychallenged.Services.Telegram
 
         public Guid DialogId { get; } = Guid.NewGuid();
 
+        public string Tag { get; set; }
+
         public ITelegramClient TelegramClient { get; }
         
         private readonly CancellationTokenSource _cancellation;
