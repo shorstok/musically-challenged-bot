@@ -54,7 +54,7 @@ namespace musicallychallenged.Localization
         public string NotEnoughEntriesAnnouncement { get; set; } = "Челленджи приостановлены из-за нехватки участников 😐";
         public string NotEnoughVotesAnnouncement { get; set; } = $"Челленджи приостановлены из-за недостаточной активности участников (максимум голосовавших - {LocTokens.VoteCount} чел.) 😐";
 
-        public string WeHaveAWinner { get; set; } = $@"В раунде Писца победил {LocTokens.User} ({LocTokens.VoteCount} голосов), в данный момент он выбирает задание для следующего раунда...";
+        public string WeHaveAWinner { get; set; } = $@"В раунде Писца победил(а) {LocTokens.User} ({LocTokens.VoteCount} голосов), в данный момент он(а) выбирает задание для следующего раунда...";
         public string WeHaveWinners { get; set; } = $"В раунде Писца первое место разделили несколько человек: {LocTokens.Users} ({LocTokens.VoteCount} голосов). " +
                                                     $"С помощью рулетки из них был выбран {LocTokens.User}, который в данный момент он выбирает задание для следующего раунда...";
 
@@ -86,7 +86,7 @@ namespace musicallychallenged.Localization
                                                                 $"Вы можете либо оставить его (<b>Approve</b>), либо отправить на доработку. " +
                                                                 $"При отправке на доработку укажите, в чем это задание было неприемлемо";
 
-        public string AdminVotingSomeoneVotedNotification { get; set; } = $"Администратор {LocTokens.User} отдал свой голос 🧐{Environment.NewLine}{LocTokens.Details}";
+        public string AdminVotingSomeoneVotedNotification { get; set; } = $"Администратор {LocTokens.User} отдал(а) свой голос 🧐{Environment.NewLine}{LocTokens.Details}";
 
         public string AdminVotingDetailsApproved { get; set; } = $"Задание одобряю всецело 👍";
         public string AdminVotingDetailsDenied { get; set; } = $"Отправляю на доработку по следующей причине:{Environment.NewLine}<b>{LocTokens.Details}</b>";
