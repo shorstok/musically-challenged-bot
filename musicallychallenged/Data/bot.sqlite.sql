@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS "SystemState" (
 	"PayloadJSON"	TEXT,
 	"CurrentTaskMessagelId"	INTEGER,
 	"CurrentVotingStatsMessageId"	INTEGER,
+	"CurrentVotingDeadlineMessageId"	INTEGER,
 	PRIMARY KEY("Id")
 );
 DROP TABLE IF EXISTS "Vote";

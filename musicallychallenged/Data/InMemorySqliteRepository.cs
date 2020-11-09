@@ -11,9 +11,9 @@ using NodaTime;
 
 namespace musicallychallenged.Data
 {
-    public sealed class InMemerySqliteRepository : RepositoryBase, IDisposable
+    public sealed class InMemorySqliteRepository : RepositoryBase, IDisposable
     {
-        private static readonly ILog logger = Log.Get(typeof(InMemerySqliteRepository));
+        private static readonly ILog logger = Log.Get(typeof(InMemorySqliteRepository));
 
         private readonly string _connectionString;
 
@@ -58,9 +58,11 @@ namespace musicallychallenged.Data
             _keepaliveConnection.Execute(schema);
         }
 
-        public InMemerySqliteRepository(IClock clock) : base(clock)
+        public InMemorySqliteRepository(IClock clock) : base(clock)
         {
-            _connectionString = $"FullUri=file::memory:?cache=shared;ToFullPath=false";
+            var dbToken = Guid.NewGuid().ToString();
+
+            _connectionString = $"FullUri=file:{dbToken}?mode=memory&cache=shared;ToFullPath=false";
 
             _keepaliveConnection = CreateOpenConnection() as SQLiteConnection;
 
@@ -69,6 +71,7 @@ namespace musicallychallenged.Data
 
         public void Dispose()
         {
+            logger.Info($"Closing keepalive connection");
             _keepaliveConnection?.Close();
             _keepaliveConnection = null;
         }

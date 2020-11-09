@@ -27,7 +27,7 @@ namespace musicallychallenged.Commands
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = "remind";
+        public string CommandName { get; } = Schema.RemindCommandName; 
         public string UserFriendlyDescription => "Remind about deadline time";
 
         private static readonly ILog logger = Log.Get(typeof(RemindCommandHandler));

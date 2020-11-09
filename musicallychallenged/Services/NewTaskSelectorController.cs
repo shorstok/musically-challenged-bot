@@ -62,7 +62,7 @@ namespace musicallychallenged.Services
         {
             string proposedTask = null;
 
-            using (var dialog = _dialogManager.StartNewDialogExclusive(winner.ChatId.Value, winner.Id))
+            using (var dialog = _dialogManager.StartNewDialogExclusive(winner.ChatId.Value, winner.Id, "SelectTaskAsyncInternal"))
             {
                 //Create message with 'random' button
 

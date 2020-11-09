@@ -171,6 +171,9 @@ namespace musicallychallenged.Services
 
         public static string EscapeTgHtml(string source)
         {
+            if(string.IsNullOrWhiteSpace(source))
+                return String.Empty;
+
             return source.
                 Replace("&", "&amp;").
                 Replace("<", "&lt;").
@@ -218,6 +221,8 @@ namespace musicallychallenged.Services
         /// <returns></returns>
         public async Task InitiateContestAsync()
         {
+            logger.Info($"Initiating contest");
+
             var state = _repository.GetOrCreateCurrentState();
             _timeService.ScheduleNextDeadlineIn(state.ContestDurationDays ?? 14, 22);
 

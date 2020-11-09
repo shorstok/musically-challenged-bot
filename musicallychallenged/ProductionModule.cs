@@ -15,11 +15,10 @@ using NodaTime;
 
 namespace musicallychallenged
 {
-    internal class ProductionModule : Module
+    public class ProductionModule : Module
     {
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterInstance(BotConfiguration.LoadOrCreate(true)).AsSelf().SingleInstance();
             
             builder.RegisterType<LocStrings>().AsSelf().SingleInstance();           
             

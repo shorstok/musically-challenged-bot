@@ -24,7 +24,7 @@ namespace musicallychallenged.Commands
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = "submit";
+        public string CommandName { get; } = Schema.SubmitCommandName;
         public string UserFriendlyDescription => _loc.SubmitContestEntryCommandHandler_Description;
 
         private static readonly ILog logger = Log.Get(typeof(SubmitContestEntryCommandHandler));

@@ -359,9 +359,9 @@ namespace musicallychallenged.Services
 
             var winner = _repository.GetExistingUserWithTgId(state.CurrentWinnerId.Value);
 
-            if (null == winner)
+            if (winner?.ChatId == null)
             {
-                logger.Error("_repository.GetUserWithTgId(state.CurrentWinnerId.Value) == null unexpected");
+                logger.Error("_repository.GetUserWithTgId(state.CurrentWinnerId.Value)?.ChatId == null unexpected (winner user deleted?)");
                 _repository.UpdateState(s => s.CurrentTaskTemplate, NewTaskSelectorController.RandomTaskCallbackId);
                 _stateMachine.Fire(Trigger.TaskSelectedByWinner);
                 return;
@@ -373,6 +373,12 @@ namespace musicallychallenged.Services
 
             try
             {
+                if (winner.ChatId == null)
+                {
+                    logger.Error(
+                        "No ChatId found for current winner (winner.ChatId == null), cant start next task negotiation");
+                }
+
                 if(isReactivation)
                     await _client.SendTextMessageAsync(winner.ChatId,
                         _loc.GeneralReactivationDueToErrorsMessage,
@@ -391,13 +397,7 @@ namespace musicallychallenged.Services
                         ParseMode.Html);
                 }
 
-                if (winner.ChatId == null)
-                {
-                    logger.Error(
-                        "No ChatId found for current winner (winner.ChatId == null), cant start next task negotiation");
-                }
-                else
-                    template = await _taskSelectorGenerator().SelectTaskAsync(winner);
+                template = await _taskSelectorGenerator().SelectTaskAsync(winner);
             }
             finally
             {
@@ -473,8 +473,6 @@ namespace musicallychallenged.Services
             _isActivating = false;
 
             await _scheduler.Activate();
-
-            
         }
 
         private void SetCurrentState(ContestState currentState)
@@ -490,6 +488,8 @@ namespace musicallychallenged.Services
 
         public void Dispose()
         {
+            _scheduler.Stop();
+
             foreach (var subscription in _subscriptions)
                 subscription.Dispose();
         }

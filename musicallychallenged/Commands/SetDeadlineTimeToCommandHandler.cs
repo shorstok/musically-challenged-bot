@@ -31,7 +31,7 @@ namespace musicallychallenged.Commands
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = "deadline";
+        public string CommandName { get; } = Schema.DeadlineCommandName;
         public string UserFriendlyDescription => "Set deadline to date & time";
 
         private static readonly ILog logger = Log.Get(typeof(SetDeadlineTimeToCommandHandler));
@@ -57,7 +57,7 @@ namespace musicallychallenged.Commands
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} about to submit contest entry description");
+            logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} about to modify voting deadline");
 
             if (state.State != ContestState.Contest && state.State != ContestState.Voting)
             {

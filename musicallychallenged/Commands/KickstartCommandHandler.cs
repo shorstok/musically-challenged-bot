@@ -23,7 +23,7 @@ namespace musicallychallenged.Commands
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = "kickstart";
+        public string CommandName { get; } = Schema.KickstartCommandName;
         public string UserFriendlyDescription => _loc.KickstartCommandHandler_Description;
 
         private static readonly ILog logger = Log.Get(typeof(KickstartCommandHandler));

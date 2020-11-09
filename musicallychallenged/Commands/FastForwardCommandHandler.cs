@@ -24,7 +24,7 @@ namespace musicallychallenged.Commands
         private readonly IEventAggregator _eventAggregator;
         private readonly LocStrings _loc;
 
-        public string CommandName { get; } = "ffwd";
+        public string CommandName { get; } = Schema.FastForwardCommandName;
         public string UserFriendlyDescription => _loc.FastForwardCommandHandler_Description;
 
         private static readonly ILog logger = Log.Get(typeof(FastForwardCommandHandler));

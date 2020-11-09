@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Autofac;
 using log4net;
+using musicallychallenged.Config;
 using musicallychallenged.Logging;
 using musicallychallenged.Services;
 using musicallychallenged.Services.Telegram;
@@ -19,6 +20,8 @@ namespace musicallychallenged
         private static IContainer CreateDiContainer()
         {
             var containerBuilder = new ContainerBuilder();
+
+            containerBuilder.RegisterInstance(BotConfiguration.LoadOrCreate(true)).AsSelf().SingleInstance();
 
             containerBuilder.RegisterModule<ProductionModule>();
 

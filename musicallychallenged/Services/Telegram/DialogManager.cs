@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using musicallychallenged.Config;
 using Telegram.Bot.Types;
@@ -28,7 +29,7 @@ namespace musicallychallenged.Services.Telegram
                 dialogs.FirstOrDefault().Value;
         }
 
-        public Dialog StartNewDialogExclusive(long chatId, int userId)
+        public Dialog StartNewDialogExclusive(long chatId, int userId, string tag)
         {
             var dialogs = _activeDialogs.GetOrAdd(userId, new ConcurrentDictionary<Guid, Dialog>());
 
@@ -46,6 +47,8 @@ namespace musicallychallenged.Services.Telegram
 
             var result = new Dialog(_botService,chatId,userId);
 
+            result.Tag = tag;
+
             return dialogs.AddOrUpdate(result.DialogId, result, (id, existing) => result);
         }
 
@@ -54,7 +57,7 @@ namespace musicallychallenged.Services.Telegram
             if(!_activeDialogs.TryGetValue(dialog.UserId,out var dialogs))
                 return;
 
-            dialogs.TryRemove(dialog.DialogId, out var _);            
+            dialogs.TryRemove(dialog.DialogId, out var _);         
         }
 
         public Dialog GetActiveDialogByChatId(long chatId, User user)
