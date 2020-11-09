@@ -42,7 +42,7 @@ namespace tests.DI
                 userScenarioContext.Dispose();
         }
 
-        private void SetUserCredentials(UserCredentials credentials, User mockUser)
+        internal void SetUserCredentials(UserCredentials credentials, User mockUser)
         {
             _repository.CreateOrGetUserByTgIdentity(mockUser);
 
@@ -64,10 +64,20 @@ namespace tests.DI
             }
         }
 
-        public UserScenarioContext StartUserScenario(Func<UserScenarioContext, Task> scenario,
+        public UserScenarioContext StartUserScenarioForExistingUser(int userId,
+            Func<UserScenarioContext, Task> scenario,
             UserCredentials credentials = UserCredentials.User)
         {
+            return StartUserScenario(scenario, credentials, userId);
+        }
+
+        public UserScenarioContext StartUserScenario(Func<UserScenarioContext, Task> scenario,
+            UserCredentials credentials = UserCredentials.User, int? useExistingUserId = null)
+        {
             var context = _userScenarioFactory().Value;
+
+            if (useExistingUserId.HasValue) 
+                context.UseExistingUser(useExistingUserId.Value);
 
             SetUserCredentials(credentials, context.MockUser);
 
@@ -118,7 +128,10 @@ namespace tests.DI
             //Send to private user chat
 
             if (!_contexts.TryGetValue(chatId.Identifier, out var context))
-                throw new Exception($"MockUser with chat id {chatId} not registered with this MockTelegramClient");
+            {
+                Logger.Warn($"MockUser with chat id {chatId} not registered with this MockTelegramClient");
+                return;
+            }
 
             await context.AddMessageToUserQueue(message, token);
         }

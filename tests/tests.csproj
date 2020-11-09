@@ -78,6 +78,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DI\UserScenarioController.cs" />
+    <Compile Include="InnerCiricleVotingTestFixture.cs" />
     <Compile Include="Mockups\GenericUserScenarios.cs" />
     <Compile Include="Mockups\Messaging\MockMessageMediatorService.cs" />
     <Compile Include="VotingCycleTestFixture.cs" />

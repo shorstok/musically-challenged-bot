@@ -179,14 +179,20 @@ namespace tests.Mockups
                 var msgid = MockConfiguration.CreateNewMockMessageId();
                 var controlsMsgid = MockConfiguration.CreateNewMockMessageId();
 
-                var user = new Telegram.Bot.Types.User{Id = userid, Username = $"fake user {userid}"};
+                var user = new Telegram.Bot.Types.User
+                {
+                    Id = userid,
+                    Username = $"fakeusr-{userid}",
+                    FirstName = $"Contest Entry#{i} Author"
+                };
+
                 var message = new Message
                 {
-                    Chat = new Chat{Id = MockConfiguration.VotingChat.Id},
+                    Chat = new Chat { Id = MockConfiguration.VotingChat.Id },
                     MessageId = msgid,
                     From = user,
                     Text = $"Fake contest entry {i}",
-                    Audio = new Audio{FileSize = 10, Title = $"Fake contest entryfile"}
+                    Audio = new Audio { FileSize = 10, Title = $"Fake contest entryfile" }
                 };
 
                 var votingControlsContainerMessage = new Message
@@ -200,9 +206,13 @@ namespace tests.Mockups
                 _messageMediator.InsertMockMessage(message);
                 _messageMediator.InsertMockMessage(votingControlsContainerMessage);
 
-                _repository.GetOrCreateContestEntry(_repository.CreateOrGetUserByTgIdentity(user),
+                var mockUser = _repository.CreateOrGetUserByTgIdentity(user);
+
+                _repository.GetOrCreateContestEntry(mockUser,
                     message.Chat.Id, message.MessageId, votingControlsContainerMessage.MessageId,
                     currentState.CurrentChallengeRoundNumber, out var previous);
+
+                _repository.UpdateUser(mockUser, MockConfiguration.CreateNewPrivateChatId());
 
                 yield return Tuple.Create(message, votingControlsContainerMessage);
             }

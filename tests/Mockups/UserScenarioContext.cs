@@ -31,19 +31,20 @@ namespace tests.Mockups
 
         private readonly BufferBlock<MockMessage> _messagesToUser;
         private readonly MockTelegramClient _mockTelegramClient;
+        private readonly IRepository _repository;
 
         private readonly TaskCompletionSource<object> _taskCompletion = new TaskCompletionSource<object>();
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         public Task<object> ScenarioTask => _taskCompletion.Task;
 
-        public User MockUser { get; }
+        public User MockUser { get; private set; }
 
-        public Chat PrivateChat { get; }
+        public Chat PrivateChat { get; private set; }
 
         public delegate Owned<UserScenarioContext> Factory();
 
-        public UserScenarioContext(MockTelegramClient mockTelegramClient, LocStrings localization)
+        public UserScenarioContext(MockTelegramClient mockTelegramClient, LocStrings localization, IRepository repository)
         {
             Localization = localization;
             var mockUserId = MockConfiguration.GetNewMockUserId();
@@ -61,11 +62,35 @@ namespace tests.Mockups
             };
 
             _mockTelegramClient = mockTelegramClient;
+            _repository = repository;
 
             _messagesToUser = new BufferBlock<MockMessage>(new DataflowBlockOptions
             {
                 CancellationToken = _cancellationTokenSource.Token
             });
+        }
+
+        public void PersistUserChatId()
+        {
+            var user = _repository.GetExistingUserWithTgId(MockUser.Id);
+            _repository.UpdateUser(user,PrivateChat.Id);
+        }
+
+        public void UseExistingUser(int userId)
+        {
+            var user = _repository.GetExistingUserWithTgId(userId);
+
+            MockUser = new User
+            {
+                Id = user.Id,
+                FirstName = user.Name,
+                Username = user.Username
+            };
+
+            PrivateChat = new Chat
+            {
+                Id = user.ChatId??0
+            };
         }
 
         public void Dispose()
@@ -148,6 +173,14 @@ namespace tests.Mockups
         {
             return await ReadTillMessageReceived(mock =>
                 channelFilter == null || mock.ChatId.Identifier == channelFilter, readTimeOut);
+        }
+
+        internal async Task<Message> ReadTillPrivateMessageReceived(Expression<Predicate<MessageSentMock>> filter, TimeSpan? readTimeOut = null)
+        {
+            var compiled = filter.Compile();
+
+            return await ReadTillMessageReceived(mock => 
+                mock.ChatId.Identifier == PrivateChat.Id && compiled(mock), readTimeOut);
         }
 
         public async Task<Message> ReadTillMessageEdited(long? channelFilter = null,  TimeSpan? readTimeOut = null)
