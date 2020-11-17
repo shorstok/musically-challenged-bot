@@ -103,7 +103,9 @@ namespace musicallychallenged.Localization
         public string FastForwardCommandHandler_Description { get; set; } = "Промотать время вперед";
 
         public string DescribeContestEntryCommandHandler_Description { get; set; } = "Добавить описание к отправленной работе";
-        public string DescribeContestEntryCommandHandler_OnlyAvailableInContestState { get; set; } = "Прием работ (пока) закрыт. Дождитесь начала следующего раунда!";
+        public string PostponeCommandHandler_Description { get; set; } = "Запросить отсрочку дедлайна для текущего конкурса";
+        public string PostponeCommandHandler_OnlyForKnownUsers { get; set; } = "Запросить отсрочку дедлайна может только человек, отправлявший работы на предыдущие раунды";
+        public string CommandHandler_OnlyAvailableInContestState { get; set; } = "Данная команда пока недоступна. Дождитесь начала следующего раунда!";
         public string DescribeContestEntryCommandHandler_SendEntryFirst { get; set; } = "Вначале нужно отправить работу на конкурс (с помощью команды /submit)";
         public string DescribeContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте описание следующим сообщением (в виде текста!) ⬇️";
         public string DescribeContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только текстовые описания";

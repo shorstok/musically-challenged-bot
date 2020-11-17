@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Autofac;
 using log4net;
 using musicallychallenged.Config;
+using musicallychallenged.Data;
 using musicallychallenged.Logging;
 using musicallychallenged.Services;
 using musicallychallenged.Services.Telegram;
@@ -36,10 +37,13 @@ namespace musicallychallenged
 
             logger.Info($"Service data resides in `{PathService.AppData}`");
 
+
             IContainer container;
 
             try
             {
+                RunDbMigrations();
+
                 container = CreateDiContainer();
             }
             catch (Exception e)
@@ -75,5 +79,13 @@ namespace musicallychallenged
             });
         }
 
+        private static void RunDbMigrations()
+        {
+            var connectionString = SqliteRepository.CreateConnectionString();
+
+            logger.Info($"Running migrations for `{connectionString}`...");
+
+            new AdHocMigrationRunner(connectionString).RunMigrations();
+        }
     }
 }

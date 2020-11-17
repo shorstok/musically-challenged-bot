@@ -38,6 +38,7 @@ namespace musicallychallenged
             builder.RegisterType<BroadcastController>().AsSelf().SingleInstance();
             builder.RegisterType<SystemClockService>().As<IClock>().SingleInstance();
             builder.RegisterType<RandomTaskRepository>().AsSelf().SingleInstance();
+            builder.RegisterType<PostponeService>().AsSelf().SingleInstance();
             builder.RegisterType<TimeService>().AsSelf().SingleInstance();
             builder.RegisterType<PollingStateScheduler>().As<IStateScheduler>().SingleInstance();
 

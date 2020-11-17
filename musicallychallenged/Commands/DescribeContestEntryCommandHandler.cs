@@ -49,7 +49,7 @@ namespace musicallychallenged.Commands
             {
                 logger.Info($"Bot in state {state.State}, denied");
                 await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                    _loc.DescribeContestEntryCommandHandler_OnlyAvailableInContestState);
+                    _loc.CommandHandler_OnlyAvailableInContestState);
                 return;
             }
 

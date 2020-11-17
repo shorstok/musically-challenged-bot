@@ -46,7 +46,7 @@ namespace tests
                         var answer = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
                         Assert.That(answer?.Text, Contains.Substring(context.Localization.
-                                DescribeContestEntryCommandHandler_OnlyAvailableInContestState),
+                                SubmitContestEntryCommandHandler_OnlyAvailableInContestState),
                             "/submit command response should be 'denied' message");
 
                         Logger.Info($"Submission denied in {contestState} state - OK");

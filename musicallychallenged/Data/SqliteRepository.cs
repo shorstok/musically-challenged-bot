@@ -17,7 +17,12 @@ namespace musicallychallenged.Data
 
         public SqliteRepository(IClock clock) : base(clock)
         {
-            _connectionString = $@"Data Source=""{(PathService.AppData + @"\bot.sqlite").Replace(@"\", @"\\")}""";
+            _connectionString = CreateConnectionString();
+        }
+
+        public static string CreateConnectionString()
+        {
+            return $@"Data Source=""{(PathService.AppData + @"\bot.sqlite").Replace(@"\", @"\\")}""";
         }
     }
 }

@@ -27,6 +27,8 @@ namespace musicallychallenged.Data
             return new SQLiteConnection(_connectionString).OpenAndReturn();
         }
 
+        public string GetInMemoryConnectionString() => _connectionString;
+
         /// <summary>
         /// In-memory db has to recreate schema each time
         /// </summary>

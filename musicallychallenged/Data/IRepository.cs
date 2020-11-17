@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using musicallychallenged.Domain;
+using NodaTime;
 
 namespace musicallychallenged.Data
 {
@@ -25,6 +26,7 @@ namespace musicallychallenged.Data
         IEnumerable<ActiveContestEntry> ConsolidateVotesForActiveEntriesGetAffected();
         ActiveContestEntry GetExistingEntry(int entryId);
         ActiveContestEntry GetActiveContestEntryForUser(int userId);
+        int GetFinishedContestEntryCountForUser(int userId);
         void UpdateContestEntry(ActiveContestEntry entry);
         void DeleteContestEntry(int deletedEntryId);
 
@@ -46,5 +48,10 @@ namespace musicallychallenged.Data
         double? GetAverageVoteForUser(User user);
         int GetVoteCountForActiveEntriesForUser(User user);
         bool MaybeCreateVoteForAllActiveEntriesExcept(User user, int entryId, int defaultVoteValue);
+        int CloseAllPostponeRequests(PostponeRequestState finalState);
+        PostponeRequest[] GetOpenPostponeRequestsForUser(int authorId);
+        long GetUsedPostponeQuotaForCurrentRoundMinutes();
+        PostponeRequest[] CreatePostponeRequestRetrunOpen(User author, Duration postponeDuration);
+        void FinalizePostponeRequests(PostponeRequest keyRequest);
     }
 }

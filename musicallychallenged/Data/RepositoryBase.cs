@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using musicallychallenged.Domain;
 using System.Data.SQLite;
@@ -24,8 +25,8 @@ namespace musicallychallenged.Data
         private static readonly ILog logger = Log.Get(typeof(RepositoryBase));
 
         private readonly IClock _clock;
-        
-        
+
+
         protected abstract DbConnection CreateOpenConnection();
 
 
@@ -35,7 +36,7 @@ namespace musicallychallenged.Data
             SqlMapper.AddTypeHandler(new InstantHandler());
         }
 
-        
+
         public bool MigrateChat(long fromId, long toId)
         {
             using (var connection = CreateOpenConnection())
@@ -58,8 +59,8 @@ namespace musicallychallenged.Data
                     connection.Update<SystemState>(state, transaction: tx);
 
                     //Update contest entries migration
-                    
-                    var qty = connection.Execute(@"UPDATE ActiveContestEntry set ContainerChatId=@MigrateToId WHERE ContainerChatId=@FromId", 
+
+                    var qty = connection.Execute(@"UPDATE ActiveContestEntry set ContainerChatId=@MigrateToId WHERE ContainerChatId=@FromId",
                         new
                         {
                             MigrateToId = toId,
@@ -84,7 +85,7 @@ namespace musicallychallenged.Data
                 var query = @"select * from RandomTask r
                 inner join (select min(UsedCount - Priority) mincount from RandomTask) m
                 on r.UsedCount-Priority = m.mincount";
-                
+
                 return connection.Query<RandomTask>(query).ToArray();
             }
         }
@@ -107,7 +108,7 @@ namespace musicallychallenged.Data
             {
                 return connection.Query<double?>(
                     @"select avg(v.Value) from Vote v where v.UserId = @Id",
-                    new {Id = user.Id}).FirstOrDefault();
+                    new { Id = user.Id }).FirstOrDefault();
             }
         }
 
@@ -119,7 +120,7 @@ namespace musicallychallenged.Data
                 inner join ActiveContestEntry ace on ace.Id = v.ContestEntryId
                 where v.UserId = @Id and ace.ConsolidatedVoteCount is null";
 
-                return connection.Query<int?>(qry,new {Id = user.Id}).FirstOrDefault() ?? 0;
+                return connection.Query<int?>(qry, new { Id = user.Id }).FirstOrDefault() ?? 0;
             }
         }
 
@@ -133,7 +134,7 @@ namespace musicallychallenged.Data
                     inner join ActiveContestEntry ace on ace.Id = v.ContestEntryId
                     where v.UserId = @Id and ace.ConsolidatedVoteCount is null";
 
-                    var count = connection.Query<int?>(qry,new {Id = user.Id}, transaction:tx).
+                    var count = connection.Query<int?>(qry, new { Id = user.Id }, transaction: tx).
                                     FirstOrDefault() ?? 0;
 
                     //Votes present
@@ -144,14 +145,14 @@ namespace musicallychallenged.Data
                     select @UserID,e.Id,@VoteVal, @Timestamp from ActiveContestEntry e
                     where e.ConsolidatedVoteCount is NULL and e.Id != @EntryId";
 
-                    connection.Execute(multiInsertQry, 
+                    connection.Execute(multiInsertQry,
                         new
                         {
                             UserID = user.Id,
-                            VoteVal =defaultVoteValue,
+                            VoteVal = defaultVoteValue,
                             Timestamp = _clock.GetCurrentInstant(),
                             EntryId = entryId,
-                        }, transaction:tx);
+                        }, transaction: tx);
 
                     tx.Commit();
 
@@ -159,6 +160,132 @@ namespace musicallychallenged.Data
                 }
             }
         }
+
+        public int CloseAllPostponeRequests(PostponeRequestState finalState)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    //Set finalState for all requests with Open state
+
+                    var quantity = connection.Execute(
+                        @"UPDATE PostponeRequest set State=@FinalState WHERE State=@FromState",
+                        new
+                        {
+                            FinalState = finalState,
+                            FromState = PostponeRequestState.Open
+                        }, 
+                        transaction:tx);
+
+                    logger.Info($"{quantity} postpone requests set to {finalState}");
+
+                    tx.Commit();
+
+                    return quantity;
+                }
+            }
+        }
+
+        public PostponeRequest[] GetOpenPostponeRequestsForUser(int authorId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                //Get open requests for authorId
+
+                var query = @"select * from PostponeRequest where State = @state and UserId == @userId";
+
+                return connection.Query<PostponeRequest>(query, new
+                {
+                    state = PostponeRequestState.Open,
+                    userId = authorId
+                }).ToArray();
+            }
+        }
+
+        public PostponeRequest[] CreatePostponeRequestRetrunOpen(User author, Duration postponeDuration)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
+                {
+                    var multiInsertQry = @"insert into 
+                    PostponeRequest(UserId, ChallengeRoundNumber,AmountMinutes, State,Timestamp)
+                    select @UserID,s.CurrentChallengeRoundNumber,@AmountMinutes, @State, @Timestamp from SystemState s";
+
+                    connection.Execute(multiInsertQry,
+                        new
+                        {
+                            UserID = author.Id,
+                            AmountMinutes = (long)postponeDuration.TotalMinutes,
+                            State = PostponeRequestState.Open,
+                            Timestamp = _clock.GetCurrentInstant(),
+                        }, transaction: tx);
+
+                    var openRequests = connection.Query<PostponeRequest>(
+                        "select * from PostponeRequest where State = @State",
+                        new
+                        {
+                            State = PostponeRequestState.Open,
+                        },
+                        transaction: tx).ToArray();
+
+                    tx.Commit();
+
+                    return openRequests;
+                }
+
+            }
+        }
+
+        public void FinalizePostponeRequests(PostponeRequest keyRequest)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
+                {
+                    //Set 'ClosedSatisfied' on keyRequest and 'ClosedDiscarded' on other open requests
+
+                    connection.Execute(
+                        @"UPDATE PostponeRequest set State =
+                            case 
+                                when Id=@keyId then @finalSatisfiedState else @finalDiscardedState
+                            end
+                            WHERE State = @openState",
+                        new
+                        {
+                            finalSatisfiedState = PostponeRequestState.ClosedSatisfied,
+                            finalDiscardedState = PostponeRequestState.ClosedDiscarded,
+                            openState = PostponeRequestState.Open,
+                            keyId = keyRequest.Id,
+                        }, transaction: tx);
+
+
+                    tx.Commit();
+                }
+
+            }
+        }
+
+        public long GetUsedPostponeQuotaForCurrentRoundMinutes()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                //Sum all satisfied postpone requests for current round
+
+                var query = @"
+                    select SUM(r.AmountMinutes) from PostponeRequest r
+                    inner join SystemState s on s.CurrentChallengeRoundNumber = r.ChallengeRoundNumber
+                    where r.State = @selectedState";
+
+                return connection.Query<long?>(query, new
+                {
+                    selectedState = PostponeRequestState.ClosedSatisfied,
+                }).FirstOrDefault()??0;
+            }
+        }
+
+
 
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
@@ -169,7 +296,7 @@ namespace musicallychallenged.Data
             {
                 using (var tx = connection.BeginTransaction())
                 {
-                    result = connection.Get<User>(source.Id,tx);
+                    result = connection.Get<User>(source.Id, tx);
 
                     if (null == result)
                     {
@@ -183,7 +310,7 @@ namespace musicallychallenged.Data
                             Name = source.FirstName + " " + source.LastName
                         };
 
-                        connection.Insert(result,tx);
+                        connection.Insert(result, tx);
                     }
 
                     tx.Commit();
@@ -237,7 +364,7 @@ namespace musicallychallenged.Data
 
                     if (existing == null)
                     {
-                        existing = new ActiveContestEntry {AuthorUserId = user.Id};
+                        existing = new ActiveContestEntry { AuthorUserId = user.Id };
                         create = true;
                     }
                     else
@@ -250,7 +377,7 @@ namespace musicallychallenged.Data
                             AuthorUserId = existing.AuthorUserId,
                             Timestamp = existing.Timestamp,
                             ConsolidatedVoteCount = existing.ConsolidatedVoteCount,
-                            ChallengeRoundNumber = existing.ChallengeRoundNumber                            
+                            ChallengeRoundNumber = existing.ChallengeRoundNumber
                         };
                     }
 
@@ -267,11 +394,11 @@ namespace musicallychallenged.Data
                         connection.Update(existing, transaction: tx);
 
                     tx.Commit();
-                }                
-            }            
+                }
+            }
         }
 
-        
+
 
         public IEnumerable<ActiveContestEntry> GetActiveContestEntries()
         {
@@ -286,23 +413,23 @@ namespace musicallychallenged.Data
         }
 
         public IEnumerable<Tuple<Vote, User>> GetVotesForEntry(int entryId)
-        {            
+        {
             using (var connection = CreateOpenConnection())
             {
-                return connection.Query<Vote, User,Tuple<Vote,User>>(@"SELECT *
+                return connection.Query<Vote, User, Tuple<Vote, User>>(@"SELECT *
                     FROM Vote v
                     LEFT JOIN User u ON u.Id= v.UserId
                     WHERE v.ContestEntryId = @EntryId",
-                    Tuple.Create<Vote, User>, 
-                    new{EntryId = entryId}, splitOn:"Id");
+                    Tuple.Create<Vote, User>,
+                    new { EntryId = entryId }, splitOn: "Id");
             }
 
         }
-        
+
         private class ContestEntryConsolidated
         {
             public int Id { get; set; }
-            public int Sum{get;set;}
+            public int Sum { get; set; }
         }
 
         public IEnumerable<ActiveContestEntry> ConsolidateVotesForActiveEntriesGetAffected()
@@ -324,24 +451,24 @@ namespace musicallychallenged.Data
                        ) v ON v.ContestEntryId = e.id
                     WHERE e.ConsolidatedVoteCount IS NULL
                     GROUP BY e.id";
-                    
-                    var voteSum = connection.Query<ContestEntryConsolidated>(query, transaction:tx).ToList();
+
+                    var voteSum = connection.Query<ContestEntryConsolidated>(query, transaction: tx).ToList();
 
                     //Save affected ActiveContestEntry and update their ConsolidatedVoteCount to sum from previous query
 
                     foreach (var entryConsolidated in voteSum)
                     {
-                        var entry = connection.Get<ActiveContestEntry>(entryConsolidated.Id, transaction:tx);
+                        var entry = connection.Get<ActiveContestEntry>(entryConsolidated.Id, transaction: tx);
 
                         entry.ConsolidatedVoteCount = entryConsolidated.Sum;
                         entry.Timestamp = _clock.GetCurrentInstant();
 
                         result.Add(entry);
 
-                        connection.Update(entry, transaction:tx);
+                        connection.Update(entry, transaction: tx);
                     }
 
-                    
+
                     tx.Commit();
                 }
             }
@@ -368,6 +495,19 @@ namespace musicallychallenged.Data
             }
         }
 
+        public int GetFinishedContestEntryCountForUser(int userId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                return connection.QueryFirstOrDefault<int?>(
+                    @"SELECT COUNT(id) from ActiveContestEntry where AuthorUserId=@UserId and ConsolidatedVoteCount IS NOT NULL",
+                    new
+                    {
+                        UserId = userId,
+                    }) ?? 0;
+            }
+        }
+
         public void UpdateContestEntry(ActiveContestEntry entry)
         {
             using (var connection = CreateOpenConnection())
@@ -380,7 +520,7 @@ namespace musicallychallenged.Data
         {
             using (var connection = CreateOpenConnection())
             {
-                connection.Delete(new ActiveContestEntry{Id = deletedEntryId});
+                connection.Delete(new ActiveContestEntry { Id = deletedEntryId });
             }
         }
 
@@ -413,7 +553,7 @@ namespace musicallychallenged.Data
                             Value = voteValue
                         };
 
-                        existing.Id = (int) connection.Insert(existing,tx);
+                        existing.Id = (int)connection.Insert(existing, tx);
                     }
                     else
                     {
@@ -436,7 +576,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        
+
         private SystemState GetOrCreateSystemStateInternal(DbConnection connection, DbTransaction tx)
         {
             var existing = connection.Get<SystemState>(1);
@@ -452,7 +592,7 @@ namespace musicallychallenged.Data
                     Timestamp = _clock.GetCurrentInstant()
                 };
 
-                existing.Id = (int) connection.Insert(existing, tx);
+                existing.Id = (int)connection.Insert(existing, tx);
             }
 
             return existing;
@@ -486,7 +626,7 @@ namespace musicallychallenged.Data
                 using (var tx = connection.BeginTransaction())
                 {
                     var existing = GetOrCreateSystemStateInternal(connection, tx);
-                    
+
                     var propertyInfo = memberExpression.Member as PropertyInfo;
 
                     Debug.Assert(propertyInfo != null, "propertyInfo != null");
@@ -534,7 +674,7 @@ namespace musicallychallenged.Data
         {
             using (var connection = CreateOpenConnection())
             {
-                connection.Delete(new ActiveChat {Id = chatId});
+                connection.Delete(new ActiveChat { Id = chatId });
             }
 
         }
@@ -556,7 +696,7 @@ namespace musicallychallenged.Data
         {
             using (var connection = CreateOpenConnection())
             {
-                var qty = connection.Execute(@"DELETE FROM User WHERE ChatId = @Id", new {Id = chatId});
+                var qty = connection.Execute(@"DELETE FROM User WHERE ChatId = @Id", new { Id = chatId });
 
                 logger.Info($"{qty} user(s) with ChatId {chatId} deleted");
             }

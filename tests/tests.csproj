@@ -81,6 +81,7 @@
     <Compile Include="InnerCiricleVotingTestFixture.cs" />
     <Compile Include="Mockups\GenericUserScenarios.cs" />
     <Compile Include="Mockups\Messaging\MockMessageMediatorService.cs" />
+    <Compile Include="PostponeTestFixture.cs" />
     <Compile Include="VotingCycleTestFixture.cs" />
     <Compile Include="WelcomeTextTestFixture.cs" />
     <Compile Include="Mockups\Messaging\MessageForwardedMock.cs" />

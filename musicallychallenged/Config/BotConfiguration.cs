@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
+using musicallychallenged.Localization;
 using musicallychallenged.Services;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using NodaTime;
 
 namespace musicallychallenged.Config
 {
@@ -17,6 +20,60 @@ namespace musicallychallenged.Config
         [JsonProperty("MainChatId")]
         public long MainChatId { get;set; }
     }
+
+    [DataContract]
+    public class PostponeOption
+    {
+        public enum DurationKind
+        {
+            Minutes,
+            Days
+        }
+
+        public PostponeOption(double value, DurationKind kind)
+        {
+            Kind = kind;
+            Value = value;
+        }
+
+        [JsonProperty("DurationKind")]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public DurationKind Kind { get; set; }
+
+        [JsonProperty("DurationValue")]
+        public double Value { get; set; }
+
+        [JsonIgnore]
+        public Duration AsDuration
+        {
+            get
+            {
+                switch (Kind)
+                {
+                    case DurationKind.Minutes:
+                        return Duration.FromMinutes(Value);
+                    case DurationKind.Days:
+                        return Duration.FromDays(Value);
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(Kind), Kind, $"Dont know what {Kind} is");
+                }
+            }
+        }
+
+        public string GetLocalizedName(LocStrings loc)
+        {
+            switch (Kind)
+            {
+                case DurationKind.Minutes:
+                    return $"{Value} {loc.DimMinutes}";
+                case DurationKind.Days:
+                    return $"{Value} {loc.DimDays}";
+                default:
+                    return $"{Value} {Kind}";
+            }
+        }
+    }
+
 
     [DataContract]
     public class BotConfiguration
@@ -84,6 +141,17 @@ namespace musicallychallenged.Config
         [JsonProperty("VotingDeadlineEventPreviewTimeHours")]
         public double VotingDeadlineEventPreviewTimeHours { get; set; } = 12;
 
+        [JsonProperty("PostponeHoursAllowed")]
+        public double PostponeHoursAllowed { get; set; } = 7*2*24 + 1; //two weeks plus 1 hour for last-time entries
+
+        [JsonProperty("PostponeOptions")]
+        public PostponeOption[] PostponeOptions { get; set; } = {
+            new PostponeOption(15, PostponeOption.DurationKind.Minutes), 
+            new PostponeOption(1, PostponeOption.DurationKind.Days), 
+            new PostponeOption(3, PostponeOption.DurationKind.Days), 
+            new PostponeOption(7, PostponeOption.DurationKind.Days), 
+        };
+
         [JsonProperty("Deployment")]
         public BotDeployment[] Deployments { get; set; } = new BotDeployment[]
         {
@@ -94,6 +162,10 @@ namespace musicallychallenged.Config
 
         [JsonProperty("DeadlinePollingPeriodMs")]
         public int DeadlinePollingPeriodMs { get; set; } = 15000;
+
+        //How many users required to trigger postpone
+        [JsonProperty("PostponeQuorum")]
+        public int PostponeQuorum { get; set; } = 3;
 
         public static BotConfiguration LoadOrCreate(bool saveIfNew = false)
         {

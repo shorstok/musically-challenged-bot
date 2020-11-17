@@ -44,6 +44,6 @@ namespace musicallychallenged.Domain
         public int? VotingDurationDays { get; set; }
 
         public Instant NextDeadlineUTC { get; set; }
-        public string PayloadJSON { get; set; }        
+        public string PayloadJSON { get; set; }       
     }
 }

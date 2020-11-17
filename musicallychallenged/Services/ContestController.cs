@@ -29,6 +29,7 @@ namespace musicallychallenged.Services
         private readonly IEventAggregator _aggregator;
         private readonly ITelegramClient _client;
         private readonly BotConfiguration _configuration;
+        private readonly PostponeService _postponeService;
         private readonly IRepository _repository;
 
         private static readonly ILog logger = Log.Get(typeof(ContestController));
@@ -41,6 +42,7 @@ namespace musicallychallenged.Services
             IEventAggregator aggregator,
             ITelegramClient client,
             BotConfiguration configuration,
+            PostponeService postponeService,
             IRepository repository)
         {
             _broadcastController = broadcastController;
@@ -49,6 +51,7 @@ namespace musicallychallenged.Services
             _aggregator = aggregator;
             _client = client;
             _configuration = configuration;
+            _postponeService = postponeService;
             _repository = repository;
 
             _subscriptions = new ISubscription[]
@@ -239,6 +242,10 @@ namespace musicallychallenged.Services
                 throw new Exception("Invalid bot configuration -- couldnt post contest message");
 
             _repository.UpdateState(x=>x.CurrentTaskMessagelId, (int?)pin.MessageId);
+
+            logger.Info($"Closing all unsatisfied postpone requests...");
+
+            await _postponeService.CloseAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
         }
 
         public async Task UpdateCurrentTaskMessage()
