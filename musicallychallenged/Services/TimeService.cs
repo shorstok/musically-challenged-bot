@@ -121,13 +121,7 @@ namespace musicallychallenged.Services
 
         public string FormatTimeLeftTillDeadline()
         {
-            var state = _repository.GetOrCreateCurrentState();
-
-            var duration = Period.Between(
-                _clock.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
-                    .LocalDateTime,
-                state.NextDeadlineUTC.InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
-                    .LocalDateTime).ToDuration();
+            var duration = GetTimeLeftTillDeadline();
 
             var rounded = Duration.FromMinutes(Math.Round(duration.TotalMinutes / 15) * 15);
 
@@ -149,5 +143,15 @@ namespace musicallychallenged.Services
             return builder.ToString().Trim();
         }
 
+        public Duration GetTimeLeftTillDeadline()
+        {
+            var state = _repository.GetOrCreateCurrentState();
+
+            return Period.Between(
+                _clock.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
+                    .LocalDateTime,
+                state.NextDeadlineUTC.InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
+                    .LocalDateTime).ToDuration();
+        }
     }
 }

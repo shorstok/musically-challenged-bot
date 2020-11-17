@@ -46,6 +46,24 @@ namespace musicallychallenged.Localization
 
     public class LocStrings
     {
+        public string CancelButtonLabel { get; set; } = "Я передумал";
+        public string PostponeCommandHandler_Cancelled { get; set; } = "Отменено";
+        public string PostponeCommandHandler_GeneralFailure { get; set; } = "😵";
+
+        public string PostponeCommandHandler_AcceptedTemplate { get; set; } =
+            $"Заявка принята. Нужен кворум ({LocTokens.Users} чел.) для переноса дедлайна";
+        public string PostponeCommandHandler_AcceptedPostponedTemplate { get; set; } =
+            $"Заявка принята, кворум ({LocTokens.Users} чел.) уже есть. Дедлайн передвинут";
+        public string PostponeCommandHandler_DeniedNoQuotaLeftTemplate { get; set; } =
+            $"На каждый раунд конкурса выделяется макс. {LocTokens.Time} ч. переноса дедлайна. " +
+            $"К сожалению, оставшаяся квота по переносам не позвоялет принять вашу заявку 😐";
+
+        public string PostponeCommandHandler_DeniedAlreadyHasOpenTemplate { get; set; } =
+            $"У вас уже есть незакрытая заявка на этот раунд. Дождитесь наличия кворума по переносу ({LocTokens.Users} чел. необходимо)";
+
+        public string PostponeCommandHandler_Preamble { get; set; } =
+            "С помощью этой команды можно отложить дедлайн на некоторе время. Укажите, на какое время вы хотите отложить дедлайн";
+
         public string YouAreBanned { get; set; } = "Извините, бот недоступен 🧐";
         public string MissingCredentials { get; set; } = "Извините, команда недоступна";
 
