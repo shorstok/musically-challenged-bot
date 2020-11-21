@@ -68,7 +68,7 @@ namespace tests
                 }).ScenarioTask;
 
                 //Vote for entry 1 with 5 users with max vote
-
+                
                 var voterCount = 5;
 
                 for (var nuser = 0; nuser < voterCount; nuser++)

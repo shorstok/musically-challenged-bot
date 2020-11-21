@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using log4net;
 using musicallychallenged.Commands;
+using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
@@ -13,6 +14,7 @@ using musicallychallenged.Logging;
 using NodaTime;
 using NUnit.Framework;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using tests.Mockups.Messaging;
 
 namespace tests.Mockups
@@ -23,6 +25,7 @@ namespace tests.Mockups
         private readonly MockTelegramClient _telegramClient;
         private readonly LocStrings _localization;
         private readonly IRepository _repository;
+        private readonly BotConfiguration _configuration;
         private readonly MockMessageMediatorService _messageMediator;
 
         private static readonly ILog Logger = Log.Get(typeof(GenericUserScenarios));
@@ -31,12 +34,14 @@ namespace tests.Mockups
             MockTelegramClient telegramClient,
             LocStrings localization, 
             IRepository repository,
+            BotConfiguration configuration,
             MockMessageMediatorService messageMediator)
         {
             _clock = clock;
             _telegramClient = telegramClient;
             _localization = localization;
             _repository = repository;
+            _configuration = configuration;
             _messageMediator = messageMediator;
         }
 
@@ -125,6 +130,58 @@ namespace tests.Mockups
 
             Logger.Info($"Got task template in main chat");
         }
+
+
+        
+        /// <summary>
+        /// Issues commands as supervisor to set next deadline
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public async Task<string> PostponeUserScenario(UserScenarioContext context,
+            Func<IEnumerable<InlineKeyboardButton>,InlineKeyboardButton> choice)
+        {
+            context.SendCommand(Schema.PostponeCommandName);
+
+            var prompt = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+
+            Assert.That(prompt.Text, Contains.Substring(_localization.PostponeCommandHandler_Preamble),
+                $"Didn't get postpone preamble in chat {context.PrivateChat.Id}");
+
+            Assert.That(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),
+                Is.True,
+                $"/{Schema.PostponeCommandName} didnt send control buttons in reply");
+
+            
+            var selectedButton = choice(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault() ?? new InlineKeyboardButton[0]);
+
+            Assert.That(selectedButton, Is.Not.Null, "No button found in query answer");
+
+            context.SendQuery(selectedButton.CallbackData, prompt);
+
+            var response = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+
+            var possibleAcks = new[]
+            {
+                _localization.PostponeCommandHandler_AcceptedTemplate,
+                _localization.PostponeCommandHandler_AcceptedPostponedTemplate,
+                _localization.PostponeCommandHandler_Cancelled,
+                _localization.PostponeCommandHandler_DeniedAlreadyHasOpenTemplate,
+                _localization.PostponeCommandHandler_DeniedNoQuotaLeftTemplate,
+                _localization.PostponeCommandHandler_OnlyForKnownUsers,
+            }.Select(s => LocTokens.SubstituteTokens(s,
+                Tuple.Create(LocTokens.Users, _configuration.PostponeQuorum.ToString()),
+                Tuple.Create(LocTokens.Time, _configuration.PostponeHoursAllowed.ToString("0."))
+            )).ToArray();
+
+            Assert.That(
+                possibleAcks.Contains(response.Text.Trim()), 
+                Is.True, 
+                $"Got reply `{response.Text}` -- invalid postpone ack");
+
+            return response.Text;
+        }
+
 
         /// <summary>
         /// Submits fake file to challenge bot as contest entry
