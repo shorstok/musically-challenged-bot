@@ -11,10 +11,12 @@ using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
+using musicallychallenged.Services;
 using NodaTime;
 using NUnit.Framework;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using tests.DI;
 using tests.Mockups.Messaging;
 
 namespace tests.Mockups
@@ -152,10 +154,13 @@ namespace tests.Mockups
                 Is.True,
                 $"/{Schema.PostponeCommandName} didnt send control buttons in reply");
 
-            
-            var selectedButton = choice(prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault() ?? new InlineKeyboardButton[0]);
 
-            Assert.That(selectedButton, Is.Not.Null, "No button found in query answer");
+            var options = (prompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault() ?? new InlineKeyboardButton[0]).ToArray();
+
+            var selectedButton = choice(options);
+
+            Assert.That(selectedButton, Is.Not.Null, $"No postpone button selected in 'choice' handler, " +
+                                                     $"available options were {string.Join(", ",options.Select(op=>op.Text))}");
 
             context.SendQuery(selectedButton.CallbackData, prompt);
 
@@ -216,6 +221,117 @@ namespace tests.Mockups
                 mock.ChatId.Identifier == context.PrivateChat.Id &&
                 mock.Text.Contains(_localization.SubmitContestEntryCommandHandler_SubmissionSucceeded));
         }
+
+  
+        public async Task<int?> FinishContestAndSimulateVoting(TestCompartment compartment)
+        {
+            var entries = _repository.GetActiveContestEntries().ToArray();
+
+            if (entries.Length == 0)
+            {
+                Logger.Error($"Cant simulate voting - no contest entries present! Nothing to vote for.");
+                return null;
+            }
+
+            _repository.UpdateState(state => state.State, ContestState.Contest);
+
+            _repository.UpdateState(state => state.NextDeadlineUTC,
+                _clock.GetCurrentInstant());
+
+            await compartment.ScenarioController.StartUserScenario(async context =>
+            {
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                    Is.True, "Failed switching to Voting state after deadline hit");
+
+                await context.ReadTillMessageReceived(mock =>
+                    mock.ChatId.Identifier == MockConfiguration.VotingChat.Id &&
+                    mock.Text.Contains(context.Localization.VotigStatsHeader));
+
+                //Check that system created voting buttons markup on voting start
+
+                foreach (var contestEntry in entries)
+                {
+                    var votingMessage =
+                        _messageMediator.GetMockMessage(contestEntry.ContainerChatId, contestEntry.ContainerMesssageId);
+
+                    Assert.That(votingMessage.ReplyMarkup?.InlineKeyboard?.SelectMany(buttons => buttons)?.Count(),
+                        Is.EqualTo(5),
+                        $"Didnt create five voting buttons for entry {contestEntry.Id}");
+                }
+            }).ScenarioTask;
+
+            //Vote for entry 1 with 5 users with max vote
+
+            var voterCount = 5;
+
+            var targetVotingMessage =
+                _messageMediator.GetMockMessage(entries[0].ContainerChatId, entries[0].ContainerMesssageId);
+
+
+            for (var nuser = 0; nuser < voterCount; nuser++)
+            {
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    var maxVoteSmile = VotingController._votingSmiles.Last();
+                    var button = targetVotingMessage.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
+                        FirstOrDefault(b => b.Text == maxVoteSmile);
+
+                    Assert.That(button, Is.Not.Null,
+                        $"Max voting value button (labelled {maxVoteSmile}) not found in reply markup");
+
+                    context.SendQuery(button.CallbackData, targetVotingMessage);
+                }).ScenarioTask;
+            }
+
+            //Ffwd voting
+
+            _repository.UpdateState(state => state.NextDeadlineUTC,
+                _clock.GetCurrentInstant());
+
+            await CompleteTaskSelectionAsWinner(compartment, entries[0].AuthorUserId);
+
+            return entries[0].AuthorUserId;
+
+        }
+
+        public async Task CompleteTaskSelectionAsWinner(TestCompartment compartment, int winnerId)
+        {
+            await compartment.ScenarioController.StartUserScenarioForExistingUser(
+                winnerId,
+                async winnerCtx =>
+                {
+                    Assert.That(await compartment.WaitTillStateMatches(state =>
+                            state.State == ContestState.ChoosingNextTask || state.State == ContestState.Contest),
+                        Is.True, "Failed switching to ChoosingNextTask or Contest state after deadline hit");
+
+                    //Ensure author for entry 1 won
+
+                    Assert.That(
+                        compartment.Repository.GetOrCreateCurrentState().CurrentWinnerId,
+                        Is.EqualTo(winnerCtx.MockUser.Id),
+                        "Wrong user won");
+
+                    //Winner posts new round task description
+
+                    await winnerCtx.ReadTillPrivateMessageReceived(msg =>
+                            msg.Text == compartment.Localization.CongratsPrivateMessage,
+                        TimeSpan.FromSeconds(1));
+
+                    var messageWithControls = await winnerCtx.ReadTillPrivateMessageReceived(msg =>
+                            msg.Text == compartment.Localization.ChooseNextRoundTaskPrivateMessage,
+                        TimeSpan.FromSeconds(1));
+
+                    Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.Count(), Is.EqualTo(1),
+                        "Winner task selector should have 1 reply button (for random task selection)");
+
+                    winnerCtx.SendMessage("mock task", winnerCtx.PrivateChat);
+
+                    Logger.Info($"Completed task selection as winner");
+
+                }).ScenarioTask;
+
+        }
+
 
         /// <summary>
         /// 

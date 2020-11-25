@@ -47,57 +47,94 @@ namespace tests
         }   
         
         [Test]
+        public async Task ShouldDiscardOpenRequestsAtNextRound()
+        {
+            using (var compartment = new TestCompartment())
+            {
+                var stateController = compartment.Container.Resolve<StateController>();
+                var prepResult = await PrepareCompartmentWithUserHistory(compartment);
+                
+
+                var config = prepResult.Item1;
+                var users = prepResult.Item3;
+
+                //Aim for shortest option, but one that's longer than 1 day
+                //because last-minute option buttons would available only in contest last day
+
+                var targetOption = config
+                    .PostponeOptions
+                    .OrderBy(o => o.AsDuration)
+                    .First(op=>op.AsDuration >= Duration.FromDays(1));
+
+                //Post requests but don't reach PostponeQuorum for requests to linger unitl next round
+
+                for (int i = 0; i < config.PostponeQuorum-1; i++)
+                {
+                    await compartment.ScenarioController.StartUserScenarioForExistingUser(
+                        users[i].MockUser.Id,
+                        async context =>
+                        {
+                            //Sumbit something
+
+                            await compartment.GenericScenarios.ContesterUserScenario(context);
+
+                            //Run postpone command and pick button with shortest duration
+
+                            var result =
+                                await compartment.GenericScenarios.PostponeUserScenario(context,
+                                    buttons =>
+                                    {
+                                        return buttons.FirstOrDefault(b =>
+                                            b.Text == targetOption.GetLocalizedName(compartment.Localization));
+                                    });
+
+                            context.PersistUserChatId();
+
+                            Logger.Info($"User {context.MockUser.Username}: OK, got {result}");
+                        }).ScenarioTask;
+                }
+
+                //Finish round
+
+                var winnerId = await compartment.GenericScenarios.FinishContestAndSimulateVoting(compartment);
+
+                Assert.That(winnerId, Is.Not.Null);
+
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Contest),
+                    Is.True, "Failed switching to Contest state");
+
+                await stateController.WaitForStateTransition();
+
+                //Output all request states
+
+                Logger.Info($"FINAL POSTPONE REQUEST STATES");
+
+                using (var connection = TestCompartment.GetRepositoryDbConnection(compartment.Repository))
+                {
+                    var allRequests = connection.Query<PostponeRequest>(@"select * from PostponeRequest").
+                        ToArray();
+
+                    foreach (var request in allRequests)
+                    {
+                        Logger.Info($"> Request id {request.Id} from user#{request.UserId}/round{request.ChallengeRoundNumber}" +
+                                    $" for {request.AmountMinutes}minutes final state: {request.State}");
+                         
+                        Assert.That(request.State,Is.EqualTo(PostponeRequestState.ClosedDiscarded));
+                    }
+                }
+            }
+        }
+    
+        [Test]
         public async Task ShouldLimitPostponeAmountForOneRound()
         {
             using (var compartment = new TestCompartment())
             {
-                //Setup
-                var config = compartment.Container.Resolve<BotConfiguration>();
+                var prepResult = await PrepareCompartmentWithUserHistory(compartment);
 
-                compartment.Repository.UpdateState(state => state.CurrentChallengeRoundNumber, 102);
-
-                await compartment.ScenarioController.StartUserScenario(
-                    compartment.GenericScenarios.SupervisorKickstartContest,
-                    UserCredentials.Supervisor).ScenarioTask;
-
-                Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null),
-                    Is.True,
-                    "Failed kickstarting contest (message id not set)");
-
-                var initialDeadline = compartment.Repository.GetOrCreateCurrentState().NextDeadlineUTC;
-
-                //Run generic users
-
-                Logger.Info("Running 'submit' scenarios");
-
-                var users = Enumerable.Range(0, 10)
-                    .Select(t => compartment
-                        .ScenarioController
-                        .StartUserScenario(async context =>
-                        {
-                            await compartment.GenericScenarios.ContesterUserScenario(context);
-                            
-                            //Create fake entry for previous round
-
-                            var user = compartment.Repository.CreateOrGetUserByTgIdentity(context.MockUser);
-                            var state = compartment.Repository.GetOrCreateCurrentState();
-
-                            context.PersistUserChatId();
-
-                            compartment.Repository.GetOrCreateContestEntry(user,
-                                1,1,1,
-                                state.CurrentChallengeRoundNumber-1,
-                                out _);
-
-                            var entry = compartment.Repository.GetActiveContestEntryForUser(user.Id);
-                            entry.ConsolidatedVoteCount = 10; //make entry finished
-                            compartment.Repository.UpdateContestEntry(entry);
-
-                        })).ToArray();
-
-                await Task.WhenAll(users.Select(u => u.ScenarioTask)); //wait for all user scenarios to complete
-
-                Assert.That(compartment.Repository.GetOrCreateCurrentState().NextDeadlineUTC, Is.EqualTo(initialDeadline));
+                var config = prepResult.Item1;
+                var initialDeadline = prepResult.Item2;
+                var users = prepResult.Item3;
 
                 var targetOption = config.PostponeOptions.OrderByDescending(o => o.AsDuration).First();
                 var lastMomentPostponeOption =
@@ -172,8 +209,57 @@ namespace tests
                     }
                 }
             }
-        }   
-        
+        }
+
+        private static async Task<Tuple<BotConfiguration, Instant, UserScenarioContext[]>> PrepareCompartmentWithUserHistory(TestCompartment compartment)
+        {
+            //Setup
+            var config = compartment.Container.Resolve<BotConfiguration>();
+
+            compartment.Repository.UpdateState(state => state.CurrentChallengeRoundNumber, 102);
+
+            await compartment.ScenarioController.StartUserScenario(
+                compartment.GenericScenarios.SupervisorKickstartContest,
+                UserCredentials.Supervisor).ScenarioTask;
+
+            Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null),
+                Is.True,
+                "Failed kickstarting contest (message id not set)");
+
+            var initialDeadline = compartment.Repository.GetOrCreateCurrentState().NextDeadlineUTC;
+
+            //Run generic users
+
+            Logger.Info("Running 'submit' scenarios");
+
+            var users = Enumerable.Range(0, 10).Select(t => compartment.ScenarioController.StartUserScenario(async context =>
+            {
+                await compartment.GenericScenarios.ContesterUserScenario(context);
+
+                //Create fake entry for previous round
+
+                var user = compartment.Repository.CreateOrGetUserByTgIdentity(context.MockUser);
+                var state = compartment.Repository.GetOrCreateCurrentState();
+
+                context.PersistUserChatId();
+
+                compartment.Repository.GetOrCreateContestEntry(user,
+                    1, 1, 1,
+                    state.CurrentChallengeRoundNumber - 1,
+                    out _);
+
+                var entry = compartment.Repository.GetActiveContestEntryForUser(user.Id);
+                entry.ConsolidatedVoteCount = 10; //make entry finished
+                compartment.Repository.UpdateContestEntry(entry);
+            })).ToArray();
+
+            await Task.WhenAll(users.Select(u => u.ScenarioTask)); //wait for all user scenarios to complete
+
+            Assert.That(compartment.Repository.GetOrCreateCurrentState().NextDeadlineUTC, Is.EqualTo(initialDeadline));
+
+            return Tuple.Create(config, initialDeadline, users);
+        }
+
 
         [Test]
         public async Task ShouldDiscardAllOpenRequests()

@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
+using FluentMigrator.Builders.Alter.Table;
 using log4net;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
@@ -423,6 +424,15 @@ namespace musicallychallenged.Services
             OnFinalizingRoundInternal();
         }
 
+        public async Task<bool> WaitForStateTransition()
+        {
+            if (!await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false))
+                return false;
+
+            _transitionSemaphoreSlim.Release();
+
+            return true;
+        }
 
         private async void OnFinalizingRoundInternal()
         {
