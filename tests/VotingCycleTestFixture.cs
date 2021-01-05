@@ -22,7 +22,7 @@ namespace tests
         private static readonly ILog Logger = Log.Get(typeof(VotingCycleTestFixture));
 
         [Test]
-        public async Task ShouldDenySumbissionsInNonContestStats()
+        public async Task ShouldDenySumbissionsInNonContestStates()
         {
             var deniedStates = new[]
             {
