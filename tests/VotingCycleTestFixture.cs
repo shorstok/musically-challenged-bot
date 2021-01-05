@@ -165,7 +165,7 @@ namespace tests
 
                     Assert.That(votingPinEdited.Text, Contains.Substring(timeService.
                             FormatDateAndTimeToAnnouncementTimezone(newDeadline.Value)),
-                        "didnt modify voting message");
+                        "didn't modify voting message");
 
                     Logger.Info("Test: " +
                                 "changed deadline from " +
@@ -201,7 +201,7 @@ namespace tests
 
                     await context.ReadTillMessageReceived(mock =>
                         mock.ChatId.Identifier == MockConfiguration.VotingChat.Id &&
-                        mock.Text.Contains(context.Localization.VotigStatsHeader));
+                        mock.Text.Contains(context.Localization.VotingStatsHeader));
 
                     //Check that system created voting buttons markup on voting start
 
@@ -212,7 +212,7 @@ namespace tests
 
                         Assert.That(votingMessage.ReplyMarkup?.InlineKeyboard?.SelectMany(buttons => buttons)?.Count(),
                             Is.EqualTo(5),
-                            $"Didnt create five voting buttons for entry {votingEntity.Item2.Text}");
+                            $"Didn't create five voting buttons for entry {votingEntity.Item2.Text}");
                     }
                 }).ScenarioTask;
 

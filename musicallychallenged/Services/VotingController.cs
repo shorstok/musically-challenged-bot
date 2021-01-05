@@ -136,7 +136,7 @@ namespace musicallychallenged.Services
 
             var builder = new StringBuilder();
 
-            builder.Append(_loc.VotigStatsHeader);
+            builder.Append(_loc.VotingStatsHeader);
 
             var usersAndVoteCount = new Dictionary<User, int>();
 
@@ -335,7 +335,7 @@ namespace musicallychallenged.Services
 
         public async Task CreateVotingStatsMessageAsync()
         {
-            var votingStatsMessage = await _broadcastController.AnnounceInVotingChannel(_loc.VotigStatsHeader, false);        
+            var votingStatsMessage = await _broadcastController.AnnounceInVotingChannel(_loc.VotingStatsHeader, false);        
             _repository.UpdateState(x => x.CurrentVotingStatsMessageId, votingStatsMessage?.MessageId);
         }
 

@@ -145,7 +145,7 @@ namespace musicallychallenged.Localization
         public string VotigResultsTemplate { get; set; } =
             $"<b>Результаты голосования</b>{Environment.NewLine}{LocTokens.Users}";
 
-        public string VotigStatsHeader{ get; set; } =
+        public string VotingStatsHeader{ get; set; } =
             $"<code>Статистика участников:</code>";
 
         public string ThankYouForVote { get; set; } = $"{LocTokens.User}, голос ({LocTokens.VoteCount}) учтен. Статистика может обновляться не сразу.";
