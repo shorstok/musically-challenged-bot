@@ -40,8 +40,6 @@ namespace tests.Mockups
             }
         };
 
-        // public static IBotConfiguration Snapshot { get; } = new MockBotConfiguration();
-
         public static User MockBotUser { get; } = new User
         {
             Id = 0,

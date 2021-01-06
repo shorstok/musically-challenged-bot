@@ -18,7 +18,7 @@ namespace tests.DI
 
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterInstance(new MockBotConfiguration()).As<IBotConfiguration>().SingleInstance();
+            builder.RegisterInstance(MockConfiguration.Snapshot).As<IBotConfiguration>().SingleInstance();
 
             builder.RegisterType<InMemorySqliteRepository>().As<IRepository>().OnActivated(OnSqliteInMemoryActivated).SingleInstance();
             builder.RegisterType<MockTelegramClient>().AsSelf().As<ITelegramClient>().SingleInstance();
