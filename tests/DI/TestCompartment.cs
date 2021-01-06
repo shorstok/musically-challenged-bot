@@ -13,6 +13,7 @@ using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
+using musicallychallenged.Services;
 using musicallychallenged.Services.Telegram;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
@@ -34,6 +35,9 @@ namespace tests.DI
 
         public TestCompartment()
         {
+            // creates a config directory if non exists to avoid "no such directory" shenanigans
+            System.IO.Directory.CreateDirectory(PathService.AppData);
+
             BuildMockContainer();
             ResolveServices();
             RunMockService();
