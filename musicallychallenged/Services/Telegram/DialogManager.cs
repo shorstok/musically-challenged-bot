@@ -11,12 +11,12 @@ namespace musicallychallenged.Services.Telegram
     public class DialogManager
     {
         private readonly ITelegramClient _botService;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
 
         private readonly ConcurrentDictionary<int, ConcurrentDictionary<Guid, Dialog>> _activeDialogs =
             new ConcurrentDictionary<int, ConcurrentDictionary<Guid, Dialog>>();
 
-        public DialogManager(ITelegramClient botService, BotConfiguration configuration)
+        public DialogManager(ITelegramClient botService, IBotConfiguration configuration)
         {
             _botService = botService;
             _configuration = configuration;

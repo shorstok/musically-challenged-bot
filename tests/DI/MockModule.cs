@@ -6,6 +6,7 @@ using log4net;
 using musicallychallenged.Data;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
+using musicallychallenged.Config;
 using tests.Mockups;
 using tests.Mockups.Messaging;
 
@@ -17,7 +18,7 @@ namespace tests.DI
 
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterInstance(MockConfiguration.Snapshot).AsSelf().SingleInstance();
+            builder.RegisterInstance(new MockBotConfiguration()).As<IBotConfiguration>().SingleInstance();
 
             builder.RegisterType<InMemorySqliteRepository>().As<IRepository>().OnActivated(OnSqliteInMemoryActivated).SingleInstance();
             builder.RegisterType<MockTelegramClient>().AsSelf().As<ITelegramClient>().SingleInstance();

@@ -223,6 +223,7 @@
     <Compile Include="Commands\SetDeploymentCommandHandler.cs" />
     <Compile Include="Commands\StandbyCommandHandler.cs" />
     <Compile Include="Commands\SubmitContestEntryCommandHandler.cs" />
+    <Compile Include="Config\IBotConfiguration.cs" />
     <Compile Include="Data\AdHocMigrationRunner.cs" />
     <Compile Include="Data\InMemorySqliteRepository.cs" />
     <Compile Include="Data\IRepository.cs" />

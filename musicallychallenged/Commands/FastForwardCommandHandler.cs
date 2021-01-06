@@ -20,7 +20,7 @@ namespace musicallychallenged.Commands
     public class FastForwardCommandHandler : ITelegramCommandHandler
     {
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly IEventAggregator _eventAggregator;
         private readonly LocStrings _loc;
 
@@ -30,7 +30,7 @@ namespace musicallychallenged.Commands
         private static readonly ILog logger = Log.Get(typeof(FastForwardCommandHandler));
 
         public FastForwardCommandHandler(IRepository repository, 
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
 
             IEventAggregator eventAggregator,
             LocStrings loc)

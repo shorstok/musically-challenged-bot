@@ -22,7 +22,7 @@ namespace musicallychallenged
         {
             var containerBuilder = new ContainerBuilder();
 
-            containerBuilder.RegisterInstance(BotConfiguration.LoadOrCreate(true)).AsSelf().SingleInstance();
+            containerBuilder.RegisterInstance(BotConfiguration.LoadOrCreate(true)).As<IBotConfiguration>().SingleInstance();
 
             containerBuilder.RegisterModule<ProductionModule>();
 

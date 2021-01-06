@@ -27,7 +27,7 @@ namespace tests.Mockups
         private readonly MockTelegramClient _telegramClient;
         private readonly LocStrings _localization;
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly MockMessageMediatorService _messageMediator;
 
         private static readonly ILog Logger = Log.Get(typeof(GenericUserScenarios));
@@ -36,7 +36,7 @@ namespace tests.Mockups
             MockTelegramClient telegramClient,
             LocStrings localization, 
             IRepository repository,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             MockMessageMediatorService messageMediator)
         {
             _clock = clock;

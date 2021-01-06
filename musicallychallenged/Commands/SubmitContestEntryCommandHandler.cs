@@ -20,7 +20,7 @@ namespace musicallychallenged.Commands
     public class SubmitContestEntryCommandHandler : ITelegramCommandHandler
     {
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
@@ -30,7 +30,7 @@ namespace musicallychallenged.Commands
         private static readonly ILog logger = Log.Get(typeof(SubmitContestEntryCommandHandler));
 
         public SubmitContestEntryCommandHandler(IRepository repository, 
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             ContestController contestController,
             LocStrings loc)
         {

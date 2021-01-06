@@ -28,7 +28,7 @@ namespace musicallychallenged.Services
         private static readonly ILog logger = Log.Get(typeof(VotingController));
 
         private readonly IRepository _repository;
-        private readonly BotConfiguration _botConfiguration;
+        private readonly IBotConfiguration _botConfiguration;
         private readonly TimeService _timeService;
         private readonly LocStrings _loc;
         private readonly CrypticNameResolver _crypticNameResolver;
@@ -39,7 +39,7 @@ namespace musicallychallenged.Services
         public string Prefix { get; } = "v";
 
         public VotingController(IRepository repository,
-            BotConfiguration botConfiguration,
+            IBotConfiguration botConfiguration,
             TimeService timeService,
             LocStrings loc,
             CrypticNameResolver crypticNameResolver,

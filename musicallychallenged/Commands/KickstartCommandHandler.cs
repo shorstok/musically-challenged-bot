@@ -19,7 +19,7 @@ namespace musicallychallenged.Commands
     public class KickstartCommandHandler : ITelegramCommandHandler
     {
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly ContestController _contestController;
         private readonly LocStrings _loc;
 
@@ -29,7 +29,7 @@ namespace musicallychallenged.Commands
         private static readonly ILog logger = Log.Get(typeof(KickstartCommandHandler));
 
         public KickstartCommandHandler(IRepository repository, 
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             ContestController contestController,
             LocStrings loc)
         {

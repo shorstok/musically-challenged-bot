@@ -19,7 +19,7 @@ namespace musicallychallenged.Services
         private readonly IClock _clock;
         private readonly ContestController _contestController;
         private readonly IEventAggregator _eventAggregator;
-        private readonly BotConfiguration _botConfiguration;
+        private readonly IBotConfiguration _botConfiguration;
         private volatile bool _stopIssued = false;
 
 
@@ -32,7 +32,7 @@ namespace musicallychallenged.Services
             IClock clock,
             ContestController contestController,
             IEventAggregator eventAggregator,
-            BotConfiguration botConfiguration)
+            IBotConfiguration botConfiguration)
         {
             _repository = repository;
             _clock = clock;

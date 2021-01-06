@@ -13,7 +13,7 @@ namespace tests.Mockups
         public static Chat MainChat { get; } = new Chat {Id = 1};
         public static Chat VotingChat { get; } = new Chat {Id = 2};
 
-        public static BotConfiguration Snapshot { get; } = new BotConfiguration
+        public static IBotConfiguration Snapshot { get; } = new MockBotConfiguration
         {
             TelegramAnnouncerBotKey = "cleartext:dummy_botkey",
             TelegramBotId = 1234567,
@@ -39,6 +39,8 @@ namespace tests.Mockups
                 new BotDeployment {Name = "Mockup", MainChatId = MainChat.Id, VotingChatId = VotingChat.Id}
             }
         };
+
+        // public static IBotConfiguration Snapshot { get; } = new MockBotConfiguration();
 
         public static User MockBotUser { get; } = new User
         {

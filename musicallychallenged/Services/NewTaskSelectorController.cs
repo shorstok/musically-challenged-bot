@@ -25,14 +25,14 @@ namespace musicallychallenged.Services
         private readonly DialogManager _dialogManager;
         private readonly ITelegramClient _client;
         private readonly LocStrings _loc;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private static readonly ILog logger = Log.Get(typeof(NewTaskSelectorController));
 
         public const string RandomTaskCallbackId = "rnd";
 
         public NewTaskSelectorController(DialogManager dialogManager,
             ITelegramClient client,
-            LocStrings loc, BotConfiguration configuration)
+            LocStrings loc, IBotConfiguration configuration)
         {
             _dialogManager = dialogManager;
             _client = client;

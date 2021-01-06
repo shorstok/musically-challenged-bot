@@ -28,7 +28,7 @@ namespace musicallychallenged.Services
         private readonly LocStrings _loc;
         private readonly IEventAggregator _aggregator;
         private readonly ITelegramClient _client;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly PostponeService _postponeService;
         private readonly IRepository _repository;
 
@@ -41,7 +41,7 @@ namespace musicallychallenged.Services
             LocStrings loc,
             IEventAggregator aggregator,
             ITelegramClient client,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             PostponeService postponeService,
             IRepository repository)
         {

@@ -211,10 +211,10 @@ namespace tests
             }
         }
 
-        private static async Task<Tuple<BotConfiguration, Instant, UserScenarioContext[]>> PrepareCompartmentWithUserHistory(TestCompartment compartment)
+        private static async Task<Tuple<IBotConfiguration, Instant, UserScenarioContext[]>> PrepareCompartmentWithUserHistory(TestCompartment compartment)
         {
             //Setup
-            var config = compartment.Container.Resolve<BotConfiguration>();
+            var config = compartment.Container.Resolve<IBotConfiguration>();
 
             compartment.Repository.UpdateState(state => state.CurrentChallengeRoundNumber, 102);
 
