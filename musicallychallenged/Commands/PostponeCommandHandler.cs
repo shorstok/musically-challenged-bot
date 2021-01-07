@@ -22,7 +22,7 @@ namespace musicallychallenged.Commands
     public class PostponeCommandHandler : ITelegramCommandHandler
     {
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly ContestController _contestController;
         private readonly PostponeService _postponeService;
         private readonly TimeService _timeService;
@@ -36,7 +36,7 @@ namespace musicallychallenged.Commands
         private static readonly ILog logger = Log.Get(typeof(PostponeCommandHandler));
 
         public PostponeCommandHandler(IRepository repository,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             ContestController contestController,
             PostponeService postponeService,
             TimeService timeService,

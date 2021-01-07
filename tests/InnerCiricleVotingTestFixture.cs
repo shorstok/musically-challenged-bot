@@ -52,7 +52,7 @@ namespace tests
 
                     await context.ReadTillMessageReceived(mock =>
                         mock.ChatId.Identifier == MockConfiguration.VotingChat.Id &&
-                        mock.Text.Contains(context.Localization.VotigStatsHeader));
+                        mock.Text.Contains(context.Localization.VotingStatsHeader));
 
                     //Check that system created voting buttons markup on voting start
 

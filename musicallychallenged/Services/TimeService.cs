@@ -19,14 +19,14 @@ namespace musicallychallenged.Services
 {
     public class TimeService
     {
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly LocStrings _loc;
         private readonly IClock _clock;
         private readonly IRepository _repository;
 
         private static readonly ILog logger = Log.Get(typeof(TimeService));
         
-        public TimeService(BotConfiguration configuration, 
+        public TimeService(IBotConfiguration configuration, 
             LocStrings loc,
             IClock clock,
             IRepository repository)

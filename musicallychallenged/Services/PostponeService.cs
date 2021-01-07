@@ -16,7 +16,7 @@ namespace musicallychallenged.Services
     public class PostponeService
     {
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly IClock _clock;
         private readonly Lazy<ContestController> _contestController;
         private readonly Lazy<VotingController> _votingController;
@@ -35,7 +35,7 @@ namespace musicallychallenged.Services
         }
 
         public PostponeService(IRepository repository,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             IClock clock,
             Lazy<ContestController> contestController,
             Lazy<VotingController> votingController)

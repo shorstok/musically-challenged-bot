@@ -76,7 +76,7 @@ namespace musicallychallenged.Config
 
 
     [DataContract]
-    public class BotConfiguration
+    public class BotConfiguration : IBotConfiguration
     {
         private static readonly string ConfigFilename;
 

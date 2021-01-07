@@ -21,7 +21,7 @@ namespace musicallychallenged.Commands
     public class SetDeploymentCommandHandler : ITelegramCommandHandler
     {
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly IClock _clock;
         private readonly TimeService _timeService;
         private readonly ContestController _contestController;
@@ -33,7 +33,7 @@ namespace musicallychallenged.Commands
         private static readonly ILog logger = Log.Get(typeof(SetDeploymentCommandHandler));
 
         public SetDeploymentCommandHandler(IRepository repository,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             IClock clock,
             TimeService timeService,
             ContestController contestController,

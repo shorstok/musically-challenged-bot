@@ -33,7 +33,7 @@ namespace musicallychallenged.Services
         private readonly IRepository _repository;
         private readonly IEventAggregator _eventAggregator;
         private readonly BroadcastController _broadcastController;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly LocStrings _loc;
         private readonly IStateScheduler _scheduler;
         private readonly ContestController _contestController;
@@ -71,7 +71,7 @@ namespace musicallychallenged.Services
         public StateController(IRepository repository,
             IEventAggregator eventAggregator,
             BroadcastController broadcastController,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             LocStrings loc,
             IStateScheduler scheduler,
             ContestController contestController,

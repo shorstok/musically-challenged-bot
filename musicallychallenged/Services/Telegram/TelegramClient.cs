@@ -23,7 +23,7 @@ namespace musicallychallenged.Services.Telegram
         private static readonly ILog logger = Log.Get(typeof(TelegramClient));
 
         private readonly TelegramBotClient _client;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly IEventAggregator _eventAggregator;
         private readonly SemaphoreSlim _messageSemaphoreSlim = new SemaphoreSlim(1, 1);
 
@@ -32,7 +32,7 @@ namespace musicallychallenged.Services.Telegram
         private DateTime? _lastSendDateTime;
 
 
-        public TelegramClient(BotConfiguration configuration, IEventAggregator eventAggregator)
+        public TelegramClient(IBotConfiguration configuration, IEventAggregator eventAggregator)
         {
             _configuration = configuration;
             _eventAggregator = eventAggregator;

@@ -30,7 +30,7 @@ namespace musicallychallenged.Services
         private readonly IRepository _repository;
         private readonly RandomTaskRepository _randomTaskRepository;
         private readonly LocStrings _loc;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private static readonly ILog logger = Log.Get(typeof(InnerCircleVotingController));
 
         public InnerCircleVotingController(DialogManager dialogManager,
@@ -38,7 +38,7 @@ namespace musicallychallenged.Services
             BroadcastController broadcastController,
             IRepository repository,
             RandomTaskRepository randomTaskRepository,
-            LocStrings loc, BotConfiguration configuration)
+            LocStrings loc, IBotConfiguration configuration)
         {
             _dialogManager = dialogManager;
             _client = client;

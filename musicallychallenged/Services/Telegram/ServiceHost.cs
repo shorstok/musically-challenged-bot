@@ -30,7 +30,7 @@ namespace musicallychallenged.Services.Telegram
         private readonly Lazy<ITelegramClient> _telegramClientProvider;
         private readonly IEventAggregator _eventAggregator;
         private readonly DialogManager _dialogManager;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly IRepository _repository;
         private readonly CommandManager _commandManager;
         
@@ -39,7 +39,7 @@ namespace musicallychallenged.Services.Telegram
         public ServiceHost(Lazy<ITelegramClient> telegramClientProvider,                               
             IEventAggregator eventAggregator,
             DialogManager dialogManager,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             IRepository repository,
             CommandManager commandManager)
         {

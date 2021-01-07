@@ -20,7 +20,7 @@ namespace musicallychallenged.Commands
     public class RemindCommandHandler : ITelegramCommandHandler
     {
         private readonly IRepository _repository;
-        private readonly BotConfiguration _configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly IClock _clock;
         private readonly TimeService _timeService;
         private readonly VotingController _votingController;
@@ -33,7 +33,7 @@ namespace musicallychallenged.Commands
         private static readonly ILog logger = Log.Get(typeof(RemindCommandHandler));
 
         public RemindCommandHandler(IRepository repository,
-            BotConfiguration configuration,
+            IBotConfiguration configuration,
             IClock clock,
             TimeService timeService,
             VotingController votingController,
