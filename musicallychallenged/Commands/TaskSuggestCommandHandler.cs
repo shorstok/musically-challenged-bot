@@ -31,6 +31,15 @@ namespace musicallychallenged.Commands
 
         int MinimumTaskSuggestionLength { get; set; } = 10;
 
+        public TaskSuggestCommandHandler(IRepository repository, IBotConfiguration configuration, 
+            NextRoundTaskPollController pollController, LocStrings loc)
+        {
+            _repository = repository;
+            _configuration = configuration;
+            _pollController = pollController;
+            _loc = loc;
+        }
+
         public async Task ProcessCommandAsync(Dialog dialog, User user)
         {
             var state = _repository.GetOrCreateCurrentState();
@@ -60,7 +69,8 @@ namespace musicallychallenged.Commands
                 return;
             }
 
-            await _pollController.SaveTaskSuggestion(response, user);
+            var text = ContestController.EscapeTgHtml(response.Text);
+            await _pollController.SaveTaskSuggestion(text, user);
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, 
                 _loc.TaskSuggestCommandHandler_SubmitionSucceeded);

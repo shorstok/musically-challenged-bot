@@ -142,6 +142,8 @@ namespace musicallychallenged.Localization
         public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = "Отправьте свой вариант задания следующим сообщением (текст от 10 символов)";
         public string TaskSuggestCommandHandler_SubmitionFailed { get; set; } = "Сообщение должно содержать текст длиной от 10 символов";
         public string TaskSuggestCommandHandler_SubmitionSucceeded { get; set; } = "Спасибо за участие! Ваше задание было принято";
+        
+        public string NextRoundTaskPollController_SuggestionTemplate { get; set; } = $"<b>Задание от </b>{LocTokens.User}{Environment.NewLine}{LocTokens.Details}";
 
         public string VotingStarted { get; set; } =
             $"Началось голосование за лучшие работы в Писце! 🎉 " +
