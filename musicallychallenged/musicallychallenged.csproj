@@ -223,6 +223,7 @@
     <Compile Include="Commands\SetDeploymentCommandHandler.cs" />
     <Compile Include="Commands\StandbyCommandHandler.cs" />
     <Compile Include="Commands\SubmitContestEntryCommandHandler.cs" />
+    <Compile Include="Commands\TaskSuggestCommandHandler.cs" />
     <Compile Include="Config\IBotConfiguration.cs" />
     <Compile Include="Data\AdHocMigrationRunner.cs" />
     <Compile Include="Data\InMemorySqliteRepository.cs" />
@@ -277,6 +278,7 @@
     <Compile Include="Services\Events\ISubscription.cs" />
     <Compile Include="Services\IStateScheduler.cs" />
     <Compile Include="Services\NewTaskSelectorController.cs" />
+    <Compile Include="Services\NextRoundTaskPollController.cs" />
     <Compile Include="Services\PathService.cs" />
     <Compile Include="Services\PollingStateScheduler.cs" />
     <Compile Include="Services\PostponeService.cs" />

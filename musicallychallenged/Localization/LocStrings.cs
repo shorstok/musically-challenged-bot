@@ -137,6 +137,12 @@ namespace musicallychallenged.Localization
         public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только аудиофайлы и ссылки (на вашу работу в youtube, например) 🧐";
         public string SubmitContestEntryCommandHandler_SubmissionSucceeded { get; set; } = "Спасибо за участие! Ваша работа принята";
 
+        public string TaskSuggestCommandHandler_Description { get; set; } = "Отправить свой вариант задания для следующего челенджа";
+        public string TaskSuggestCommandHandler_OnlyAvailableInSuggestionCollectionState { get; set; } = "Прием заданий (пока) закрыт. Дождитесь следующего голосования за задание!";
+        public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = "Отправьте свой вариант задания следующим сообщением (текст от 10 символов)";
+        public string TaskSuggestCommandHandler_SubmitionFailed { get; set; } = "Сообщение должно содержать текст длиной от 10 символов";
+        public string TaskSuggestCommandHandler_SubmitionSucceeded { get; set; } = "Спасибо за участие! Ваше задание было принято";
+
         public string VotingStarted { get; set; } =
             $"Началось голосование за лучшие работы в Писце! 🎉 " +
             $"Пожалуйста, пройдите в <a href=\"{LocTokens.VotingChannelLink}\">канал для голосования</a> и проставьте всем честные оценки! " +
