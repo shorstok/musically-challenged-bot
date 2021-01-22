@@ -14,7 +14,7 @@ namespace musicallychallenged.Domain
         [Key]
         public int Id { get; set; }
 
-        public int AuthorId { get; set; }
+        public int AuthorUserId { get; set; }
         public int PollId { get; set; }
 
         public Instant Timestamp { get; set; }

@@ -287,6 +287,135 @@ namespace musicallychallenged.Data
 
 
 
+        public NextRoundTaskPoll GetOpenNextRoundTaskPoll()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                return connection.Query<NextRoundTaskPoll>(
+                    @"select * NextRoundTaskPoll n where n.State=@State",
+                    new { State = NextRoundTaskPollState.Open })
+                    .FirstOrDefault();
+            }
+        }
+
+        public void CreateNextRoundTaskPoll()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    logger.Info("Creating a NextRoundTaskPoll");
+
+                    // checking whether a poll is already open
+                    if (GetOpenNextRoundTaskPoll() != null)
+                    {
+                        logger.Error($"Tried creating a new NextRoundTaskPoll, when one is already open");
+                        return;
+                    }
+
+                    // inserting a new poll
+                    var newPoll = new NextRoundTaskPoll
+                    {
+                        State = NextRoundTaskPollState.Open,
+                        Timestamp = _clock.GetCurrentInstant()
+                    };
+
+                    connection.Insert(newPoll, tx);
+
+                    logger.Info("NextRoundTaskPoll created");
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public void CloseNextRoundTaskPoll()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    logger.Info("Closing NextRoundTaskPoll");
+
+                    var existing = GetOpenNextRoundTaskPoll();
+
+                    if (existing == null)
+                    {
+                        logger.Warn("No open NextRoundPoll found");
+                        return;
+                    }
+
+                    existing.State = NextRoundTaskPollState.Closed;
+                    connection.Update<NextRoundTaskPoll>(existing);
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public void CreateOrUpdateTaskSuggestion(
+            User author, 
+            string description, 
+            long containerChatId, 
+            int containerMessageId,
+            out TaskSuggestion previous)
+        {
+            previous = null;
+
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    // get an open NextRoundTaskPoll
+                    var poll = GetOpenNextRoundTaskPoll();
+                    if (poll == null)
+                    {
+                        logger.Error("Tried creating/updating a TaskSuggestion when no NextRoundTaskPoll is open");
+                        return;
+                    }
+
+                    // get the existing suggestions if exists
+                    bool create = false;
+                    var query = @"select * from TaskSuggestion where ConsolidatedVoteCount IS NULL and AuthorUserId=@AuthorId";
+
+                    var existing = connection.Query<TaskSuggestion>(query, new { AuthorId = author.Id }).FirstOrDefault();
+
+                    if (existing == null)
+                    {
+                        create = true;
+                        existing = new TaskSuggestion { AuthorUserId = author.Id };
+                    }
+                    else
+                    {
+                        previous = new TaskSuggestion
+                        {
+                            AuthorUserId = existing.AuthorUserId,
+                            PollId = existing.PollId,
+                            Timestamp = existing.Timestamp,
+                            Description = existing.Description,
+                            ConsolidatedVoteCount = existing.ConsolidatedVoteCount,
+                            ContainerChatId = existing.ContainerChatId,
+                            ContainerMesssageId = existing.ContainerMesssageId
+                        };
+                    }
+
+                    existing.PollId = poll.Id;
+                    existing.AuthorUserId = author.Id;
+                    existing.Description = description;
+                    existing.ContainerChatId = containerChatId;
+                    existing.ContainerMesssageId = containerMessageId;
+                    existing.Timestamp = _clock.GetCurrentInstant();
+
+                    if (create)
+                        connection.Insert(existing);
+                    else
+                        connection.Update(existing);
+
+                    tx.Commit();
+                }
+            }
+        }
+
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {

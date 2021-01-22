@@ -53,5 +53,11 @@ namespace musicallychallenged.Data
         long GetUsedPostponeQuotaForCurrentRoundMinutes();
         PostponeRequest[] CreatePostponeRequestRetrunOpen(User author, Duration postponeDuration);
         void FinalizePostponeRequests(PostponeRequest keyRequest);
+
+        NextRoundTaskPoll GetOpenNextRoundTaskPoll();
+        void CreateNextRoundTaskPoll();
+        void CloseNextRoundTaskPoll();
+        void CreateOrUpdateTaskSuggestion(User author, string description, long containerChatId,
+            int containerMessageId, out TaskSuggestion previous);
     }
 }
