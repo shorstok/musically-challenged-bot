@@ -329,8 +329,16 @@ namespace musicallychallenged.Data
             }
         }
 
-        public void CloseNextRoundTaskPoll()
+        class TaskSuggestionConsolidated
         {
+            public int Id { get; set; }
+            public int Sum { get; set; }
+        }
+
+        public IEnumerable<TaskSuggestion> CloseNextRoundTaskPoll()
+        {
+            var result = new List<TaskSuggestion>();
+
             using (var connection = CreateOpenConnection())
             {
                 using (var tx = connection.BeginTransaction())
@@ -342,15 +350,44 @@ namespace musicallychallenged.Data
                     if (existing == null)
                     {
                         logger.Warn("No open NextRoundPoll found");
-                        return;
+                        return result;
                     }
 
+                    // Consolidating vote count for suggestions
+                    var query = @"SELECT s.Id, COALESCE(SUM(v.sum_amount),0) AS Sum
+                    FROM TaskSuggestion s
+                    Left JOIN (
+                        SELECT TaskSuggestionId, SUM(Value) AS sum_amount
+                        FROM TaskPollVote
+                        GROUP BY TaskSuggestionId
+                    ) v on s.Id = v.TaskSuggestionId
+                    WHERE s.ConsolidatedVoteCount is NULL
+                    GROUP by s.Id";
+
+                    var consVotes = connection.Query<TaskSuggestionConsolidated>(query, transaction: tx);
+
+                    foreach (var consTask in consVotes)
+                    {
+                        var suggestion = connection.Get<TaskSuggestion>(consTask.Id, transaction: tx);
+                        suggestion.ConsolidatedVoteCount = consTask.Sum;
+
+                        result.Add(suggestion);
+
+                        connection.Update<TaskSuggestion>(suggestion, transaction: tx);
+                    }
+
+                    logger.Info("Consolidated vote count for TaskSuggestions");
+
                     existing.State = NextRoundTaskPollState.Closed;
-                    connection.Update<NextRoundTaskPoll>(existing);
+                    connection.Update<NextRoundTaskPoll>(existing, transaction: tx);
+
+                    logger.Info("NextRoundTaskPoll closed");
 
                     tx.Commit();
                 }
             }
+
+            return result;
         }
 
         public void CreateOrUpdateTaskSuggestion(
@@ -407,9 +444,9 @@ namespace musicallychallenged.Data
                     existing.Timestamp = _clock.GetCurrentInstant();
 
                     if (create)
-                        connection.Insert(existing);
+                        connection.Insert(existing, transaction: tx);
                     else
-                        connection.Update(existing);
+                        connection.Update(existing, transaction: tx);
 
                     tx.Commit();
                 }
