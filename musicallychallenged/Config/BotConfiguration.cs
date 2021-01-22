@@ -167,6 +167,12 @@ namespace musicallychallenged.Config
         [JsonProperty("PostponeQuorum")]
         public int PostponeQuorum { get; set; } = 3;
 
+        [JsonProperty("TaskSuggestionCollectionDeadlineTimeHours")]
+        public int TaskSuggestionCollectionDeadlineTimeHours { get; set; } = 12;
+
+        [JsonProperty("TaskSuggestionVotingDeadlineTimeHours")]
+        public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
+
         public static BotConfiguration LoadOrCreate(bool saveIfNew = false)
         {
             lock (_configReaderWriterLock)

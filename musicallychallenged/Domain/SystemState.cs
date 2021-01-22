@@ -16,7 +16,9 @@ namespace musicallychallenged.Domain
         Voting = 2,
         FinalizingVotingRound = 3,
         ChoosingNextTask = 4,
-        InnerCircleVoting = 5
+        InnerCircleVoting = 5,
+        TaskSuggestionCollection = 6,
+        TaskSuggestionVoting = 7,
     }
 
     [Table("SystemState")]

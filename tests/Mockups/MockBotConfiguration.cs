@@ -64,6 +64,10 @@ namespace tests.Mockups
         //How many users required to trigger postpone
         public int PostponeQuorum { get; set; } = 3;
 
+        public int TaskSuggestionCollectionDeadlineTimeHours { get; set; } = 12;
+
+        public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
+
         public bool Reload() =>
             true;
 

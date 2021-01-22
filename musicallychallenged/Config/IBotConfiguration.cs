@@ -52,6 +52,10 @@ namespace musicallychallenged.Config
 
         int PostponeQuorum { get; set; }
 
+        int TaskSuggestionCollectionDeadlineTimeHours { get; set; }
+
+        int TaskSuggestionVotingDeadlineTimeHours { get; set; }
+
         bool Reload();
 
         void Save();
