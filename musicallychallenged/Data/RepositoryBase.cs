@@ -453,6 +453,84 @@ namespace musicallychallenged.Data
             }
         }
 
+        public IEnumerable<TaskSuggestion> GetActiveTaskSuggestion()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var query = @"select * from TaskSuggestion where ConsolidatedVoteCount IS NULL";
+                return connection.Query<TaskSuggestion>(query);
+            }
+        }
+
+        public TaskSuggestion GetExistingTaskSuggestion(int suggestionId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                return connection.Get<TaskSuggestion>(suggestionId);
+            }
+        }
+
+        public IEnumerable<Tuple<TaskPollVote, User>> GetVotesForTaskSuggestion(int suggestionId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var query = @"SELECT * from TaskPollVote v
+                    LEFT JOIN User u on v.UserId=u.Id
+                    WHERE v.TaskSuggestionId=@SuggestionId";
+
+                return connection.Query<TaskPollVote, User, Tuple<TaskPollVote, User>>(query,
+                    Tuple.Create<TaskPollVote, User>,
+                    new { SuggestionId = suggestionId },
+                    splitOn: "Id");
+            }
+        }
+
+        public void SetOrUpdateTaskPollVote(User voter, int suggestionId, 
+            int value, out bool updated)
+        {
+            updated = false;
+
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var existing = connection.Query<TaskPollVote>(
+                        @"select * from TaskPollVote 
+                          where UserId=@VoterId and TaskSuggestionId=@SuggestionId",
+                        new 
+                        { 
+                            VoterId = voter.Id, 
+                            SuggestionId = suggestionId 
+                        }, transaction: tx).FirstOrDefault();
+
+                    if (existing == null)
+                    {
+                        var vote = new TaskPollVote
+                        {
+                            UserId = voter.Id,
+                            TaskSuggestionId = suggestionId,
+                            Value = value
+                        };
+
+                        connection.Insert<TaskPollVote>(vote, transaction: tx);
+                    }
+                    else
+                    {
+                        updated = true;
+
+                        if (existing.Value == value)
+                            return;
+
+                        existing.Value = value;
+                        connection.Update<TaskPollVote>(existing, transaction: tx);
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {
