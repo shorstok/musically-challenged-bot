@@ -19,9 +19,11 @@ namespace musicallychallenged.Services
     public class NextRoundTaskPollController
     {
         private readonly IRepository _repository;
-        private readonly IBotConfiguration _botConfiguration;
+        private readonly IBotConfiguration configuration;
         private readonly LocStrings _loc;
         private readonly ITelegramClient _client;
+        private readonly TimeService _timeService;
+        private readonly BroadcastController _broadcastController;
 
         private static readonly ILog logger = Log.Get(typeof(NextRoundTaskPollController));
 
@@ -29,19 +31,40 @@ namespace musicallychallenged.Services
             LocStrings loc, ITelegramClient client)
         {
             _repository = repository;
-            _botConfiguration = botConfiguration;
+            configuration = botConfiguration;
             _loc = loc;
             _client = client;
         }
 
         private readonly SemaphoreSlim _messageSemaphoreSlim = new SemaphoreSlim(1, 1);
 
-        public async Task StartTaskPoll()
+        public async Task StartTaskPollAsync()
         {
-            throw new NotImplementedException();
+            logger.Info("Initiating NextRoundTaskPoll");
+
+            var state = _repository.GetOrCreateCurrentState();
+            var deadline = _timeService.ScheduleNextDeadlineIn(configuration.TaskSuggestionCollectionDeadlineTimeHours);
+            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(deadline);
+
+            // pin an announcement in the the main channel
+
+            var pin = await _broadcastController.AnnounceInMainChannel(LocTokens.SubstituteTokens(
+                _loc.NextRoundTaskPollController_AnnouncementTemplateMainChannel,
+                Tuple.Create(LocTokens.Deadline, deadlineText),
+                Tuple.Create(LocTokens.VotingChannelLink, configuration.VotingChannelInviteLink)),
+                true);
+            await _broadcastController.AnnounceInVotingChannel(LocTokens.SubstituteTokens(
+                _loc.NextRoundTaskPollController_AnnouncementTemplateVotingChannel),
+                false);
+
+            if (null == pin)
+                throw new Exception("Invalid bot configuration -- couldn't post contest message");
+
+            // now it's kinda weird that it's called CurrentTaskMessageId, but ok
+            _repository.UpdateState(x => x.CurrentTaskMessagelId, (int?)pin.MessageId);
         }
 
-        public async Task FinishTaskPoll()
+        public async Task FinishTaskPollAsync()
         {
             throw new NotImplementedException();
         }

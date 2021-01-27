@@ -145,6 +145,10 @@ namespace musicallychallenged.Localization
         
         public string NextRoundTaskPollController_SuggestionTemplate { get; set; } = $"<b>Задание от </b>{LocTokens.User}{Environment.NewLine}{LocTokens.Details}";
 
+        public string NextRoundTaskPollController_AnnouncementTemplateMainChannel { get; set; } = $"Temp main channel template. Deadline: {LocTokens.Deadline}, VotingChannelLink: <a href=\"{LocTokens.VotingChannelLink}\">";
+
+        public string NextRoundTaskPollController_AnnouncementTemplateVotingChannel { get; set; } = $"Temp voing channel template";
+
         public string VotingStarted { get; set; } =
             $"Началось голосование за лучшие работы в Писце! 🎉 " +
             $"Пожалуйста, пройдите в <a href=\"{LocTokens.VotingChannelLink}\">канал для голосования</a> и проставьте всем честные оценки! " +

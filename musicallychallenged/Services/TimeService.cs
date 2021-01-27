@@ -17,6 +17,21 @@ using TimeZoneInfo = System.TimeZoneInfo;
 
 namespace musicallychallenged.Services
 {
+    public static class TimeServiceExtension
+    {
+        public static ZonedDateTime TruncateToHours(this ZonedDateTime time, bool roundUp = true)
+        {
+            if (roundUp)
+                time = time.PlusHours(1);
+
+            time.Deconstruct(out var dateTime, out var timeZone, out var offset);
+            var truncatedDateTime = new LocalDateTime(dateTime.Year, dateTime.Month, dateTime.Day,
+                dateTime.Hour, 0, dateTime.Calendar);
+
+            return new ZonedDateTime(truncatedDateTime, timeZone, offset);
+        }
+    }
+
     public class TimeService
     {
         private readonly IBotConfiguration _configuration;
@@ -115,6 +130,27 @@ namespace musicallychallenged.Services
             logger.Info($"Setting deadline to {deadline}");
 
             _repository.UpdateState(s=>s.NextDeadlineUTC, deadline);
+
+            return deadline;
+        }
+
+        /// <summary>
+        /// Sets a deadline in hours. Rounds up to the next hour, e.g. 10:26 + 12h = 23:00
+        /// </summary>
+        /// <param name="hours"></param>
+        /// <returns></returns>
+        public Instant ScheduleNextDeadlineIn(int hours)
+        {
+            var deadline = _clock
+                .GetCurrentInstant()
+                .InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
+                .PlusHours(hours)
+                .TruncateToHours()
+                .ToInstant();
+
+            logger.Info($"Setting deadline to {deadline}");
+
+            _repository.UpdateState(s => s.NextDeadlineUTC, deadline);
 
             return deadline;
         }
