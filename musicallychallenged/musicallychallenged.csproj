@@ -228,6 +228,7 @@
     <Compile Include="Data\AdHocMigrationRunner.cs" />
     <Compile Include="Data\InMemorySqliteRepository.cs" />
     <Compile Include="Data\IRepository.cs" />
+    <Compile Include="Data\Migrations\AlterSystemStateCreateColumnCurrentTaskKindMigration.cs" />
     <Compile Include="Data\Migrations\CreateNextRoundTaskPollTableMigration.cs" />
     <Compile Include="Data\Migrations\CreatePostponeRequestTableMigration.cs" />
     <Compile Include="Data\Migrations\CreateTaskPollVoteTableMigration.cs" />

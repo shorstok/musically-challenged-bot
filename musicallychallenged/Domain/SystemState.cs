@@ -21,6 +21,13 @@ namespace musicallychallenged.Domain
         TaskSuggestionVoting = 7,
     }
 
+    public enum SelectedTaskKind : int
+    {
+        Manual = 0,
+        Random = 1,
+        Poll = 2,
+    }
+
     [Table("SystemState")]
     public class SystemState
     {
@@ -37,7 +44,12 @@ namespace musicallychallenged.Domain
         public long? MainChannelId { get; set; }
 
         public int? CurrentWinnerId { get; set; }
+        public SelectedTaskKind CurrentTaskKind { get; set; }
         public string CurrentTaskTemplate { get; set; }
+
+        public Tuple<SelectedTaskKind, string> CurrentTaskInfo =>
+            Tuple.Create(CurrentTaskKind, CurrentTaskTemplate);
+
         public int? CurrentTaskMessagelId { get; set; }
         public int? CurrentVotingStatsMessageId { get; set; }
         public int? CurrentVotingDeadlineMessageId { get; set; }

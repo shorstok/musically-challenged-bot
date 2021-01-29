@@ -291,7 +291,6 @@ namespace musicallychallenged.Services
                 _transitionSemaphoreSlim.Release();
             }
         }
-
         
         private void ActivatedInnerCircleVoting()
         {
@@ -353,7 +352,8 @@ namespace musicallychallenged.Services
             if (null == state.CurrentWinnerId)
             {
                 logger.Error("state.CurrentWinnerId == null unexpected");
-                _repository.UpdateState(s => s.CurrentTaskTemplate, NewTaskSelectorController.RandomTaskCallbackId);
+
+                _repository.SetCurrentTask(SelectedTaskKind.Random, string.Empty);
                 _stateMachine.Fire(Trigger.TaskSelectedByWinner);
                 return;
             }
@@ -363,12 +363,13 @@ namespace musicallychallenged.Services
             if (winner?.ChatId == null)
             {
                 logger.Error("_repository.GetUserWithTgId(state.CurrentWinnerId.Value)?.ChatId == null unexpected (winner user deleted?)");
-                _repository.UpdateState(s => s.CurrentTaskTemplate, NewTaskSelectorController.RandomTaskCallbackId);
+
+                _repository.SetCurrentTask(SelectedTaskKind.Random, string.Empty);
                 _stateMachine.Fire(Trigger.TaskSelectedByWinner);
                 return;
             }
 
-            string template = NewTaskSelectorController.RandomTaskCallbackId;
+            var taskTuple = Tuple.Create(SelectedTaskKind.Random, string.Empty);
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
 
@@ -398,14 +399,14 @@ namespace musicallychallenged.Services
                         ParseMode.Html);
                 }
 
-                template = await _taskSelectorGenerator().SelectTaskAsync(winner);
+                taskTuple = await _taskSelectorGenerator().SelectTaskAsync(winner);
             }
             finally
             {
                 _transitionSemaphoreSlim.Release();
             }
 
-            _repository.UpdateState(s => s.CurrentTaskTemplate, template);
+            _repository.SetCurrentTask(taskTuple);
             _stateMachine.Fire(Trigger.TaskSelectedByWinner);
         }
 

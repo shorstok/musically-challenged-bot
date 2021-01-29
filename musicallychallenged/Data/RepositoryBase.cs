@@ -923,6 +923,18 @@ namespace musicallychallenged.Data
 
         }
 
+        public void SetCurrentTask(SelectedTaskKind taskKind, string template)
+        {
+            UpdateState(s => s.CurrentTaskKind, taskKind);
+            UpdateState(s => s.CurrentTaskTemplate, template);
+        }
+
+        public void SetCurrentTask(Tuple<SelectedTaskKind, string> task)
+        {
+            UpdateState(s => s.CurrentTaskKind, task.Item1);
+            UpdateState(s => s.CurrentTaskTemplate, task.Item2);
+        }
+
 
 
         public void UpdateUser(User user, long chatId)

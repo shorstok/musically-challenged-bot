@@ -59,9 +59,6 @@ namespace musicallychallenged.Services
 
             if (null == pin)
                 throw new Exception("Invalid bot configuration -- couldn't post contest message");
-
-            // now it's kinda weird that it's called CurrentTaskMessageId, but ok
-            _repository.UpdateState(x => x.CurrentTaskMessagelId, (int?)pin.MessageId);
         }
 
         public async Task FinishTaskPollAsync()

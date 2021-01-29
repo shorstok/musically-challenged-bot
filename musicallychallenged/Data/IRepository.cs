@@ -34,6 +34,8 @@ namespace musicallychallenged.Data
         
         SystemState GetOrCreateCurrentState();
         void UpdateState<T>(Expression<Func<SystemState, T>> propertyExpression, T value);
+        void SetCurrentTask(SelectedTaskKind taskKind, string template);
+        void SetCurrentTask(Tuple<SelectedTaskKind, string> task);
 
 
         void AddOrUpdateActiveChat(long chatId, string chatName);
