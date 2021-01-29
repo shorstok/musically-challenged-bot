@@ -30,6 +30,7 @@ namespace musicallychallenged.Services
         private static readonly ILog logger = Log.Get(typeof(NewTaskSelectorController));
 
         private const string RandomTaskCallbackId = "rnd";
+        private const string NextRoundTaskPollCallbackId = "nrtp";
 
         public NewTaskSelectorController(DialogManager dialogManager,
             ITelegramClient client,
@@ -72,6 +73,7 @@ namespace musicallychallenged.Services
                     replyMarkup: new InlineKeyboardMarkup(new[]
                     {
                         InlineKeyboardButton.WithCallbackData(_loc.RandomTaskButtonLabel, RandomTaskCallbackId),
+                        InlineKeyboardButton.WithCallbackData(_loc.NextRoundTaskPollButtonLabel, NextRoundTaskPollCallbackId),
                     }));
 
                 if (null == message)
@@ -114,17 +116,7 @@ namespace musicallychallenged.Services
                             switch (response)
                             {
                                 case CallbackQuery query:
-                                    
-                                    await _client.AnswerCallbackQueryAsync(query.Id,cancellationToken:token);
-                                    
-                                    if (query.Data != RandomTaskCallbackId)
-                                        logger.Error(
-                                            $"Wtf, got callback data = {query.Data}, expected {RandomTaskCallbackId} but anyway");
-
-                                    proposedTask = Tuple.Create(SelectedTaskKind.Random, string.Empty); 
-
-                                    logger.Info($"User opted for random task");
-
+                                    proposedTask = ParseCallbackQuery(query, token).Result;
                                     break;
 
                                 case Message contestMessage:
@@ -169,6 +161,26 @@ namespace musicallychallenged.Services
             }
 
             return proposedTask;
+        }
+
+        private async Task<Tuple<SelectedTaskKind, string>> ParseCallbackQuery(CallbackQuery query, CancellationToken token)
+        {
+            await _client.AnswerCallbackQueryAsync(query.Id, cancellationToken: token);
+
+            switch (query.Data)
+            {
+                case RandomTaskCallbackId:
+                    logger.Info($"User opted for random task");
+                    return Tuple.Create(SelectedTaskKind.Random, string.Empty);
+
+                case NextRoundTaskPollCallbackId:
+                    logger.Info($"User opted for the NextRoundTaskPoll");
+                    return Tuple.Create(SelectedTaskKind.Poll, string.Empty);
+            }
+
+            logger.Error($"Wtf, got callback data = {query.Data}, falling back to random task");
+
+            return Tuple.Create(SelectedTaskKind.Random, string.Empty);
         }
     }
 }

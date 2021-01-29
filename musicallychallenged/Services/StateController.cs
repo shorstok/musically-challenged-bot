@@ -55,7 +55,9 @@ namespace musicallychallenged.Services
             WinnerChosen,
             TaskSelectedByWinner,
             TaskDeclined,
-            TaskApproved
+            TaskApproved,
+            InitiatedNextRoundTaskPoll,
+            TaskSelectedByPoll,
         }
 
         private SemaphoreSlim _transitionSemaphoreSlim = new SemaphoreSlim(1, 1);
@@ -128,6 +130,11 @@ namespace musicallychallenged.Services
             _stateMachine.Configure(ContestState.FinalizingVotingRound)
                 .PermitDynamic(_explicitStateSwitchTrigger, state => state);
 
+            _stateMachine.Configure(ContestState.TaskSuggestionCollection)
+                .PermitDynamic(_explicitStateSwitchTrigger, state => state);
+            _stateMachine.Configure(ContestState.TaskSuggestionVoting)
+                .PermitDynamic(_explicitStateSwitchTrigger, state => state);
+
 
             //State: Voting
             //Voting in progress
@@ -154,11 +161,11 @@ namespace musicallychallenged.Services
             _stateMachine.Configure(ContestState.ChoosingNextTask).
                 OnActivate(ActivatedChoosingNextTask).
                 OnEntry(EnteredChoosingNextTask)
-                .Permit(Trigger.TaskSelectedByWinner, ContestState.InnerCircleVoting);
+                .Permit(Trigger.TaskSelectedByWinner, ContestState.InnerCircleVoting)
+                .Permit(Trigger.InitiatedNextRoundTaskPoll, ContestState.TaskSuggestionCollection);
 
             //State: InnerCircleVoting
             //Administrators premoderating next task
-
             _stateMachine.Configure(ContestState.InnerCircleVoting).
                 OnActivate(ActivatedInnerCircleVoting).
                 OnEntry(EnteredInnerCircleVoting).
@@ -169,7 +176,6 @@ namespace musicallychallenged.Services
 
             //State: Contest
             //Administrators premoderating next task
-
             _stateMachine.Configure(ContestState.Contest).
                 OnActivate(OnContestActivated).
                 OnEntry(OnContestStartedOrResumed).
@@ -178,6 +184,30 @@ namespace musicallychallenged.Services
                 //on decline, restart task selection
                 Permit(Trigger.DeadlineHit, ContestState.Voting);
 
+            //State: TaskSuggestionCollection
+            //Community suggests possible tasks for the next challenge
+            _stateMachine.Configure(ContestState.TaskSuggestionCollection)
+                .OnActivate(OnTaskSuggestionCollectionActivated)
+                .OnEntry(EnteredTaskSuggestionCollection)
+                .Permit(Trigger.DeadlineHit, ContestState.TaskSuggestionVoting);
+
+            //State: TaskSuggestionVoting
+            //Next round task voting in progress
+            _stateMachine.Configure(ContestState.TaskSuggestionVoting)
+                .OnActivate(OnTaskSuggestionVotingActivated)
+                .OnEntry(EnteredTaskSuggestionVoting)
+                .Permit(Trigger.DeadlineHit, ContestState.FinalizingNextRoundTaskPollVoting)
+                .Permit(Trigger.NotEnoughContesters, ContestState.Standby);
+
+            //State: FinalizingNextRoundTaskPollVoting
+            //System chooses the winner among suggested tasks
+            _stateMachine.Configure(ContestState.FinalizingNextRoundTaskPollVoting)
+                .OnActivate(OnFinalizingNextRoundTaskPollVotingActivated)
+                .OnEntry(EnteredFinalizingNextRoundTaskPollVoting)
+                .Permit(Trigger.TaskSelectedByPoll, ContestState.Contest)
+                .Permit(Trigger.NotEnoughContesters, ContestState.Standby)
+                .Permit(Trigger.NotEnoughVotes, ContestState.Standby);
+
             //If not enough activity (entries or votes), turn off challenges
             _stateMachine.Configure(ContestState.ChoosingNextTask)
                 .Permit(Trigger.NotEnoughContesters, ContestState.Standby);
@@ -185,6 +215,8 @@ namespace musicallychallenged.Services
                 .Permit(Trigger.NotEnoughVotes, ContestState.Standby);
             _stateMachine.Configure(ContestState.Contest)
                 .Permit(Trigger.NotEnoughContesters, ContestState.Standby);
+
+
 
             _stateMachine.OnTransitioned(transition =>
             {
@@ -407,7 +439,11 @@ namespace musicallychallenged.Services
             }
 
             _repository.SetCurrentTask(taskTuple.Item1, taskTuple.Item2);
-            _stateMachine.Fire(Trigger.TaskSelectedByWinner);
+
+            if (taskTuple.Item1 == SelectedTaskKind.Poll)
+                _stateMachine.Fire(Trigger.InitiatedNextRoundTaskPoll);
+            else
+                _stateMachine.Fire(Trigger.TaskSelectedByWinner);
         }
 
         
@@ -494,6 +530,36 @@ namespace musicallychallenged.Services
         private ContestState GetCurrentState()
         {
             return _repository.GetOrCreateCurrentState().State;
+        }
+
+        private async void OnTaskSuggestionCollectionActivated()
+        {
+            throw new NotImplementedException();
+        }
+
+        private async void EnteredTaskSuggestionCollection(StateMachine<ContestState, Trigger>.Transition arg)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async void OnTaskSuggestionVotingActivated()
+        {
+            throw new NotImplementedException();
+        }
+
+        private async void EnteredTaskSuggestionVoting(StateMachine<ContestState, Trigger>.Transition arg)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async void OnFinalizingNextRoundTaskPollVotingActivated()
+        {
+            throw new NotImplementedException();
+        }
+
+        private async void EnteredFinalizingNextRoundTaskPollVoting(StateMachine<ContestState, Trigger>.Transition arg)
+        {
+            throw new NotImplementedException();
         }
 
 

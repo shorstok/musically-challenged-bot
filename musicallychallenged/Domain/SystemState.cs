@@ -19,6 +19,7 @@ namespace musicallychallenged.Domain
         InnerCircleVoting = 5,
         TaskSuggestionCollection = 6,
         TaskSuggestionVoting = 7,
+        FinalizingNextRoundTaskPollVoting = 8,
     }
 
     public enum SelectedTaskKind : int
