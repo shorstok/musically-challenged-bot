@@ -65,7 +65,7 @@ namespace musicallychallenged.Services
 
                 // I don't really have a clue how to set CurrentTaskType in this case (or whether I even should)
                 // In any case, it doesn't seem to matter at this point
-                _repository.UpdateState(_ => _.CurrentTaskTemplate, result.Item2);
+                _repository.UpdateState(s => s.CurrentTaskTemplate, result.Item2);
 
                 return true;
             }

@@ -406,7 +406,7 @@ namespace musicallychallenged.Services
                 _transitionSemaphoreSlim.Release();
             }
 
-            _repository.SetCurrentTask(taskTuple);
+            _repository.SetCurrentTask(taskTuple.Item1, taskTuple.Item2);
             _stateMachine.Fire(Trigger.TaskSelectedByWinner);
         }
 
