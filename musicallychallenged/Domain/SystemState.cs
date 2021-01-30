@@ -48,6 +48,8 @@ namespace musicallychallenged.Domain
         public SelectedTaskKind CurrentTaskKind { get; set; }
         public string CurrentTaskTemplate { get; set; }
 
+        [Write(false)]
+        [Computed]
         public Tuple<SelectedTaskKind, string> CurrentTaskInfo =>
             Tuple.Create(CurrentTaskKind, CurrentTaskTemplate);
 

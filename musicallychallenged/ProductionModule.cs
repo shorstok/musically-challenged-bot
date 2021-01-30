@@ -42,6 +42,9 @@ namespace musicallychallenged
             builder.RegisterType<TimeService>().AsSelf().SingleInstance();
             builder.RegisterType<PollingStateScheduler>().As<IStateScheduler>().SingleInstance();
 
+            builder.RegisterType<NextRoundTaskPollController>().AsSelf().SingleInstance();
+            builder.RegisterType<NextRoundTaskPollVotingController>().AsSelf().SingleInstance();
+
             builder.RegisterType<SqliteRepository>().As<IRepository>().SingleInstance();
             builder.RegisterType<TelegramClient>().As<ITelegramClient>().SingleInstance();
             
