@@ -42,6 +42,8 @@ namespace musicallychallenged.Services
         private readonly DialogManager _dialogManager;
         private readonly ITelegramClient _client;
         private readonly VotingController _votingController;
+        private readonly NextRoundTaskPollController _nextRoundTaskPollController;
+        private readonly NextRoundTaskPollVotingController _nextRoundTaskPollVotingController;
 
         private readonly Random _random = new Random();
 
@@ -81,7 +83,9 @@ namespace musicallychallenged.Services
             Func<InnerCircleVotingController> innerCircleVoteGenerator,
             DialogManager dialogManager,
             ITelegramClient client,
-            VotingController votingController)
+            VotingController votingController,
+            NextRoundTaskPollController nextRoundTaskPollController,
+            NextRoundTaskPollVotingController nextRoundTaskPollVotingController)
         {
             _repository = repository;
             _eventAggregator = eventAggregator;
@@ -95,6 +99,8 @@ namespace musicallychallenged.Services
             _dialogManager = dialogManager;
             _client = client;
             _votingController = votingController;
+            _nextRoundTaskPollController = nextRoundTaskPollController;
+            _nextRoundTaskPollVotingController = nextRoundTaskPollVotingController;
 
             _scheduler.DeadlineHit += _scheduler_DeadlineHit;
             _scheduler.PreviewDeadlineHit += _scheduler_PreviewDeadlineHit;
@@ -534,32 +540,113 @@ namespace musicallychallenged.Services
 
         private async void OnTaskSuggestionCollectionActivated()
         {
-            throw new NotImplementedException();
+            if (!_isActivating)
+                return;
+
+            logger.Info($"Reactivated in TaskSuggestionCollection state");
         }
 
         private async void EnteredTaskSuggestionCollection(StateMachine<ContestState, Trigger>.Transition arg)
         {
-            throw new NotImplementedException();
+            await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
+
+            try
+            {
+                await _nextRoundTaskPollController.StartTaskPollAsync();
+            }
+            catch (Exception e)
+            {
+                logger.Error($"Exception while starting contest - {e.Message}");
+                await _broadcastController.SqueakToAdministrators(e.Message);
+                _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby);
+            }
+            finally
+            {
+                _transitionSemaphoreSlim.Release();
+            }
         }
 
         private async void OnTaskSuggestionVotingActivated()
         {
-            throw new NotImplementedException();
+            if (!_isActivating)
+                return;
+
+            logger.Info($"Reactivated in TaskSuggestionVoting state");
         }
 
         private async void EnteredTaskSuggestionVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
-            throw new NotImplementedException();
+            var activeSuggestion = _repository.GetActiveTaskSuggestion();
+
+            await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
+
+            try
+            {
+                // Don't really know how to configure it yet. 
+                // I guess, if it's less than 2-3, then it show a lack of interest from contesters.
+                // Still, technically, it shoul work with just 1 suggestion
+                if (activeSuggestion.Count() < 1)
+                {
+                    logger.Warn(
+                        $"GetActiveTaskSuggestion found no active suggestions, announcing and switching to standby");
+
+                    await _broadcastController.AnnounceInMainChannel(_loc.NotEnoughSuggestionsAnnouncement,
+                        pin: true);
+
+                    _stateMachine.Fire(Trigger.NotEnoughContesters);
+                    return;
+                }
+
+                await _nextRoundTaskPollVotingController.StartVotingAsync();
+            }
+            finally
+            {
+                _transitionSemaphoreSlim.Release();
+            }
         }
 
         private async void OnFinalizingNextRoundTaskPollVotingActivated()
         {
-            throw new NotImplementedException();
+            if (!_isActivating)
+                return;
+
+            logger.Info($"Reactivated in FinalizingNextRoundTaskPollVoting state");
         }
 
         private async void EnteredFinalizingNextRoundTaskPollVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
-            throw new NotImplementedException();
+            var result =
+                Tuple.Create<VotingController.FinalizationResult, User>(
+                    VotingController.FinalizationResult.NotEnoughContesters, null);
+
+            await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
+
+            try
+            {
+                result = await _nextRoundTaskPollVotingController.FinalizeVoting();
+            }
+            finally
+            {
+                _transitionSemaphoreSlim.Release();
+            }
+
+            switch (result.Item1)
+            {
+                case VotingController.FinalizationResult.Ok:
+                    _stateMachine.Fire(Trigger.TaskSelectedByPoll);
+                    break;
+                case VotingController.FinalizationResult.NotEnoughVotes:
+                    _stateMachine.Fire(Trigger.NotEnoughVotes);
+                    break;
+                case VotingController.FinalizationResult.NotEnoughContesters:
+                    _stateMachine.Fire(Trigger.NotEnoughContesters);
+                    break;
+                case VotingController.FinalizationResult.Halt:
+                    _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
 
