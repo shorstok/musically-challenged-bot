@@ -8,7 +8,7 @@ using FluentMigrator;
 namespace musicallychallenged.Data.Migrations
 {
     [Migration(202101200207)]
-    class CreateNextRoundTaskPollTableMigration : AutoReversingMigration
+    public class CreateNextRoundTaskPollTableMigration : AutoReversingMigration
     {
         public override void Up()
         {
