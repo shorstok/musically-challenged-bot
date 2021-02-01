@@ -60,10 +60,11 @@ namespace musicallychallenged.Data
         IEnumerable<TaskSuggestion> CloseNextRoundTaskPoll();
         void CreateOrUpdateTaskSuggestion(User author, string description, long containerChatId,
             int containerMessageId, out TaskSuggestion previous);
-        IEnumerable<TaskSuggestion> GetActiveTaskSuggestion();
+        IEnumerable<TaskSuggestion> GetActiveTaskSuggestions();
         TaskSuggestion GetExistingTaskSuggestion(int suggestionId);
         IEnumerable<Tuple<TaskPollVote, User>> GetVotesForTaskSuggestion(int suggestionId);
         void SetOrUpdateTaskPollVote(User voter, int suggestionId,
             int value, out bool updated);
+        bool MaybeCreateSuggestionVoteForAllActiveEntriesExcept(User user, int suggestionId, int defaultVoteValue);
     }
 }

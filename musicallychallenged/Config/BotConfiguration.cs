@@ -173,6 +173,12 @@ namespace musicallychallenged.Config
         [JsonProperty("TaskSuggestionVotingDeadlineTimeHours")]
         public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
 
+        [JsonProperty("MinSuggestionVoteValue")]
+        public int MinSuggestionVoteValue { get; set; } = -1;
+
+        [JsonProperty("MaxSuggestionVoteValue")]
+        public int MaxSuggestionVoteValue { get; set; } = 1;
+
         public static BotConfiguration LoadOrCreate(bool saveIfNew = false)
         {
             lock (_configReaderWriterLock)

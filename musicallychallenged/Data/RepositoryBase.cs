@@ -453,7 +453,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public IEnumerable<TaskSuggestion> GetActiveTaskSuggestion()
+        public IEnumerable<TaskSuggestion> GetActiveTaskSuggestions()
         {
             using (var connection = CreateOpenConnection())
             {
@@ -530,7 +530,42 @@ namespace musicallychallenged.Data
             }
         }
 
+        public bool MaybeCreateSuggestionVoteForAllActiveEntriesExcept(User user, int suggestionId, int defaultVoteValue)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var qry = @"select count(v.Value) from TaskPollVote v
+                    inner join TaskSuggestion ts on ts.Id = v.TaskSuggestionId
+                    where v.UserId = @Id and ts.ConsolidatedVoteCount is null";
 
+                    var count = connection.Query<int?>(qry, new { Id = user.Id }, transaction: tx).
+                                    FirstOrDefault() ?? 0;
+
+                    //Votes present
+                    if (0 != count)
+                        return false;
+
+                    var multiInsertQry = @"insert into TaskPollVote(UserId, TaskSuggestionId, Value, Timestamp)
+                    select @UserID, ts.Id, @VoteVal, @Timestamp from TaskSuggestion ts
+                    where ts.ConsolidatedVoteCount is NULL and ts.Id != @SuggestionId";
+
+                    connection.Execute(multiInsertQry,
+                        new
+                        {
+                            UserID = user.Id,
+                            VoteVal = defaultVoteValue,
+                            Timestamp = _clock.GetCurrentInstant(),
+                            SuggestionId = suggestionId,
+                        }, transaction: tx);
+
+                    tx.Commit();
+
+                    return true;
+                }
+            }
+        }
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {

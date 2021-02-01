@@ -68,6 +68,10 @@ namespace tests.Mockups
 
         public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
 
+        public int MinSuggestionVoteValue { get; set; } = -1;
+
+        public int MaxSuggestionVoteValue { get; set; } = 1;
+
         public bool Reload() =>
             true;
 

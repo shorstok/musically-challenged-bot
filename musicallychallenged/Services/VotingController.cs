@@ -96,10 +96,10 @@ namespace musicallychallenged.Services
                     Tuple.Create(LocTokens.User,_crypticNameResolver.GetCrypticNameFor(user))
                     ),updated);
 
-            _votingStatsUpdateThrottle.WaitAsync(() => UpdateAllVothesThrottled(false), CancellationToken.None).ConfigureAwait(false);
+            _votingStatsUpdateThrottle.WaitAsync(() => UpdateAllVotesThrottled(false), CancellationToken.None).ConfigureAwait(false);
         }
 
-        private async Task UpdateAllVothesThrottled(bool showRealVotes = false)
+        private async Task UpdateAllVotesThrottled(bool showRealVotes = false)
         {
             await UpdateVotingStats(showRealVotes);
             await MaybePingAllEntries(showRealVotes);

@@ -281,7 +281,7 @@ namespace musicallychallenged.Services
             {
                 if (arg.Trigger == Trigger.PreviewDeadlineHit)
                     await _contestController.WarnAboutContestDeadlineSoon();
-                else if (arg.Trigger == Trigger.TaskApproved)
+                else if (arg.Trigger == Trigger.TaskApproved || arg.Trigger == Trigger.TaskSelectedByPoll)
                     await _contestController.InitiateContestAsync();
             }
             catch (Exception e)
@@ -576,7 +576,7 @@ namespace musicallychallenged.Services
 
         private async void EnteredTaskSuggestionVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
-            var activeSuggestion = _repository.GetActiveTaskSuggestion();
+            var activeSuggestion = _repository.GetActiveTaskSuggestions();
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
 
