@@ -65,6 +65,6 @@ namespace musicallychallenged.Data
         IEnumerable<Tuple<TaskPollVote, User>> GetVotesForTaskSuggestion(int suggestionId);
         void SetOrUpdateTaskPollVote(User voter, int suggestionId,
             int value, out bool updated);
-        bool MaybeCreateSuggestionVoteForAllActiveEntriesExcept(User user, int suggestionId, int defaultVoteValue);
+        bool MaybeCreateVoteForAllActiveSuggestionsExcept(User user, int suggestionId, int defaultVoteValue);
     }
 }

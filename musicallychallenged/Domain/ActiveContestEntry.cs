@@ -5,7 +5,7 @@ using NodaTime;
 namespace musicallychallenged.Domain
 {
     [Table("ActiveContestEntry")]
-    public class ActiveContestEntry
+    public class ActiveContestEntry : IVotable
     {
         [Key]
         public int Id { get; set; }

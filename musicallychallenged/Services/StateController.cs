@@ -480,7 +480,7 @@ namespace musicallychallenged.Services
         private async void OnFinalizingRoundInternal()
         {
             var result =
-                Tuple.Create<VotingController.FinalizationResult, User>(VotingController.FinalizationResult.NotEnoughContesters,
+                Tuple.Create<VotingFinalizationResult, User>(VotingFinalizationResult.NotEnoughContesters,
                     null);
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
@@ -496,16 +496,16 @@ namespace musicallychallenged.Services
 
             switch (result.Item1)
             {
-                case VotingController.FinalizationResult.Ok:
+                case VotingFinalizationResult.Ok:
                     _stateMachine.Fire(Trigger.WinnerChosen);
                     break;
-                case VotingController.FinalizationResult.NotEnoughVotes:
+                case VotingFinalizationResult.NotEnoughVotes:
                     _stateMachine.Fire(Trigger.NotEnoughVotes);
                     break;
-                case VotingController.FinalizationResult.NotEnoughContesters:
+                case VotingFinalizationResult.NotEnoughContesters:
                     _stateMachine.Fire(Trigger.NotEnoughContesters);
                     break;
-                case VotingController.FinalizationResult.Halt:
+                case VotingFinalizationResult.Halt:
                     _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby);
                     break;
                 default:
@@ -616,8 +616,8 @@ namespace musicallychallenged.Services
         private async void EnteredFinalizingNextRoundTaskPollVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
             var result =
-                Tuple.Create<VotingController.FinalizationResult, User>(
-                    VotingController.FinalizationResult.NotEnoughContesters, null);
+                Tuple.Create<VotingFinalizationResult, User>(
+                    VotingFinalizationResult.NotEnoughContesters, null);
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
 
@@ -632,16 +632,16 @@ namespace musicallychallenged.Services
 
             switch (result.Item1)
             {
-                case VotingController.FinalizationResult.Ok:
+                case VotingFinalizationResult.Ok:
                     _stateMachine.Fire(Trigger.TaskSelectedByPoll);
                     break;
-                case VotingController.FinalizationResult.NotEnoughVotes:
+                case VotingFinalizationResult.NotEnoughVotes:
                     _stateMachine.Fire(Trigger.NotEnoughVotes);
                     break;
-                case VotingController.FinalizationResult.NotEnoughContesters:
+                case VotingFinalizationResult.NotEnoughContesters:
                     _stateMachine.Fire(Trigger.NotEnoughContesters);
                     break;
-                case VotingController.FinalizationResult.Halt:
+                case VotingFinalizationResult.Halt:
                     _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby);
                     break;
                 default:

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Autofac;
 using log4net;
@@ -74,7 +75,8 @@ namespace tests
                 for (var nuser = 0; nuser < voterCount; nuser++)
                     await compartment.ScenarioController.StartUserScenario(async context =>
                     {
-                        var maxVoteSmile = VotingController._votingSmiles.Last();
+                        var maxVoteValue = VotingController._votingSmiles.Max(x => x.Key);
+                        var maxVoteSmile = VotingController._votingSmiles[maxVoteValue];
                         var button = votingEntities[1].Item2.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                             FirstOrDefault(b => b.Text == maxVoteSmile);
 

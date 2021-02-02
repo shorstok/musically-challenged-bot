@@ -530,7 +530,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public bool MaybeCreateSuggestionVoteForAllActiveEntriesExcept(User user, int suggestionId, int defaultVoteValue)
+        public bool MaybeCreateVoteForAllActiveSuggestionsExcept(User user, int suggestionId, int defaultVoteValue)
         {
             using (var connection = CreateOpenConnection())
             {

@@ -9,7 +9,7 @@ using NodaTime;
 namespace musicallychallenged.Domain
 {
     [Table("TaskSuggestion")]
-    public class TaskSuggestion
+    public class TaskSuggestion : IVotable
     {
         [Key]
         public int Id { get; set; }
