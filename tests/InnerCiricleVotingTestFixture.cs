@@ -180,8 +180,8 @@ namespace tests
                                 msg.Text == compartment.Localization.ChooseNextRoundTaskPrivateMessage,
                             TimeSpan.FromSeconds(1));
 
-                        Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.Count(), Is.EqualTo(1),
-                            "Winner task selector should have 1 reply button (for random task selection)");
+                        Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(2),
+                            "Winner task selector should have 2 reply buttons (for random task selection and starting the next round task poll)");
 
                         winnerCtx.SendMessage(mockTaskText, winnerCtx.PrivateChat);
 

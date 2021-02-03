@@ -82,6 +82,7 @@
     <Compile Include="Mockups\GenericUserScenarios.cs" />
     <Compile Include="Mockups\Messaging\MockMessageMediatorService.cs" />
     <Compile Include="Mockups\MockBotConfiguration.cs" />
+    <Compile Include="NextRoundTaskPollTestFixture.cs" />
     <Compile Include="PostponeTestFixture.cs" />
     <Compile Include="VotingCycleTestFixture.cs" />
     <Compile Include="WelcomeTextTestFixture.cs" />
