@@ -29,8 +29,8 @@ namespace musicallychallenged.Services
         private readonly IBotConfiguration _configuration;
         private static readonly ILog logger = Log.Get(typeof(NewTaskSelectorController));
 
-        private const string RandomTaskCallbackId = "rnd";
-        private const string NextRoundTaskPollCallbackId = "nrtp";
+        public const string RandomTaskCallbackId = "rnd";
+        public const string NextRoundTaskPollCallbackId = "nrtp";
 
         public NewTaskSelectorController(DialogManager dialogManager,
             ITelegramClient client,

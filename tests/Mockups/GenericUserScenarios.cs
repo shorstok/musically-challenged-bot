@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using log4net;
@@ -223,7 +225,8 @@ namespace tests.Mockups
         }
 
   
-        public async Task<int?> FinishContestAndSimulateVoting(TestCompartment compartment)
+        public async Task<int?> FinishContestAndSimulateVoting(TestCompartment compartment, 
+            Action<UserScenarioContext, Message> winnerAction = null)
         {
             var entries = _repository.GetActiveContestEntries().ToArray();
 
@@ -289,13 +292,14 @@ namespace tests.Mockups
             _repository.UpdateState(state => state.NextDeadlineUTC,
                 _clock.GetCurrentInstant());
 
-            await CompleteTaskSelectionAsWinner(compartment, entries[0].AuthorUserId);
+            await CompleteTaskSelectionAsWinner(compartment, entries[0].AuthorUserId, winnerAction);
 
             return entries[0].AuthorUserId;
 
         }
 
-        public async Task CompleteTaskSelectionAsWinner(TestCompartment compartment, int winnerId)
+        public async Task CompleteTaskSelectionAsWinner(TestCompartment compartment, int winnerId,
+            Action<UserScenarioContext, Message> winnerAction = null)
         {
             await compartment.ScenarioController.StartUserScenarioForExistingUser(
                 winnerId,
@@ -325,12 +329,148 @@ namespace tests.Mockups
                     Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(2),
                         "Winner task selector should have 2 reply buttons (for random task selection and starting the next round task poll)");
 
-                    winnerCtx.SendMessage("mock task", winnerCtx.PrivateChat);
+                    winnerAction = winnerAction ?? ((context, _) => context.SendMessage("mock task", context.PrivateChat));
+                    winnerAction(winnerCtx, messageWithControls);
 
                     Logger.Info($"Completed task selection as winner");
 
                 }).ScenarioTask;
 
+        }
+
+        public async Task TaskSuggesterUserScenario(UserScenarioContext context)
+        {
+            Logger.Info("Sending a /tasksuggest");
+            context.SendCommand(Schema.TaskSuggestCommandName);
+
+            var answer = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+
+            Assert.That(answer?.Text, Contains.Substring(
+                context.Localization.TaskSuggestCommandHandler_SubmitGuidelines),
+                "/tasksuggest command response should contain general submit pretext");
+
+            var fakeSuggestion = $"Suggestion from user {context.MockUser.Id}";
+
+            Logger.Info("Sending a task suggestion");
+            context.SendMessage(fakeSuggestion, context.PrivateChat);
+
+            Message forwardedMessage;
+            do
+            {
+                forwardedMessage = await context.ReadTillMessageReceived(MockConfiguration.VotingChat.Id);
+            } while (!forwardedMessage.Text.Contains(fakeSuggestion));
+
+            Assert.That(forwardedMessage, Is.Not.Null, "Didn't forward a suggested task");
+            Assert.That(forwardedMessage.Text, Contains.Substring(fakeSuggestion), "Forwarded message didn't contain a task suggestion");
+
+            Logger.Info("Message was forwarded");
+
+            var confirmationMessage = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+
+            Assert.That(confirmationMessage, Is.Not.Null, "Didn't receive a confirmation message for /tasksuggest");
+            Assert.That(confirmationMessage.Text, Contains.Substring(context.Localization.TaskSuggestCommandHandler_SubmitionSucceeded),
+                "Expected a confirmation message for /tasksuggest");
+
+            Logger.Info("Confirmation message was received");
+        }
+
+        public async Task PopulateWithTaskSuggestionsAndSwitchToVoting(TestCompartment compartment, int suggestionsCount)
+        {
+            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+                Is.True, "The state is not TaskSuggestionCollection");
+
+            if (suggestionsCount < 1)
+                throw new ArgumentException("Suggestion count should be greater than 0", nameof(suggestionsCount));
+
+            var state = _repository.GetOrCreateCurrentState();
+
+            // Seed with mock suggestions
+            for (int i = 0; i < suggestionsCount; i++)
+            {
+                var userid = MockConfiguration.GetNewMockUserId();
+                var privateChatId = MockConfiguration.CreateNewPrivateChatId();
+
+                var user = new Telegram.Bot.Types.User
+                {
+                    Id = userid,
+                    Username = $"fakeusr-{userid}",
+                    FirstName = $"Author of suggestion#{userid}"
+                };
+
+                var domainUser = _repository.CreateOrGetUserByTgIdentity(user);
+                _repository.UpdateUser(domainUser, privateChatId);
+                await compartment.ScenarioController.StartUserScenario(
+                    TaskSuggesterUserScenario, useExistingUserId: domainUser.Id)
+                    .ScenarioTask;
+            }
+
+            _repository.UpdateState(s => s.NextDeadlineUTC, _clock.GetCurrentInstant());
+            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting),
+                Is.True, "Didn't switch to TaskSuggestionVoing on deadline hit");
+        }
+
+        public async Task<TaskSuggestion> FinishNextRoundTaskPollAndSimulateVoting(TestCompartment compartment)
+        {
+            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting),
+                Is.True, "Contest state is not TaskSuggestion voting");
+
+            var suggestions = _repository.GetActiveTaskSuggestions().ToArray();
+            if (suggestions.Length < 1)
+            {
+                Logger.Error("Can't simulate voting: no task suggestions present");
+                return null;
+            }
+
+            await compartment.ScenarioController.StartUserScenario(async context =>
+            {
+                await context.ReadTillMessageReceived(mock =>
+                    mock.ChatId.Identifier == MockConfiguration.VotingChat.Id &&
+                    mock.Text.Contains(context.Localization.VotingStatsHeader));
+
+                //Check that system created voting buttons markup on voting start
+                foreach (var suggestion in suggestions)
+                {
+                    var votingMessage =
+                        _messageMediator.GetMockMessage(suggestion.ContainerChatId, suggestion.ContainerMesssageId);
+
+                    var smilies = NextRoundTaskPollVotingController._votingSmiles.OrderBy(x => x.Key).Select(p => p.Value);
+                    var replyButtons = votingMessage.ReplyMarkup?.InlineKeyboard?.SelectMany(buttons => buttons);
+                    Assert.That(replyButtons?.Count(),
+                        Is.EqualTo(smilies.Count()),
+                        $"Didnt create three voting buttons for entry {suggestion.Id}");
+
+                    var zipped = smilies.Zip(replyButtons, (s, b) => (s, b.Text));
+
+                    Assert.That(zipped.All(z => z.s == z.Text), Is.True, 
+                        "smilies in the NextRoundTaskPollVotingController and reply buttons are different");
+                }
+            }).ScenarioTask;
+
+            // vote for the first entry
+            var voterCount = 5;
+            var winningSuggestion = suggestions[0];
+            var targetVotingMessage = _messageMediator.GetMockMessage(
+                winningSuggestion.ContainerChatId, winningSuggestion.ContainerMesssageId);
+
+            for (var nuser = 0; nuser < voterCount; nuser++)
+            {
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    var maxVoteValue = NextRoundTaskPollVotingController._votingSmiles.Max(x => x.Key);
+                    var maxVoteSmile = NextRoundTaskPollVotingController._votingSmiles[maxVoteValue];
+                    var button = targetVotingMessage.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
+                        FirstOrDefault(b => b.Text == maxVoteSmile);
+
+                    Assert.That(button, Is.Not.Null,
+                        $"Max voting value button (labelled {maxVoteSmile}) not found in reply markup");
+
+                    context.SendQuery(button.CallbackData, targetVotingMessage);
+                }).ScenarioTask;
+            }
+
+            _repository.UpdateState(s => s.NextDeadlineUTC, _clock.GetCurrentInstant());
+
+            return winningSuggestion;
         }
 
 

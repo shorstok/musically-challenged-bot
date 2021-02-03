@@ -292,7 +292,7 @@ namespace musicallychallenged.Data
             using (var connection = CreateOpenConnection())
             {
                 return connection.Query<NextRoundTaskPoll>(
-                    @"select * NextRoundTaskPoll n where n.State=@State",
+                    @"select * from NextRoundTaskPoll where State=@State",
                     new { State = NextRoundTaskPollState.Open })
                     .FirstOrDefault();
             }

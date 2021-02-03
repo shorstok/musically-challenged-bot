@@ -19,7 +19,7 @@ namespace musicallychallenged.Services
     public class NextRoundTaskPollController
     {
         private readonly IRepository _repository;
-        private readonly IBotConfiguration configuration;
+        private readonly IBotConfiguration _configuration;
         private readonly LocStrings _loc;
         private readonly ITelegramClient _client;
         private readonly TimeService _timeService;
@@ -27,13 +27,20 @@ namespace musicallychallenged.Services
 
         private static readonly ILog logger = Log.Get(typeof(NextRoundTaskPollController));
 
-        public NextRoundTaskPollController(IRepository repository, IBotConfiguration botConfiguration, 
-            LocStrings loc, ITelegramClient client)
+        public NextRoundTaskPollController(
+            IRepository repository, 
+            IBotConfiguration configuration, 
+            LocStrings loc, 
+            ITelegramClient client, 
+            TimeService timeService, 
+            BroadcastController broadcastController)
         {
             _repository = repository;
-            configuration = botConfiguration;
+            _configuration = configuration;
             _loc = loc;
             _client = client;
+            _timeService = timeService;
+            _broadcastController = broadcastController;
         }
 
         private readonly SemaphoreSlim _messageSemaphoreSlim = new SemaphoreSlim(1, 1);
@@ -43,7 +50,8 @@ namespace musicallychallenged.Services
             logger.Info("Initiating NextRoundTaskPoll");
 
             var state = _repository.GetOrCreateCurrentState();
-            var deadline = _timeService.ScheduleNextDeadlineIn(configuration.TaskSuggestionCollectionDeadlineTimeHours);
+            _repository.CreateNextRoundTaskPoll();
+            var deadline = _timeService.ScheduleNextDeadlineIn(_configuration.TaskSuggestionCollectionDeadlineTimeHours);
             var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(deadline);
 
             // pin an announcement in the the main channel
@@ -51,7 +59,7 @@ namespace musicallychallenged.Services
             var pin = await _broadcastController.AnnounceInMainChannel(LocTokens.SubstituteTokens(
                 _loc.NextRoundTaskPollController_AnnouncementTemplateMainChannel,
                 Tuple.Create(LocTokens.Deadline, deadlineText),
-                Tuple.Create(LocTokens.VotingChannelLink, configuration.VotingChannelInviteLink)),
+                Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
                 true);
             await _broadcastController.AnnounceInVotingChannel(LocTokens.SubstituteTokens(
                 _loc.NextRoundTaskPollController_AnnouncementTemplateVotingChannel),

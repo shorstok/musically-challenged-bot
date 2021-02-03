@@ -15,7 +15,7 @@ namespace musicallychallenged.Data.Migrations
             Create.Table("NextRoundTaskPoll")
                 .WithColumn("Id").AsInt32().NotNullable().PrimaryKey().Identity()
                 .WithColumn("Timestamp").AsString(255).NotNullable()
-                .WithColumn("NextRoundTaskPollState").AsInt32().NotNullable();
+                .WithColumn("State").AsInt32().NotNullable();
         }
     }
 }

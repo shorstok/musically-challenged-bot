@@ -8,13 +8,13 @@ using FluentMigrator;
 namespace musicallychallenged.Data.Migrations
 {
     [Migration(202101200218)]
-    class CreateTaskSuggestionTableMigration : AutoReversingMigration
+    public class CreateTaskSuggestionTableMigration : AutoReversingMigration
     {
         public override void Up()
         {
             Create.Table("TaskSuggestion")
                 .WithColumn("Id").AsInt32().NotNullable().PrimaryKey().Identity()
-                .WithColumn("AuthorId").AsInt32().NotNullable()
+                .WithColumn("AuthorUserId").AsInt32().NotNullable()
                 .WithColumn("PollId").AsInt32().NotNullable()
                 .WithColumn("Timestamp").AsString(255).NotNullable()
                 .WithColumn("Description").AsString(4096).NotNullable()

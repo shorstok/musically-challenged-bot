@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace musicallychallenged.Data.Migrations
 {
     [Migration(202101200250)]
-    class CreateTaskPollVoteTableMigration : AutoReversingMigration
+    public class CreateTaskPollVoteTableMigration : AutoReversingMigration
     {
         public override void Up()
         {
