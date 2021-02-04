@@ -195,6 +195,7 @@ namespace musicallychallenged.Services
             _stateMachine.Configure(ContestState.TaskSuggestionCollection)
                 .OnActivate(OnTaskSuggestionCollectionActivated)
                 .OnEntry(EnteredTaskSuggestionCollection)
+                .Permit(Trigger.NotEnoughContesters, ContestState.Standby)
                 .Permit(Trigger.DeadlineHit, ContestState.TaskSuggestionVoting);
 
             //State: TaskSuggestionVoting
@@ -582,16 +583,19 @@ namespace musicallychallenged.Services
 
             try
             {
-                // Don't really know how to configure it yet. 
-                // I guess, if it's less than 2-3, then it show a lack of interest from contesters.
-                // Still, technically, it shoul work with just 1 suggestion
-                if (activeSuggestion.Count() < 1)
+                if (activeSuggestion.Count() < _configuration.MinAllowedContestEntriesToStartVoting)
                 {
                     logger.Warn(
-                        $"GetActiveTaskSuggestion found no active suggestions, announcing and switching to standby");
+                        $"GetActiveTaskSuggestion found {activeSuggestion.Count()} active suggestions; " +
+                        $"expecting at least {_configuration.MinAllowedContestEntriesToStartVoting}, announcing and switching to standby");
 
-                    await _broadcastController.AnnounceInMainChannel(_loc.NotEnoughSuggestionsAnnouncement,
+                    _nextRoundTaskPollController.HaltTaskPoll();
+
+                    var announcement = await _broadcastController.AnnounceInMainChannel(_loc.NotEnoughSuggestionsAnnouncement,
                         pin: true);
+
+                    if (announcement == null)
+                        logger.Warn("Failed to announce transition to standby in the main channel");
 
                     _stateMachine.Fire(Trigger.NotEnoughContesters);
                     return;

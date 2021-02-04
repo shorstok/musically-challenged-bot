@@ -340,7 +340,6 @@ namespace tests.Mockups
 
         public async Task TaskSuggesterUserScenario(UserScenarioContext context)
         {
-            Logger.Info("Sending a /tasksuggest");
             context.SendCommand(Schema.TaskSuggestCommandName);
 
             var answer = await context.ReadTillMessageReceived(context.PrivateChat.Id);
@@ -351,7 +350,6 @@ namespace tests.Mockups
 
             var fakeSuggestion = $"Suggestion from user {context.MockUser.Id}";
 
-            Logger.Info("Sending a task suggestion");
             context.SendMessage(fakeSuggestion, context.PrivateChat);
 
             Message forwardedMessage;
@@ -409,7 +407,7 @@ namespace tests.Mockups
                 Is.True, "Didn't switch to TaskSuggestionVoing on deadline hit");
         }
 
-        public async Task<TaskSuggestion> FinishNextRoundTaskPollAndSimulateVoting(TestCompartment compartment)
+        public async Task<TaskSuggestion> FinishNextRoundTaskPollAndSimulateVoting(TestCompartment compartment, int voterCount = 5)
         {
             Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting),
                 Is.True, "Contest state is not TaskSuggestion voting");
@@ -447,7 +445,6 @@ namespace tests.Mockups
             }).ScenarioTask;
 
             // vote for the first entry
-            var voterCount = 5;
             var winningSuggestion = suggestions[0];
             var targetVotingMessage = _messageMediator.GetMockMessage(
                 winningSuggestion.ContainerChatId, winningSuggestion.ContainerMesssageId);

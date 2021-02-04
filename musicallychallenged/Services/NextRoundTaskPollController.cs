@@ -69,9 +69,9 @@ namespace musicallychallenged.Services
                 throw new Exception("Invalid bot configuration -- couldn't post contest message");
         }
 
-        public async Task FinishTaskPollAsync()
+        public void HaltTaskPoll()
         {
-            throw new NotImplementedException();
+            _repository.CloseNextRoundTaskPoll();
         }
 
         public string GetTaskSuggestionMessageText(User user, string voteDetails, string description)
