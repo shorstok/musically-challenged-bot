@@ -175,7 +175,7 @@ namespace musicallychallenged.Services
         protected override string GetEntryText(User user, string votingDetails, string extra) =>
             _contestController.GetContestEntryText(user, votingDetails, extra);
 
-        protected async override Task _onWinnerChosen(User winner, ActiveContestEntry winningEntry)
+        protected async override Task OnWinnerChosen(User winner, ActiveContestEntry winningEntry)
         {
             //forward winner's entry to main channel
             var state = _repository.GetOrCreateCurrentState();
@@ -200,7 +200,7 @@ namespace musicallychallenged.Services
             _repository.UpdateState(s => s.CurrentWinnerId, winner.Id);
         }
 
-        protected override Task _onEnteredFinalization()
+        protected override Task OnEnteredFinalization()
         {
             var state = _repository.GetOrCreateCurrentState();
             _repository.UpdateState(x => x.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);

@@ -141,7 +141,7 @@ namespace musicallychallenged.Localization
 
         public string TaskSuggestCommandHandler_Description { get; set; } = "Отправить свой вариант задания для следующего челенджа";
         public string TaskSuggestCommandHandler_OnlyAvailableInSuggestionCollectionState { get; set; } = "Прием заданий (пока) закрыт. Дождитесь следующего голосования за задание!";
-        public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = "Отправьте свой вариант задания следующим сообщением (текст от 10 символов)";
+        public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = "Отправьте свой вариант задания следующим сообщением (текст от 10 символов). Также обратите внимание на то, какие задания уже предложили, чтобы не повторяться:";
         public string TaskSuggestCommandHandler_SubmitionFailed { get; set; } = "Сообщение должно содержать текст длиной от 10 символов";
         public string TaskSuggestCommandHandler_SubmitionSucceeded { get; set; } = "Спасибо за участие! Ваше задание было принято";
         

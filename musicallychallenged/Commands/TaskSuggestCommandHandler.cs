@@ -22,6 +22,7 @@ namespace musicallychallenged.Commands
         private readonly IRepository _repository;
         private readonly IBotConfiguration _configuration;
         private readonly NextRoundTaskPollController _pollController;
+        private readonly ITelegramClient _client;
         private readonly LocStrings _loc;
 
         private static readonly ILog logger = Log.Get(typeof(TaskSuggestCommandHandler));
@@ -31,13 +32,18 @@ namespace musicallychallenged.Commands
 
         int MinimumTaskSuggestionLength { get; set; } = 10;
 
-        public TaskSuggestCommandHandler(IRepository repository, IBotConfiguration configuration, 
-            NextRoundTaskPollController pollController, LocStrings loc)
+        public TaskSuggestCommandHandler(
+            IRepository repository, 
+            IBotConfiguration configuration, 
+            NextRoundTaskPollController pollController, 
+            LocStrings loc, 
+            ITelegramClient client)
         {
             _repository = repository;
             _configuration = configuration;
             _pollController = pollController;
             _loc = loc;
+            _client = client;
         }
 
         public async Task ProcessCommandAsync(Dialog dialog, User user)
@@ -46,6 +52,7 @@ namespace musicallychallenged.Commands
 
             logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} is about to suggest a task");
 
+            // reject if not in TaskSuggestionCollection state
             if (state.State != ContestState.TaskSuggestionCollection)
             {
                 logger.Info($"Bot in state {state.State}, denied");
@@ -54,9 +61,25 @@ namespace musicallychallenged.Commands
                 return;
             }
 
+            // send the guidelines
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
                 _loc.TaskSuggestCommandHandler_SubmitGuidelines);
 
+            // forward all existing suggestions
+            var suggestions = _repository.GetActiveTaskSuggestions()
+                .OrderBy(s => s.Timestamp)
+                .Select(s => (s.ContainerChatId, s.ContainerMesssageId, s.AuthorUserId));
+
+            foreach (var (chat, message, author) in suggestions)
+            {
+                var msg = await _client.ForwardMessageAsync(dialog.ChatId, chat, message);
+                if (msg == null)
+                    logger.Warn($"Could not forward a task suggestion from user " +
+                        $"{_repository.GetExistingUserWithTgId(author).GetUsernameOrNameWithCircumflex()} " +
+                        $"to private chat with {user.GetUsernameOrNameWithCircumflex()}");
+            }
+
+            // get a suggestion message
             var response = await dialog.GetMessageInThreadAsync(
                 new CancellationTokenSource(TimeSpan.FromMinutes(_configuration.SubmissionTimeoutMinutes)).Token);
 

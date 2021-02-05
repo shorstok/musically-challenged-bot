@@ -119,7 +119,7 @@ namespace musicallychallenged.Services
         protected override string GetEntryText(User user, string votingDetails, string extra) =>
             _pollController.GetTaskSuggestionMessageText(user, votingDetails, extra);
 
-        protected override Task _onWinnerChosen(User winner, TaskSuggestion winningEntry)
+        protected override Task OnWinnerChosen(User winner, TaskSuggestion winningEntry)
         {
             _repository.UpdateState(s => s.CurrentTaskTemplate, winningEntry.Description);
             return Task.Run(() => { });

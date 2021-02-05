@@ -85,11 +85,11 @@ namespace musicallychallenged.Services
 
 
         // finalizing voting
-        protected virtual async Task _onEnteredFinalization() =>
+        protected virtual async Task OnEnteredFinalization() =>
             Task.Run(() => { });
         protected virtual List<TVotable> _filterConsolidatedEntriesIfEnoughContester(List<TVotable> entries) =>
             entries;
-        protected abstract Task _onWinnerChosen(User winner, TVotable winningEntry);
+        protected abstract Task OnWinnerChosen(User winner, TVotable winningEntry);
 
         public async Task ExecuteQuery(CallbackQuery callbackQuery)
         {
@@ -292,9 +292,7 @@ namespace musicallychallenged.Services
 
                 var entries = await ConsolidateActiveVotes();
 
-                await _onEnteredFinalization();
-
-                logger.Info("finished _onEnteredFinalization");
+                await OnEnteredFinalization();
 
                 if (!entries.Any())
                 {
@@ -399,8 +397,7 @@ namespace musicallychallenged.Services
                 //forward winner's entry to main channel
                 var state = _repository.GetOrCreateCurrentState();
 
-                logger.Info($"Starting OnWinnerChosen business");
-                await _onWinnerChosen(actualWinner, winningEntry);
+                await OnWinnerChosen(actualWinner, winningEntry);
 
                 return Tuple.Create(VotingFinalizationResult.Ok, actualWinner);
             }
