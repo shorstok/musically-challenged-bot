@@ -122,6 +122,7 @@ namespace musicallychallenged.Services
         protected override Task OnWinnerChosen(User winner, TaskSuggestion winningEntry)
         {
             _repository.UpdateState(s => s.CurrentTaskTemplate, winningEntry.Description);
+            _repository.SetNextRoundTaskPollWinner(winner.Id);
             return Task.Run(() => { });
         }
     }

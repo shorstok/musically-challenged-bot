@@ -390,6 +390,50 @@ namespace musicallychallenged.Data
             return result;
         }
 
+        public void SetNextRoundTaskPollWinner(int? winnerId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var lastPoll = connection.Query<NextRoundTaskPoll>(
+                        "select * from NextRoundTaskPoll", transaction: tx)
+                        .OrderBy(p => p.Timestamp)
+                        .LastOrDefault();
+
+                    if (lastPoll == null)
+                    {
+                        logger.Warn("No last NextRoundTaskPoll found");
+                        return;
+                    }
+
+                    lastPoll.WinnerId = winnerId;
+                    connection.Update<NextRoundTaskPoll>(lastPoll, tx);
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public int? GetLastTaskPollWinner()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var lastPoll = connection.Query<NextRoundTaskPoll>(
+                    "select * from NextRoundTaskPoll")
+                    .OrderBy(p => p.Timestamp)
+                    .LastOrDefault();
+
+                if (lastPoll == null)
+                {
+                    logger.Warn("No last NextRoundTaskPoll found");
+                    return null;
+                }
+
+                return lastPoll.WinnerId;
+            }
+        }
+
         public void CreateOrUpdateTaskSuggestion(
             User author, 
             string description, 

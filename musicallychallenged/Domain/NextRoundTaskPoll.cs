@@ -21,5 +21,6 @@ namespace musicallychallenged.Domain
         public int Id { get; set; }
         public Instant Timestamp { get; set; }
         public NextRoundTaskPollState State { get; set; }
+        public int? WinnerId { get; set; }
     }
 }
