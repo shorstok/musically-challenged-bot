@@ -3,6 +3,7 @@ using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
+using musicallychallenged.Services.Events;
 using musicallychallenged.Services.Telegram;
 using System;
 using System.Collections.Generic;
@@ -25,15 +26,18 @@ namespace musicallychallenged.Services
         private readonly TimeService _timeService;
         private readonly BroadcastController _broadcastController;
 
+        private ISubscription[] _subscriptions;
+
         private static readonly ILog logger = Log.Get(typeof(NextRoundTaskPollController));
 
         public NextRoundTaskPollController(
-            IRepository repository, 
-            IBotConfiguration configuration, 
-            LocStrings loc, 
-            ITelegramClient client, 
-            TimeService timeService, 
-            BroadcastController broadcastController)
+            IRepository repository,
+            IBotConfiguration configuration,
+            LocStrings loc,
+            ITelegramClient client,
+            TimeService timeService,
+            BroadcastController broadcastController,
+            IEventAggregator eventAggregator)
         {
             _repository = repository;
             _configuration = configuration;
@@ -41,9 +45,28 @@ namespace musicallychallenged.Services
             _client = client;
             _timeService = timeService;
             _broadcastController = broadcastController;
+
+            _subscriptions = new ISubscription[]
+            {
+                eventAggregator.Subscribe<MessageDeletedEvent>(OnMessageDeleted)
+            };
         }
 
         private readonly SemaphoreSlim _messageSemaphoreSlim = new SemaphoreSlim(1, 1);
+
+        private void OnMessageDeleted(MessageDeletedEvent obj)
+        {
+            var deletedEntry = _repository.GetActiveTaskSuggestions()
+                .Where(s => s.ContainerMesssageId == obj.MessageId && s.ContainerChatId == obj.ChatId.Identifier)
+                .FirstOrDefault();
+
+            if (deletedEntry == null)
+                return;
+
+            logger.Info($"Detected that containing message was deleted for entry {deletedEntry.Id}, deleting entry itself");
+
+            _repository.DeleteTaskSuggestion(deletedEntry.Id);
+        }
 
         public async Task StartTaskPollAsync()
         {

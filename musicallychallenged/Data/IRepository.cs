@@ -68,5 +68,6 @@ namespace musicallychallenged.Data
         bool MaybeCreateVoteForAllActiveSuggestionsExcept(User user, int suggestionId, int defaultVoteValue);
         void SetNextRoundTaskPollWinner(int? winnerId);
         int? GetLastTaskPollWinner();
+        void DeleteTaskSuggestion(int suggestionId);
     }
 }

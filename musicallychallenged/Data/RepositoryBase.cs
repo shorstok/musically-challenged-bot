@@ -514,6 +514,20 @@ namespace musicallychallenged.Data
             }
         }
 
+        public void DeleteTaskSuggestion(int suggestionId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    connection.Delete(
+                        connection.Get<TaskSuggestion>(suggestionId));
+
+                    tx.Commit();
+                }
+            }
+        }
+
         public IEnumerable<Tuple<TaskPollVote, User>> GetVotesForTaskSuggestion(int suggestionId)
         {
             using (var connection = CreateOpenConnection())

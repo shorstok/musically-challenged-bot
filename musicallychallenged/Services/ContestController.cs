@@ -285,7 +285,8 @@ namespace musicallychallenged.Services
 
         public void Dispose()
         {
-
+            foreach (var subscription in _subscriptions)
+                subscription.Dispose();
         }
     }
 }
