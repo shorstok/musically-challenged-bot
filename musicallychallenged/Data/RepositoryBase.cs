@@ -335,7 +335,7 @@ namespace musicallychallenged.Data
             public int Sum { get; set; }
         }
 
-        public IEnumerable<TaskSuggestion> CloseNextRoundTaskPoll()
+        public IEnumerable<TaskSuggestion> CloseNextRoundTaskPollAndConsolidateVotes()
         {
             var result = new List<TaskSuggestion>();
 

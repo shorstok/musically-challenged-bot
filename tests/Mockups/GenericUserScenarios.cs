@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using Autofac;
 using log4net;
 using musicallychallenged.Commands;
 using musicallychallenged.Config;
@@ -270,13 +271,13 @@ namespace tests.Mockups
             var targetVotingMessage =
                 _messageMediator.GetMockMessage(entries[0].ContainerChatId, entries[0].ContainerMesssageId);
 
-
+            var votingController = compartment.Container.Resolve<VotingController>();
             for (var nuser = 0; nuser < voterCount; nuser++)
             {
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    var maxVoteValue = VotingController._votingSmiles.Max(x => x.Key);
-                    var maxVoteSmile = VotingController._votingSmiles[maxVoteValue];
+                    var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
+                    var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
                     var button = targetVotingMessage.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                         FirstOrDefault(b => b.Text == maxVoteSmile);
 
@@ -431,16 +432,10 @@ namespace tests.Mockups
                     var votingMessage =
                         _messageMediator.GetMockMessage(suggestion.ContainerChatId, suggestion.ContainerMesssageId);
 
-                    var smilies = NextRoundTaskPollVotingController._votingSmiles.OrderBy(x => x.Key).Select(p => p.Value);
                     var replyButtons = votingMessage.ReplyMarkup?.InlineKeyboard?.SelectMany(buttons => buttons);
                     Assert.That(replyButtons?.Count(),
-                        Is.EqualTo(smilies.Count()),
+                        Is.EqualTo(3),
                         $"Didnt create three voting buttons for entry {suggestion.Id}");
-
-                    var zipped = smilies.Zip(replyButtons, (s, b) => (s, b.Text));
-
-                    Assert.That(zipped.All(z => z.s == z.Text), Is.True, 
-                        "smilies in the NextRoundTaskPollVotingController and reply buttons are different");
                 }
             }).ScenarioTask;
 
@@ -453,13 +448,11 @@ namespace tests.Mockups
             {
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    var maxVoteValue = NextRoundTaskPollVotingController._votingSmiles.Max(x => x.Key);
-                    var maxVoteSmile = NextRoundTaskPollVotingController._votingSmiles[maxVoteValue];
                     var button = targetVotingMessage.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
-                        FirstOrDefault(b => b.Text == maxVoteSmile);
+                        FirstOrDefault(b => b.Text == "👍");
 
                     Assert.That(button, Is.Not.Null,
-                        $"Max voting value button (labelled {maxVoteSmile}) not found in reply markup");
+                        $"Max voting value button (labelled 👍) not found in reply markup");
 
                     context.SendQuery(button.CallbackData, targetVotingMessage);
                 }).ScenarioTask;

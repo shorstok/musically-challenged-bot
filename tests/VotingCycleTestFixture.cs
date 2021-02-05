@@ -224,8 +224,8 @@ namespace tests
                 {
                     await compartment.ScenarioController.StartUserScenario(async context =>
                     {
-                        var maxVoteValue = VotingController._votingSmiles.Max(x => x.Key);
-                        var maxVoteSmile = VotingController._votingSmiles[maxVoteValue];
+                        var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
+                        var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
                         var button = votingEntities[1].Item2.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                             FirstOrDefault(b => b.Text == maxVoteSmile);
 

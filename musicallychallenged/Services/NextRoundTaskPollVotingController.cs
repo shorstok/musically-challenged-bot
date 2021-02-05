@@ -7,6 +7,7 @@ using musicallychallenged.Helpers;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
+using NodaTime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,59 +21,43 @@ using User = musicallychallenged.Domain.User;
 
 namespace musicallychallenged.Services
 {
-    public class NextRoundTaskPollVotingController : ITelegramQueryHandler
+    public class NextRoundTaskPollVotingController : VotingControllerBase<TaskSuggestion, TaskPollVote>
     {
-        private readonly IRepository _repository;
-        private readonly IBotConfiguration _botConfiguration;
-        private readonly TimeService _timeService;
-        private readonly LocStrings _loc;
         private readonly NextRoundTaskPollController _pollController;
-        private readonly BroadcastController _broadcastController;
-        private readonly ITelegramClient _client;
-        private readonly VotingControllerHelper<TaskSuggestion, TaskPollVote> _helper;
+
+        private static readonly ILog logger = Log.Get(typeof(NextRoundTaskPollVotingController));
+
+        public override string Prefix { get; } = "nv";
+
+        public override Dictionary<int, string> VotingSmiles { get; } = new Dictionary<int, string>
+        {
+            { -1, "👎"}, {0, "🤷‍"}, {1, "👍"}
+        };
+
+        protected override string _votingStartedTemplate { get; }
+        protected override string _weHaveAWinnerTemplate { get; }
+        protected override string _weHaveWinnersTemplate { get; }
 
         public NextRoundTaskPollVotingController(
-            IRepository repository, 
-            IBotConfiguration botConfiguration, 
-            TimeService timeService, 
-            LocStrings loc, 
-            NextRoundTaskPollController pollController, 
-            BroadcastController broadcastController, 
             ITelegramClient client,
-            VotingControllerHelper<TaskSuggestion, TaskPollVote> helper)
+            IBotConfiguration botConfiguration,
+            IRepository repository,
+            LocStrings loc,
+            CrypticNameResolver crypticNameResolver,
+            BroadcastController broadcastController,
+            NextRoundTaskPollController pollController,
+            TimeService timeService)
+            : base(client, botConfiguration, repository, loc,
+                  crypticNameResolver, broadcastController, timeService)
         {
-            _repository = repository;
-            _botConfiguration = botConfiguration;
-            _timeService = timeService;
-            _loc = loc;
             _pollController = pollController;
-            _broadcastController = broadcastController;
-            _client = client;
-            _helper = helper;
 
-            _helper.SetController(this);
-
-            _helper.ConfigureDbInteraction(
-                SetOrUpdateVote,
-                _repository.GetActiveTaskSuggestions,
-                _repository.GetVotesForTaskSuggestion,
-                _repository.GetExistingTaskSuggestion,
-                () => _timeService.ScheduleNextDeadlineIn(_botConfiguration.TaskSuggestionVotingDeadlineTimeHours),
-                ConsolidateActiveVotes);
-
-            _helper.ConfigureMessageTemplates(
-                _votingSmiles,
-                v => _votingSmiles[v.Value],
-                _pollController.GetTaskSuggestionMessageText,
-                GetVotingStartedMessage,
-                _loc.WeHaveAWinnerTaskSuggestion,
-                _loc.WeHaveWinnersTaskSuggestion);
-
-            _helper.ConfigureVotingFinalization(
-                (u, ts) => _repository.UpdateState(s => s.CurrentTaskTemplate, ts.Description));
+            _votingStartedTemplate = _loc.TaskSuggestionVotingStarted;
+            _weHaveAWinnerTemplate = _loc.WeHaveAWinnerTaskSuggestion;
+            _weHaveWinnersTemplate = _loc.WeHaveWinnersTaskSuggestion;
         }
 
-        public bool? SetOrUpdateVote(User user, int voteVal, int entryId)
+        protected override bool SetOrUpdateVote(User user, int voteVal, int entryId)
         {
             if (_repository.MaybeCreateVoteForAllActiveSuggestionsExcept(user, entryId, 0))
                 logger.Info($"Set default suggestion vote value of 0 for user {user.GetUsernameOrNameWithCircumflex()} for all active entries except {entryId}");
@@ -84,31 +69,10 @@ namespace musicallychallenged.Services
             return updated;
         }
 
-        private static readonly ILog logger = Log.Get(typeof(NextRoundTaskPollVotingController));
-        public string Prefix { get; } = "nv";
-
-        public async Task ExecuteQuery(CallbackQuery callbackQuery) =>
-            await _helper.ExecuteQuery(callbackQuery);
-
-        public async Task StartVotingAsync() =>
-            await _helper.StartVotingAsync();
-
-        private string GetVotingStartedMessage(SystemState state)
-        {
-            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
-
-            return LocTokens.SubstituteTokens(_loc.TaskSuggestionVotingStarted,
-                Tuple.Create(LocTokens.VotingChannelLink, _botConfiguration.VotingChannelInviteLink),
-                Tuple.Create(LocTokens.Deadline, deadlineText));
-        }
-
-        public async Task<Tuple<VotingFinalizationResult, User>> FinalizeVoting() =>
-            await _helper.FinalizeVoting();
-
-        public async Task<List<TaskSuggestion>> ConsolidateActiveVotes()
+        protected override async Task<List<TaskSuggestion>> ConsolidateActiveVotes()
         {
             var activeSuggestions = _repository.
-                CloseNextRoundTaskPoll().
+                CloseNextRoundTaskPollAndConsolidateVotes().
                 OrderByDescending(v => v.ConsolidatedVoteCount ?? 0).
                 ToList();
 
@@ -137,9 +101,28 @@ namespace musicallychallenged.Services
             return activeSuggestions;
         }
 
-        public static readonly Dictionary<int, string> _votingSmiles = new Dictionary<int, string>
+        protected override IEnumerable<TaskSuggestion> GetActiveEntries() =>
+            _repository.GetActiveTaskSuggestions();
+
+        protected override IEnumerable<Tuple<TaskPollVote, User>> GetVotesForEntry(int entryId) =>
+            _repository.GetVotesForTaskSuggestion(entryId);
+
+        protected override TaskSuggestion GetExistingEntry(int entryId) =>
+            _repository.GetExistingTaskSuggestion(entryId);
+
+        protected override Instant ScheduleNextDeadline() =>
+            _timeService.ScheduleNextDeadlineIn(_botConfiguration.TaskSuggestionVotingDeadlineTimeHours);
+
+        protected override string GetVoteDescriptionRealVotes(TaskPollVote vote) =>
+            VotingSmiles[vote.Value];
+
+        protected override string GetEntryText(User user, string votingDetails, string extra) =>
+            _pollController.GetTaskSuggestionMessageText(user, votingDetails, extra);
+
+        protected override Task _onWinnerChosen(User winner, TaskSuggestion winningEntry)
         {
-            { -1, "👎"}, {0, "🤷‍"}, {1, "👍"}
-        };
+            _repository.UpdateState(s => s.CurrentTaskTemplate, winningEntry.Description);
+            return Task.Run(() => { });
+        }
     }
 }

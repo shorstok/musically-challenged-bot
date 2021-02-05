@@ -57,7 +57,7 @@ namespace musicallychallenged.Data
 
         NextRoundTaskPoll GetOpenNextRoundTaskPoll();
         void CreateNextRoundTaskPoll();
-        IEnumerable<TaskSuggestion> CloseNextRoundTaskPoll();
+        IEnumerable<TaskSuggestion> CloseNextRoundTaskPollAndConsolidateVotes();
         void CreateOrUpdateTaskSuggestion(User author, string description, long containerChatId,
             int containerMessageId, out TaskSuggestion previous);
         IEnumerable<TaskSuggestion> GetActiveTaskSuggestions();

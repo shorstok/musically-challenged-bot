@@ -193,7 +193,7 @@ namespace tests
                 Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby),
                     Is.True, "Failed to switch to Standby on not enough contesters");
 
-                var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPoll();
+                var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
                 Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
                     "Non-consolidated suggestions were left after switching to standby");
             }
@@ -219,7 +219,7 @@ namespace tests
                 Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby),
                     Is.True, "Failed to switch to Standby on not enough votes");
 
-                var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPoll();
+                var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
                 Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
                     "Non-consolidated suggestions were left after switching to standby");
             }

@@ -495,6 +495,8 @@ namespace musicallychallenged.Services
                 _transitionSemaphoreSlim.Release();
             }
 
+            logger.Info($"Finished voting finalization. Result: {result.Item1}");
+
             switch (result.Item1)
             {
                 case VotingFinalizationResult.Ok:

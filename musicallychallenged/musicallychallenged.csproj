@@ -297,7 +297,7 @@
     <Compile Include="Services\Telegram\DialogManager.cs" />
     <Compile Include="Services\Telegram\TelegramClient.cs" />
     <Compile Include="Services\TimeService.cs" />
-    <Compile Include="Services\VotingControllerHelper.cs" />
+    <Compile Include="Services\VotingControllerBase.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

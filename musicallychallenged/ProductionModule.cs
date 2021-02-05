@@ -49,8 +49,8 @@ namespace musicallychallenged
             builder.RegisterType<SqliteRepository>().As<IRepository>().SingleInstance();
             builder.RegisterType<TelegramClient>().As<ITelegramClient>().SingleInstance();
 
-            builder.RegisterType<VotingControllerHelper<ActiveContestEntry, Vote>>().SingleInstance();
-            builder.RegisterType<VotingControllerHelper<TaskSuggestion, TaskPollVote>>().SingleInstance();
+            // builder.RegisterType<VotingControllerHelper<ActiveContestEntry, Vote>>().SingleInstance();
+            // builder.RegisterType<VotingControllerHelper<TaskSuggestion, TaskPollVote>>().SingleInstance();
             
             //Register all telegram command handlers
 

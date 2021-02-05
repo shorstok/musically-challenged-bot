@@ -71,7 +71,7 @@ namespace musicallychallenged.Services
 
         public void HaltTaskPoll()
         {
-            _repository.CloseNextRoundTaskPoll();
+            _repository.CloseNextRoundTaskPollAndConsolidateVotes();
         }
 
         public string GetTaskSuggestionMessageText(User user, string voteDetails, string description)

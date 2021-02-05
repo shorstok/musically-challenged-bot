@@ -14,6 +14,7 @@ using musicallychallenged.Helpers;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
+using NodaTime;
 using NUnit.Framework.Internal.Commands;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
@@ -23,75 +24,43 @@ using User = musicallychallenged.Domain.User;
 
 namespace musicallychallenged.Services
 {
-    public class VotingController : ITelegramQueryHandler
+    public class VotingController : VotingControllerBase<ActiveContestEntry, Vote>
     {
         private static readonly ILog logger = Log.Get(typeof(VotingController));
 
-        private readonly IRepository _repository;
-        private readonly IBotConfiguration _botConfiguration;
-        private readonly TimeService _timeService;
-        private readonly LocStrings _loc;
-        private readonly CrypticNameResolver _crypticNameResolver;
         private readonly ContestController _contestController;
-        private readonly BroadcastController _broadcastController;
-        private readonly ITelegramClient _client;
-        private readonly VotingControllerHelper<ActiveContestEntry, Vote> _helper;
 
-        public string Prefix { get; } = "v";
+        public override string Prefix { get; } = "v";
 
-        public VotingController(IRepository repository,
+        public override Dictionary<int, string> VotingSmiles { get; } = new Dictionary<int, string>
+        {
+            { 1, "🌑" }, {2, "🌘" }, {3, "🌗" }, {4, "🌖" }, {5, "🌕" }
+        };
+
+        protected override string _votingStartedTemplate { get; }
+        protected override string _weHaveAWinnerTemplate { get; }
+        protected override string _weHaveWinnersTemplate { get; }
+
+        public VotingController(
+            ITelegramClient client,
             IBotConfiguration botConfiguration,
-            TimeService timeService,
+            IRepository repository,
             LocStrings loc,
             CrypticNameResolver crypticNameResolver,
-            ContestController contestController,
             BroadcastController broadcastController,
-            ITelegramClient client,
-            VotingControllerHelper<ActiveContestEntry, Vote> helper)
+            ContestController contestController,
+            TimeService timeService) 
+            : base(client, botConfiguration, repository, loc, 
+                  crypticNameResolver, broadcastController, timeService)
         {
-            _repository = repository;
-            _botConfiguration = botConfiguration;
-            _timeService = timeService;
-            _loc = loc;
-            _crypticNameResolver = crypticNameResolver;
             _contestController = contestController;
-            _broadcastController = broadcastController;
-            _client = client;
-            _helper = helper;
 
-            _helper.SetController(this);
-
-            _helper.ConfigureDbInteraction(
-                SetOrUpdateVote, 
-                _repository.GetActiveContestEntries,
-                _repository.GetVotesForEntry,
-                _repository.GetExistingEntry,
-                () => _timeService.ScheduleNextDeadlineIn(
-                    _repository.GetOrCreateCurrentState().VotingDurationDays ?? 2, 22),
-                ConsolidateActiveVotes);
-
-            _helper.ConfigureMessageTemplates(
-                _votingSmiles,
-                v => string.Join("", Enumerable.Repeat(_votingSmiles[v.Value], v.Value)),
-                _contestController.GetContestEntryText,
-                GetVotingStartedMessage,
-                _loc.WeHaveAWinner,
-                _loc.WeHaveWinners);
-
-            _helper.ConfigureVotingFinalization(
-                OnWinnerChosen,
-                () => {
-                    var state = _repository.GetOrCreateCurrentState();
-                    _repository.UpdateState(x => x.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);
-                    logger.Info($"Challenge round number set to {state.CurrentChallengeRoundNumber}");
-                }, entries => {
-                    var state = _repository.GetOrCreateCurrentState();
-                    entries.RemoveAll(e => e.AuthorUserId == state.CurrentWinnerId);
-                    return entries;
-                });
+            _votingStartedTemplate = _loc.VotingStarted;
+            _weHaveAWinnerTemplate = _loc.WeHaveAWinner;
+            _weHaveWinnersTemplate = _loc.WeHaveWinners;
         }
 
-        public bool? SetOrUpdateVote(User user, int voteVal, int entryId)
+        protected override bool SetOrUpdateVote(User user, int voteVal, int entryId)
         {
             var defaultVoteValue = GetDefaultVoteForUser(user);
 
@@ -105,66 +74,11 @@ namespace musicallychallenged.Services
             return updated;
         }
 
-        public async Task ExecuteQuery(CallbackQuery callbackQuery) =>
-            await _helper.ExecuteQuery(callbackQuery);
-
-        /// <summary>
-        /// Create voting controls in voting channel, announce about voting start
-        /// </summary>
-        /// <returns></returns>
-        public async Task StartVotingAsync() =>
-            await _helper.StartVotingAsync();
-
-        public async Task<Tuple<VotingFinalizationResult, User>> FinalizeVoting() =>
-            await _helper.FinalizeVoting();
-
         public int GetDefaultVoteForUser(User user)
         {
             double? average = _repository.GetAverageVoteForUser(user);
 
             return (int)Math.Round(average ?? _botConfiguration.MinVoteValue * 0.5 + _botConfiguration.MaxVoteValue * 0.5);
-        }
-
-        // voteValue -> emoji
-        public static readonly Dictionary<int, string> _votingSmiles = new Dictionary<int, string>
-        {
-            { 1, "🌑" }, {2, "🌘" }, {3, "🌗" }, {4, "🌖" }, {5, "🌕" }
-        };
-
-        /// <summary>
-        /// Calculate votes sum for active votes
-        /// </summary>
-        /// <returns></returns>
-        public async Task<List<ActiveContestEntry>> ConsolidateActiveVotes()
-        {
-            var activeEntries = _repository.
-                ConsolidateVotesForActiveEntriesGetAffected().
-                OrderByDescending(v => v.ConsolidatedVoteCount ?? 0).
-                ToList();
-
-            //Remove voting controls from messages
-
-            var votingResults = new StringBuilder();
-
-            foreach (var entry in activeEntries)
-            {
-                await _client.EditMessageReplyMarkupAsync(
-                    entry.ContainerChatId,
-                    entry.ContainerMesssageId,
-                    replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0]));
-
-                var user = _repository.GetExistingUserWithTgId(entry.AuthorUserId);
-
-                if (null == user)
-                    continue;
-
-                votingResults.AppendLine($"{user.GetHtmlUserLink()} : {entry.ConsolidatedVoteCount ?? 0}");
-            }
-
-            await _broadcastController.AnnounceInMainChannel(_loc.VotigResultsTemplate, false,
-                Tuple.Create(LocTokens.Users, votingResults.ToString()));
-
-            return activeEntries;
         }
 
         /// <summary>
@@ -176,40 +90,6 @@ namespace musicallychallenged.Services
         {
             //todo : warn probable winners
             return Task.CompletedTask;
-        }
-
-        private string GetVotingStartedMessage(SystemState state)
-        {
-            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
-
-            return LocTokens.SubstituteTokens(_loc.VotingStarted,
-                Tuple.Create(LocTokens.VotingChannelLink, _botConfiguration.VotingChannelInviteLink),
-                Tuple.Create(LocTokens.Deadline, deadlineText));
-        }
-
-        private async void OnWinnerChosen(User winner, ActiveContestEntry winningEntry)
-        {
-            //forward winner's entry to main channel
-            var state = _repository.GetOrCreateCurrentState();
-
-            try
-            {
-                if (state.MainChannelId != null)
-                    await _client.ForwardMessageAsync(state.MainChannelId.Value, winningEntry.ContainerChatId,
-                        winningEntry.ForwardedPayloadMessageId);
-                else
-                    logger.Warn(
-                        $"{nameof(SystemState)}.{nameof(SystemState.MainChannelId)} not set (null), skipped winning entry forward");
-
-            }
-            catch (BadRequestException e)
-            {
-                logger.Warn($"Got {e.GetType().Name} when trying to forward message ({e.Message})");
-            }
-
-            //persist winner Id
-
-            _repository.UpdateState(s => s.CurrentWinnerId, winner.Id);
         }
 
         public async Task UpdateCurrentTaskMessage()
@@ -243,6 +123,97 @@ namespace musicallychallenged.Services
             {
                 logger.Error($"UpdateCurrentTaskMessage:EditMessageTextAsync exception", e);
             }
+        }
+
+        protected override IEnumerable<ActiveContestEntry> GetActiveEntries() =>
+            _repository.GetActiveContestEntries();
+
+        protected override IEnumerable<Tuple<Vote, User>> GetVotesForEntry(int entryId) =>
+            _repository.GetVotesForEntry(entryId);
+
+        protected override ActiveContestEntry GetExistingEntry(int entryId) =>
+            _repository.GetExistingEntry(entryId);
+
+        protected override Instant ScheduleNextDeadline() =>
+            _timeService.ScheduleNextDeadlineIn(_repository.GetOrCreateCurrentState().VotingDurationDays ?? 2, 22);
+
+        protected async override Task<List<ActiveContestEntry>> ConsolidateActiveVotes()
+        {
+            var activeEntries = _repository.
+                ConsolidateVotesForActiveEntriesGetAffected().
+                OrderByDescending(v => v.ConsolidatedVoteCount ?? 0).
+                ToList();
+
+            //Remove voting controls from messages
+
+            var votingResults = new StringBuilder();
+
+            foreach (var entry in activeEntries)
+            {
+                await _client.EditMessageReplyMarkupAsync(
+                    entry.ContainerChatId,
+                    entry.ContainerMesssageId,
+                    replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0]));
+
+                var user = _repository.GetExistingUserWithTgId(entry.AuthorUserId);
+
+                if (null == user)
+                    continue;
+
+                votingResults.AppendLine($"{user.GetHtmlUserLink()} : {entry.ConsolidatedVoteCount ?? 0}");
+            }
+
+            await _broadcastController.AnnounceInMainChannel(_loc.VotigResultsTemplate, false,
+                Tuple.Create(LocTokens.Users, votingResults.ToString()));
+
+            return activeEntries;
+        }
+
+        protected override string GetVoteDescriptionRealVotes(Vote vote) =>
+            string.Join("", Enumerable.Repeat(VotingSmiles[vote.Value], vote.Value));
+
+        protected override string GetEntryText(User user, string votingDetails, string extra) =>
+            _contestController.GetContestEntryText(user, votingDetails, extra);
+
+        protected async override Task _onWinnerChosen(User winner, ActiveContestEntry winningEntry)
+        {
+            //forward winner's entry to main channel
+            var state = _repository.GetOrCreateCurrentState();
+
+            try
+            {
+                if (state.MainChannelId != null)
+                    await _client.ForwardMessageAsync(state.MainChannelId.Value, winningEntry.ContainerChatId,
+                        winningEntry.ForwardedPayloadMessageId);
+                else
+                    logger.Warn(
+                        $"{nameof(SystemState)}.{nameof(SystemState.MainChannelId)} not set (null), skipped winning entry forward");
+
+            }
+            catch (BadRequestException e)
+            {
+                logger.Warn($"Got {e.GetType().Name} when trying to forward message ({e.Message})");
+            }
+
+            //persist winner Id
+
+            _repository.UpdateState(s => s.CurrentWinnerId, winner.Id);
+        }
+
+        protected override Task _onEnteredFinalization()
+        {
+            var state = _repository.GetOrCreateCurrentState();
+            _repository.UpdateState(x => x.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);
+            logger.Info($"Challenge round number set to {state.CurrentChallengeRoundNumber}");
+
+            return Task.Run(() => { });
+        }
+
+        protected override List<ActiveContestEntry> _filterConsolidatedEntriesIfEnoughContester(List<ActiveContestEntry> entries)
+        {
+            var state = _repository.GetOrCreateCurrentState();
+            entries.RemoveAll(e => e.AuthorUserId == state.CurrentWinnerId);
+            return entries;
         }
     }
 }
