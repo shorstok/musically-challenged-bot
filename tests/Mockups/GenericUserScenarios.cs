@@ -346,19 +346,9 @@ namespace tests.Mockups
             var answer = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
             Assert.That(answer?.Text, Contains.Substring(
-                context.Localization.TaskSuggestCommandHandler_SubmitGuidelines),
+                LocTokens.SubstituteTokens(context.Localization.TaskSuggestCommandHandler_SubmitGuidelines,
+                Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink))),
                 "/tasksuggest command response should contain general submit pretext");
-
-            var existingSuggestions = _repository.GetActiveTaskSuggestions().OrderBy(s => s.Timestamp).ToArray();
-            for (int i = 0; i < existingSuggestions.Length; i++)
-            {
-                var forwardedSuggestion = await context.ReadTillMessageForwardedEvent(
-                    mock => mock.ChatId.Identifier == context.PrivateChat.Id);
-
-                Assert.That(forwardedSuggestion, Is.Not.Null, "Did not forward a message containing an existing suggestion");
-                Assert.That(forwardedSuggestion.Text, Contains.Substring(existingSuggestions[i].Description),
-                    "Forwarded suggestion message didn't contain an appropriate suggestion");
-            }
 
             var fakeSuggestion = $"Suggestion from user {context.MockUser.Id}";
 

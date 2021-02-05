@@ -130,7 +130,8 @@ namespace tests
                     
                     var guidelineMessage = await context.ReadTillMessageReceived(context.PrivateChat.Id);
                     Assert.That(guidelineMessage?.Text, Contains.Substring(
-                        context.Localization.TaskSuggestCommandHandler_SubmitGuidelines),
+                        LocTokens.SubstituteTokens(context.Localization.TaskSuggestCommandHandler_SubmitGuidelines,
+                        Tuple.Create(LocTokens.VotingChannelLink, MockConfiguration.Snapshot.VotingChannelInviteLink))),
                         "/tasksuggest command response should contain general submit pretext");
 
                     context.SendMessage(initialSuggestion, context.PrivateChat);
@@ -145,7 +146,8 @@ namespace tests
 
                     guidelineMessage = await context.ReadTillMessageReceived(context.PrivateChat.Id);
                     Assert.That(guidelineMessage?.Text, Contains.Substring(
-                        context.Localization.TaskSuggestCommandHandler_SubmitGuidelines),
+                        LocTokens.SubstituteTokens(context.Localization.TaskSuggestCommandHandler_SubmitGuidelines,
+                        Tuple.Create(LocTokens.VotingChannelLink, MockConfiguration.Snapshot.VotingChannelInviteLink))),
                         "/tasksuggest command response should contain general submit pretext");
 
                     context.SendMessage(updatedSuggestion, context.PrivateChat);

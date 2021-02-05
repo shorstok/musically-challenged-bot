@@ -63,21 +63,8 @@ namespace musicallychallenged.Commands
 
             // send the guidelines
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                _loc.TaskSuggestCommandHandler_SubmitGuidelines);
-
-            // forward all existing suggestions
-            var suggestions = _repository.GetActiveTaskSuggestions()
-                .OrderBy(s => s.Timestamp)
-                .Select(s => (s.ContainerChatId, s.ContainerMesssageId, s.AuthorUserId));
-
-            foreach (var (chat, message, author) in suggestions)
-            {
-                var msg = await _client.ForwardMessageAsync(dialog.ChatId, chat, message);
-                if (msg == null)
-                    logger.Warn($"Could not forward a task suggestion from user " +
-                        $"{_repository.GetExistingUserWithTgId(author).GetUsernameOrNameWithCircumflex()} " +
-                        $"to private chat with {user.GetUsernameOrNameWithCircumflex()}");
-            }
+                LocTokens.SubstituteTokens(_loc.TaskSuggestCommandHandler_SubmitGuidelines,
+                Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)));
 
             // get a suggestion message
             var response = await dialog.GetMessageInThreadAsync(
