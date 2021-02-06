@@ -60,6 +60,7 @@ namespace musicallychallenged.Services
             TaskApproved,
             InitiatedNextRoundTaskPoll,
             TaskSelectedByPoll,
+            TaskSelectedByFallthrough,
         }
 
         private SemaphoreSlim _transitionSemaphoreSlim = new SemaphoreSlim(1, 1);
@@ -204,6 +205,7 @@ namespace musicallychallenged.Services
                 .OnActivate(OnTaskSuggestionVotingActivated)
                 .OnEntry(EnteredTaskSuggestionVoting)
                 .Permit(Trigger.DeadlineHit, ContestState.FinalizingNextRoundTaskPollVoting)
+                .Permit(Trigger.TaskSelectedByFallthrough, ContestState.Contest)
                 .Permit(Trigger.NotEnoughContesters, ContestState.Standby);
 
             //State: FinalizingNextRoundTaskPollVoting
@@ -579,17 +581,16 @@ namespace musicallychallenged.Services
 
         private async void EnteredTaskSuggestionVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
-            var activeSuggestion = _repository.GetActiveTaskSuggestions();
+            var activeSuggestion = _repository.GetActiveTaskSuggestions().ToArray();
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
 
             try
             {
-                if (activeSuggestion.Count() < _configuration.MinAllowedContestEntriesToStartVoting)
+                if (!activeSuggestion.Any())
                 {
                     logger.Warn(
-                        $"GetActiveTaskSuggestion found {activeSuggestion.Count()} active suggestions; " +
-                        $"expecting at least {_configuration.MinAllowedContestEntriesToStartVoting}, announcing and switching to standby");
+                        $"GetActiveTaskSuggestion found 0 active suggestions; announcing and switching to standby");
 
                     _nextRoundTaskPollController.HaltTaskPoll();
 
@@ -602,8 +603,39 @@ namespace musicallychallenged.Services
                     _stateMachine.Fire(Trigger.NotEnoughContesters);
                     return;
                 }
+                else if (activeSuggestion.Length == 1)
+                {
+                    //Special case - only one task suggested.
+                    //In this case, we skipp voting phase and using this one as a winner
 
-                await _nextRoundTaskPollVotingController.StartVotingAsync();
+                    logger.Info($"Task Collection phase yielded only single entry, so no sense in full voting - " +
+                                $"executing fallthrough now and finalizing fake voting already");
+
+                    var result = await _nextRoundTaskPollVotingController.FinalizeVoting();
+
+                    if (result.Item1 != VotingFinalizationResult.Ok)
+                    {
+                        logger.Warn($"Something went wrong with fallthrough voting, expected Ok but got {result.Item1}. " +
+                                    $"Switching to Standby just in case");
+                        
+                        _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby);
+                        return;
+                    }
+
+                    //This should switch us to Context state
+                    _stateMachine.Fire(Trigger.TaskSelectedByFallthrough);
+
+                    return;
+                }
+                else
+                {
+                    //We have task suggestions and we have to vote for them.
+                    //This is general case
+
+                    await _nextRoundTaskPollVotingController.StartVotingAsync();
+                }
+
+
             }
             finally
             {

@@ -33,19 +33,22 @@ namespace musicallychallenged.Services
     public abstract class VotingControllerBase<TVotable, TVote> : ITelegramQueryHandler
         where TVotable : IVotable where TVote : IVote
     {
-        protected readonly ITelegramClient _client;
-        protected readonly IBotConfiguration _botConfiguration;
-        protected readonly IRepository _repository;
-        protected readonly LocStrings _loc;
-        protected readonly CrypticNameResolver _crypticNameResolver;
-        protected readonly BroadcastController _broadcastController;
-        protected readonly TimeService _timeService;
-
         private static readonly ILog logger = Log.Get(typeof(VotingControllerBase<TVotable, TVote>));
-        readonly Random _random = new Random();
-        private Throttle _votingStatsUpdateThrottle = new Throttle(TimeSpan.FromSeconds(20));
 
-        public VotingControllerBase(
+        protected ITelegramClient Client { get; }
+        protected IBotConfiguration Configuration { get; }
+        protected IRepository Repository { get; }
+        protected LocStrings Loc { get; }
+        protected CrypticNameResolver NameResolver { get; }
+        protected BroadcastController Controller { get; }
+        protected TimeService Service { get; }
+
+        protected bool ShowRealVotesAndVoters { get; set; } = false;
+
+        private readonly Random _random = new Random();
+        private readonly Throttle _votingStatsUpdateThrottle = new Throttle(TimeSpan.FromSeconds(20));
+
+        protected VotingControllerBase(
             ITelegramClient client,
             IBotConfiguration botConfiguration,
             IRepository repository,
@@ -54,23 +57,23 @@ namespace musicallychallenged.Services
             BroadcastController broadcastController,
             TimeService timeService)
         {
-            _client = client;
-            _botConfiguration = botConfiguration;
-            _repository = repository;
-            _loc = loc;
-            _crypticNameResolver = crypticNameResolver;
-            _broadcastController = broadcastController;
-            _timeService = timeService;
+            Client = client;
+            Configuration = botConfiguration;
+            Repository = repository;
+            Loc = loc;
+            NameResolver = crypticNameResolver;
+            Controller = broadcastController;
+            Service = timeService;
         }
 
         public abstract string Prefix { get; }
 
         public abstract Dictionary<int, string> VotingSmiles { get; }
+
         protected abstract string _weHaveAWinnerTemplate { get; }
         protected abstract string _weHaveWinnersTemplate { get; }
         protected abstract string _votingStartedTemplate { get; }
 
-        // things controllers need to set up. The default values are essentially doNothing functions
         // db interactions
         protected abstract bool SetOrUpdateVote(User user, int voteVal, int entryId);
         protected abstract IEnumerable<TVotable> GetActiveEntries();
@@ -83,23 +86,24 @@ namespace musicallychallenged.Services
         protected abstract string GetVoteDescriptionRealVotes(TVote vote);
         protected abstract string GetEntryText(User user, string votingDetails, string extra);
 
-
         // finalizing voting
-        protected virtual async Task OnEnteredFinalization() =>
-            Task.Run(() => { });
+        protected virtual Task OnEnteredFinalization() =>
+            Task.CompletedTask;
+
         protected virtual List<TVotable> _filterConsolidatedEntriesIfEnoughContester(List<TVotable> entries) =>
             entries;
+
         protected abstract Task OnWinnerChosen(User winner, TVotable winningEntry);
 
         public async Task ExecuteQuery(CallbackQuery callbackQuery)
         {
             var data = CommandManager.ExtractQueryData(this, callbackQuery);
 
-            var user = _repository.CreateOrGetUserByTgIdentity(callbackQuery.From);
+            var user = Repository.CreateOrGetUserByTgIdentity(callbackQuery.From);
 
             if (user.State == UserState.Banned)
             {
-                await _client.AnswerCallbackQueryAsync(callbackQuery.Id, _loc.YouAreBanned, true);
+                await Client.AnswerCallbackQueryAsync(callbackQuery.Id, Loc.YouAreBanned, true);
                 return;
             }
 
@@ -107,7 +111,7 @@ namespace musicallychallenged.Services
             {
                 logger.Error($"Invalid voting data: {data}, parsing failed");
 
-                await _client.AnswerCallbackQueryAsync(callbackQuery.Id, _loc.NotAvailable, true);
+                await Client.AnswerCallbackQueryAsync(callbackQuery.Id, Loc.NotAvailable, true);
                 return;
             }
 
@@ -115,24 +119,27 @@ namespace musicallychallenged.Services
 
             var updated = SetOrUpdateVote(user, voteVal, entryId);
 
-            await _client.AnswerCallbackQueryAsync(callbackQuery.Id,
-                LocTokens.SubstituteTokens(updated ? _loc.VoteUpdated : _loc.ThankYouForVote,
+            await Client.AnswerCallbackQueryAsync(callbackQuery.Id,
+                LocTokens.SubstituteTokens(updated ? Loc.VoteUpdated : Loc.ThankYouForVote,
                     Tuple.Create(LocTokens.VoteCount, voteVal.ToString()),
-                    Tuple.Create(LocTokens.User, _crypticNameResolver.GetCrypticNameFor(user))
+                    Tuple.Create(LocTokens.User, NameResolver.GetCrypticNameFor(user))
                     ), updated);
 
-            _votingStatsUpdateThrottle.WaitAsync(() => UpdateAllVotesThrottled(false), CancellationToken.None).ConfigureAwait(false);
+            //Fire and forget updater task
+            var _ = _votingStatsUpdateThrottle.WaitAsync(
+                UpdateAllVotesThrottled,
+                CancellationToken.None);
         }
 
-        private async Task UpdateAllVotesThrottled(bool showRealVotes = false)
+        private async Task UpdateAllVotesThrottled()
         {
-            await UpdateVotingStats(showRealVotes);
-            await MaybePingAllEntries(showRealVotes);
+            await UpdateVotingStats(ShowRealVotesAndVoters);
+            await MaybePingAllEntries(ShowRealVotesAndVoters);
         }
 
         private async Task UpdateVotingStats(bool showRealVotes)
         {
-            var state = _repository.GetOrCreateCurrentState();
+            var state = Repository.GetOrCreateCurrentState();
 
             if (null == state.CurrentVotingStatsMessageId || null == state.VotingChannelId)
                 return;
@@ -141,14 +148,14 @@ namespace musicallychallenged.Services
 
             var builder = new StringBuilder();
 
-            builder.Append(_loc.VotingStatsHeader);
+            builder.Append(Loc.VotingStatsHeader);
 
             var usersAndVoteCount = new Dictionary<User, int>();
 
             foreach (var entry in activeEntries)
             {
                 var votes = GetVotesForEntry(entry.Id).ToArray();
-                var entryAuthor = _repository.GetExistingUserWithTgId(entry.AuthorUserId);
+                var entryAuthor = Repository.GetExistingUserWithTgId(entry.AuthorUserId);
 
                 if (votes.Length == 0)
                     usersAndVoteCount[entryAuthor] = 0;
@@ -195,7 +202,7 @@ namespace musicallychallenged.Services
                 builder.AppendLine("Votes hidden 😏");
             }
 
-            await _client.EditMessageTextAsync(state.VotingChannelId.Value, state.CurrentVotingStatsMessageId.Value,
+            await Client.EditMessageTextAsync(state.VotingChannelId.Value, state.CurrentVotingStatsMessageId.Value,
                 builder.ToString(), ParseMode.Html);
         }
 
@@ -222,7 +229,7 @@ namespace musicallychallenged.Services
                 return;
             }
 
-            var author = _repository.GetExistingUserWithTgId(entry.AuthorUserId);
+            var author = Repository.GetExistingUserWithTgId(entry.AuthorUserId);
 
             if (null == author)
             {
@@ -241,12 +248,12 @@ namespace musicallychallenged.Services
                     string voteDescr = GetVoteDescriptionRealVotes(tuple.Item1);
 
                     builder.AppendLine(showRealVotes
-                        ? $"<code>{_crypticNameResolver.GetCrypticNameFor(tuple.Item2)}</code>: <b>{voteDescr}</b>"
+                        ? $"<code>{NameResolver.GetCrypticNameFor(tuple.Item2)}</code>: <b>{voteDescr}</b>"
                         : $"{tuple.Item2?.GetHtmlUserLink() ?? "??"}: <b>😏</b>");
                 }
             }
 
-            await _client.EditMessageTextAsync(entry.ContainerChatId, entry.ContainerMesssageId,
+            await Client.EditMessageTextAsync(entry.ContainerChatId, entry.ContainerMesssageId,
                 GetEntryText(author, builder.ToString(), entry.Description),
                 ParseMode.Html,
                 replyMarkup: new InlineKeyboardMarkup(CreateVotingButtonsForEntry(entry)));
@@ -260,7 +267,7 @@ namespace musicallychallenged.Services
         {
             var activeEntries = GetActiveEntries();
 
-            _crypticNameResolver.Reset();
+            NameResolver.Reset();
 
             var deadline = ScheduleNextDeadline();
 
@@ -268,20 +275,20 @@ namespace musicallychallenged.Services
                 await CreateVotingControlsForEntry(activeEntry);
 
             //Get new deadline
-            var state = _repository.GetOrCreateCurrentState();
+            var state = Repository.GetOrCreateCurrentState();
 
-            var votingMesasge = await _broadcastController.AnnounceInMainChannel(GetVotingStartedMessage(state), true);
+            var votingMesasge = await Controller.AnnounceInMainChannel(GetVotingStartedMessage(state), true);
 
             if (null != votingMesasge)
-                _repository.UpdateState(x => x.CurrentVotingDeadlineMessageId, votingMesasge.MessageId);
+                Repository.UpdateState(x => x.CurrentVotingDeadlineMessageId, votingMesasge.MessageId);
 
             await CreateVotingStatsMessageAsync();
         }
 
         private async Task CreateVotingStatsMessageAsync()
         {
-            var votingStatsMessage = await _broadcastController.AnnounceInVotingChannel(_loc.VotingStatsHeader, false);
-            _repository.UpdateState(x => x.CurrentVotingStatsMessageId, votingStatsMessage?.MessageId);
+            var votingStatsMessage = await Controller.AnnounceInVotingChannel(Loc.VotingStatsHeader, false);
+            Repository.UpdateState(x => x.CurrentVotingStatsMessageId, votingStatsMessage?.MessageId);
         }
 
         public async Task<Tuple<VotingFinalizationResult, User>> FinalizeVoting()
@@ -298,7 +305,7 @@ namespace musicallychallenged.Services
                 {
                     logger.Warn($"ConsolidateActiveVotes found no active entries, announcing and switching to standby");
 
-                    await _broadcastController.AnnounceInMainChannel(_loc.NotEnoughEntriesAnnouncement,
+                    await Controller.AnnounceInMainChannel(Loc.NotEnoughEntriesAnnouncement,
                         pin: true);
 
                     return Tuple.Create<VotingFinalizationResult, User>(VotingFinalizationResult.NotEnoughContesters, null);
@@ -307,10 +314,11 @@ namespace musicallychallenged.Services
                 if (entries.Count > 2)
                 {
                     logger.Info("filtering consolidated entries");
-                    _filterConsolidatedEntriesIfEnoughContester(entries);
+                    entries = _filterConsolidatedEntriesIfEnoughContester(entries);
                 }
 
-                var winnersGroup = entries.GroupBy(e => e.ConsolidatedVoteCount ?? 0).OrderByDescending(g => g.Key)
+                var winnersGroup = entries.GroupBy(e => e.ConsolidatedVoteCount ?? 0)
+                    .OrderByDescending(g => g.Key)
                     .FirstOrDefault();
 
                 //wtf, not expected
@@ -322,13 +330,14 @@ namespace musicallychallenged.Services
 
                 var voteCount = winnersGroup?.Key ?? 0;
 
-                if (voteCount < _botConfiguration.MinAllowedVoteCountForWinners)
+                if (!IsValidStateToProduceAVotingWinner(voteCount, entries.Count))
                 {
                     logger.Warn(
-                        $"Winners got {winnersGroup?.Key} votes total, that's less than _configuration.MinAllowedVoteCountForWinners ({_botConfiguration.MinAllowedVoteCountForWinners}), " +
+                        $"Winners got {winnersGroup?.Key} votes total, " +
+                        $"that's less than lowest threshold for {this.GetType().Name}.IsValidStateToProduceAVotingWinner, " +
                         $"announcing and switching to standby");
 
-                    await _broadcastController.AnnounceInMainChannel(_loc.NotEnoughVotesAnnouncement, true,
+                    await Controller.AnnounceInMainChannel(Loc.NotEnoughVotesAnnouncement, true,
                         Tuple.Create(LocTokens.VoteCount, voteCount.ToString()));
 
                     return Tuple.Create<VotingFinalizationResult, User>(VotingFinalizationResult.NotEnoughVotes, null);
@@ -340,7 +349,7 @@ namespace musicallychallenged.Services
 
                 foreach (var entry in winnersGroup)
                 {
-                    var user = _repository.GetExistingUserWithTgId(entry.AuthorUserId);
+                    var user = Repository.GetExistingUserWithTgId(entry.AuthorUserId);
 
                     if (user == null)
                     {
@@ -372,7 +381,7 @@ namespace musicallychallenged.Services
                     actualWinner = pair.Value;
                     winningEntry = pair.Key;
 
-                    await _broadcastController.AnnounceInMainChannel(_weHaveAWinnerTemplate, false,
+                    await Controller.AnnounceInMainChannel(_weHaveAWinnerTemplate, false,
                         Tuple.Create(LocTokens.User, actualWinner.GetHtmlUserLink()),
                         Tuple.Create(LocTokens.VoteCount, voteCount.ToString()));
                 }
@@ -388,14 +397,14 @@ namespace musicallychallenged.Services
                     var winnersList = string.Join(", ",
                         winnerDictionary.Values.Select(u => u.GetHtmlUserLink()));
 
-                    await _broadcastController.AnnounceInMainChannel(_weHaveWinnersTemplate, false,
+                    await Controller.AnnounceInMainChannel(_weHaveWinnersTemplate, false,
                         Tuple.Create(LocTokens.User, actualWinner.GetHtmlUserLink()),
                         Tuple.Create(LocTokens.Users, winnersList),
                         Tuple.Create(LocTokens.VoteCount, voteCount.ToString()));
                 }
 
                 //forward winner's entry to main channel
-                var state = _repository.GetOrCreateCurrentState();
+                var state = Repository.GetOrCreateCurrentState();
 
                 await OnWinnerChosen(actualWinner, winningEntry);
 
@@ -408,11 +417,16 @@ namespace musicallychallenged.Services
             }
         }
 
+        /// <summary>
+        ///     Decides whether there are enough entries and votes to proceed with voting result
+        /// </summary>
+        protected abstract bool IsValidStateToProduceAVotingWinner(int voteCount, int entriesCount);
+
         private async Task CreateVotingControlsForEntry(TVotable activeEntry)
         {
             var inlineKeyboardButtons = CreateVotingButtonsForEntry(activeEntry);
 
-            var message = await _client.EditMessageReplyMarkupAsync(activeEntry.ContainerChatId,
+            var message = await Client.EditMessageReplyMarkupAsync(activeEntry.ContainerChatId,
                 activeEntry.ContainerMesssageId, new InlineKeyboardMarkup(inlineKeyboardButtons));
 
             if (null == message)
@@ -465,10 +479,10 @@ namespace musicallychallenged.Services
 
         protected string GetVotingStartedMessage(SystemState state)
         {
-            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
+            var deadlineText = Service.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
 
             return LocTokens.SubstituteTokens(_votingStartedTemplate,
-                Tuple.Create(LocTokens.VotingChannelLink, _botConfiguration.VotingChannelInviteLink),
+                Tuple.Create(LocTokens.VotingChannelLink, Configuration.VotingChannelInviteLink),
                 Tuple.Create(LocTokens.Deadline, deadlineText));
         }
     }

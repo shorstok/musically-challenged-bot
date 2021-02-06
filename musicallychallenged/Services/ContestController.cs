@@ -63,6 +63,9 @@ namespace musicallychallenged.Services
 
         private void OnBotBlocked(BotBlockedEvent obj)
         {
+            if(null == obj.ChatId)
+                return;
+
             _repository.DeleteUserWithPrivateChatId(obj.ChatId?.Identifier);
         }
 
@@ -71,7 +74,9 @@ namespace musicallychallenged.Services
             var deletedEntry = _repository.
                 GetActiveContestEntries().
                 ToArray().
-                FirstOrDefault(e=>e.ContainerMesssageId == obj.MessageId && e.ContainerChatId == obj.ChatId.Identifier);
+                FirstOrDefault(e =>
+                    e.ContainerMesssageId == obj.MessageId && 
+                    e.ContainerChatId == obj.ChatId?.Identifier);
 
             if(null == deletedEntry)
                 return;

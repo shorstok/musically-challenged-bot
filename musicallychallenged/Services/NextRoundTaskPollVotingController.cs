@@ -34,9 +34,9 @@ namespace musicallychallenged.Services
             { -1, "👎"}, {0, "🤷‍"}, {1, "👍"}
         };
 
-        protected override string _votingStartedTemplate { get; }
-        protected override string _weHaveAWinnerTemplate { get; }
-        protected override string _weHaveWinnersTemplate { get; }
+        protected override string _votingStartedTemplate =>Loc.TaskSuggestionVotingStarted;
+        protected override string _weHaveAWinnerTemplate => Loc.WeHaveAWinnerTaskSuggestion;
+        protected override string _weHaveWinnersTemplate => Loc.WeHaveWinnersTaskSuggestion;
 
         public NextRoundTaskPollVotingController(
             ITelegramClient client,
@@ -51,18 +51,14 @@ namespace musicallychallenged.Services
                   crypticNameResolver, broadcastController, timeService)
         {
             _pollController = pollController;
-
-            _votingStartedTemplate = _loc.TaskSuggestionVotingStarted;
-            _weHaveAWinnerTemplate = _loc.WeHaveAWinnerTaskSuggestion;
-            _weHaveWinnersTemplate = _loc.WeHaveWinnersTaskSuggestion;
         }
 
         protected override bool SetOrUpdateVote(User user, int voteVal, int entryId)
         {
-            if (_repository.MaybeCreateVoteForAllActiveSuggestionsExcept(user, entryId, 0))
+            if (Repository.MaybeCreateVoteForAllActiveSuggestionsExcept(user, entryId, 0))
                 logger.Info($"Set default suggestion vote value of 0 for user {user.GetUsernameOrNameWithCircumflex()} for all active entries except {entryId}");
 
-            _repository.SetOrUpdateTaskPollVote(user, entryId, voteVal, out var updated);
+            Repository.SetOrUpdateTaskPollVote(user, entryId, voteVal, out var updated);
 
             logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} {(updated ? "updated vote" : "voted")} {voteVal} for entry {entryId}");
 
@@ -71,7 +67,7 @@ namespace musicallychallenged.Services
 
         protected override async Task<List<TaskSuggestion>> ConsolidateActiveVotes()
         {
-            var activeSuggestions = _repository.
+            var activeSuggestions = Repository.
                 CloseNextRoundTaskPollAndConsolidateVotes().
                 OrderByDescending(v => v.ConsolidatedVoteCount ?? 0).
                 ToList();
@@ -82,12 +78,12 @@ namespace musicallychallenged.Services
 
             foreach (var entry in activeSuggestions)
             {
-                await _client.EditMessageReplyMarkupAsync(
+                await Client.EditMessageReplyMarkupAsync(
                     entry.ContainerChatId,
                     entry.ContainerMesssageId,
                     replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0]));
 
-                var user = _repository.GetExistingUserWithTgId(entry.AuthorUserId);
+                var user = Repository.GetExistingUserWithTgId(entry.AuthorUserId);
 
                 if (null == user)
                     continue;
@@ -95,23 +91,23 @@ namespace musicallychallenged.Services
                 votingResults.AppendLine($"{user.GetHtmlUserLink()} : {entry.ConsolidatedVoteCount ?? 0}");
             }
 
-            await _broadcastController.AnnounceInMainChannel(_loc.VotigResultsTemplate, false,
+            await Controller.AnnounceInMainChannel(Loc.VotigResultsTemplate, false,
                 Tuple.Create(LocTokens.Users, votingResults.ToString()));
 
             return activeSuggestions;
         }
 
         protected override IEnumerable<TaskSuggestion> GetActiveEntries() =>
-            _repository.GetActiveTaskSuggestions();
+            Repository.GetActiveTaskSuggestions();
 
         protected override IEnumerable<Tuple<TaskPollVote, User>> GetVotesForEntry(int entryId) =>
-            _repository.GetVotesForTaskSuggestion(entryId);
+            Repository.GetVotesForTaskSuggestion(entryId);
 
         protected override TaskSuggestion GetExistingEntry(int entryId) =>
-            _repository.GetExistingTaskSuggestion(entryId);
+            Repository.GetExistingTaskSuggestion(entryId);
 
         protected override Instant ScheduleNextDeadline() =>
-            _timeService.ScheduleNextDeadlineIn(_botConfiguration.TaskSuggestionVotingDeadlineTimeHours);
+            Service.ScheduleNextDeadlineIn(Configuration.TaskSuggestionVotingDeadlineTimeHours);
 
         protected override string GetVoteDescriptionRealVotes(TaskPollVote vote) =>
             VotingSmiles[vote.Value];
@@ -121,9 +117,12 @@ namespace musicallychallenged.Services
 
         protected override Task OnWinnerChosen(User winner, TaskSuggestion winningEntry)
         {
-            _repository.UpdateState(s => s.CurrentTaskTemplate, winningEntry.Description);
-            _repository.SetNextRoundTaskPollWinner(winner.Id);
+            Repository.UpdateState(s => s.CurrentTaskTemplate, winningEntry.Description);
+            Repository.SetNextRoundTaskPollWinner(winner.Id);
             return Task.Run(() => { });
         }
+
+        protected override bool IsValidStateToProduceAVotingWinner(int voteCount, int entriesCount) => 
+            voteCount >= Configuration.MinAllowedVoteCountForWinners || entriesCount == 1;
     }
 }

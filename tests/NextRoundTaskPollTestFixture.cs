@@ -73,6 +73,9 @@ namespace tests
                 var state = compartment.Repository.GetOrCreateCurrentState();
                 Assert.That(state.CurrentTaskTemplate, Is.EqualTo(winningSuggestion.Description),
                     $"Started contest with a wrong task: {state.CurrentTaskTemplate} when should be {winningSuggestion.Description}");
+
+                Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
+                    "Active suggestions left in post-taskpoll state");
             }
         }
 
@@ -169,7 +172,35 @@ namespace tests
         }
 
         [Test]
-        public async Task ShouldGoToStandbyIfNotEnoughSuggestions()
+        public async Task ShouldGoToStandbyIfNoTaskSuggestions()
+        {
+            using (var compartment = new TestCompartment())
+            {
+                var clock = compartment.Container.Resolve<IClock>();
+
+                // setting up a TaskSuggestionCollection state
+                compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
+                await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
+
+                //No task suggestions sent before deadline hit
+
+                // ffwd
+                compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
+
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby),
+                    Is.True, "Failed to switch to Standby on not enough contesters");
+
+                var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
+                Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
+                    "Non-consolidated suggestions were left after switching to standby");
+                
+                Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
+                    "Active suggestions left in post-taskpoll state");
+            }
+        }
+        
+        [Test]
+        public async Task ShouldFallthroughVotingIfOneTaskSuggestion()
         {
             using (var compartment = new TestCompartment())
             {
@@ -181,24 +212,34 @@ namespace tests
                 compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
                 await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
 
-                var notEnoughEntriesNum = Math.Max(0, configuration.MinAllowedContestEntriesToStartVoting - 1);
-                for (int i = 0; i < notEnoughEntriesNum; i++)
-                {
-                    await compartment.ScenarioController.StartUserScenario
-                        (compartment.GenericScenarios.TaskSuggesterUserScenario)
-                        .ScenarioTask;
-                }
+                //Send single task suggestion
+
+                await compartment.ScenarioController
+                    .StartUserScenario(compartment.GenericScenarios.TaskSuggesterUserScenario)
+                    .ScenarioTask;
+
+                var singleSuggestion = compartment.Repository.GetActiveTaskSuggestions().Single();
 
                 // ffwd
                 compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby),
-                    Is.True, "Failed to switch to Standby on not enough contesters");
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
+                    Is.True, "Failed to fallthrough to Contest state");
+
+                //Assert
 
                 var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
                 Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
                     "Non-consolidated suggestions were left after switching to standby");
+
+                var state = compartment.Repository.GetOrCreateCurrentState();
+                Assert.That(state.CurrentTaskTemplate, Is.EqualTo(singleSuggestion.Description),
+                    $"Started contest with a wrong task: {state.CurrentTaskTemplate} when should be {singleSuggestion.Description}");
+                                
+                Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
+                    "Active suggestions left in post-taskpoll state");
             }
+
         }
 
         [Test]

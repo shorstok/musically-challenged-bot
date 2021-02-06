@@ -56,9 +56,18 @@ namespace musicallychallenged.Services
 
         private void OnMessageDeleted(MessageDeletedEvent obj)
         {
-            var deletedEntry = _repository.GetActiveTaskSuggestions()
-                .Where(s => s.ContainerMesssageId == obj.MessageId && s.ContainerChatId == obj.ChatId.Identifier)
-                .FirstOrDefault();
+            var state = _repository.GetOrCreateCurrentState();
+
+            //Short-circuit event with (cached) state - if message deleted was not
+            //in voting chat, no need to cross-reference IDs with database
+
+            if (state.VotingChannelId != obj.ChatId?.Identifier)
+                return;
+
+            var deletedEntry = _repository
+                .GetActiveTaskSuggestions()
+                .FirstOrDefault(s => s.ContainerMesssageId == obj.MessageId && 
+                                     s.ContainerChatId == obj.ChatId?.Identifier);
 
             if (deletedEntry == null)
                 return;
@@ -84,7 +93,7 @@ namespace musicallychallenged.Services
 
             var pin = await _broadcastController.AnnounceInMainChannel(LocTokens.SubstituteTokens(
                 _loc.NextRoundTaskPollController_AnnouncementTemplateMainChannel,
-                Tuple.Create(LocTokens.User, previousWinner.GetUsernameOrNameWithCircumflex()),
+                Tuple.Create(LocTokens.User, previousWinner?.GetUsernameOrNameWithCircumflex()??"SOMEBODY"),
                 Tuple.Create(LocTokens.Deadline, deadlineText),
                 Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
                 true);
