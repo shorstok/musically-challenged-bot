@@ -77,10 +77,14 @@ namespace musicallychallenged.Services
             var deadline = _timeService.ScheduleNextDeadlineIn(_configuration.TaskSuggestionCollectionDeadlineTimeHours);
             var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(deadline);
 
+            var previousWinner = state.CurrentWinnerId.HasValue ? 
+                _repository.GetExistingUserWithTgId(state.CurrentWinnerId.Value) : null;
+
             // pin an announcement in the the main channel
 
             var pin = await _broadcastController.AnnounceInMainChannel(LocTokens.SubstituteTokens(
                 _loc.NextRoundTaskPollController_AnnouncementTemplateMainChannel,
+                Tuple.Create(LocTokens.User, previousWinner.GetUsernameOrNameWithCircumflex()),
                 Tuple.Create(LocTokens.Deadline, deadlineText),
                 Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
                 true);

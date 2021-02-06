@@ -141,20 +141,32 @@ namespace musicallychallenged.Localization
 
         public string TaskSuggestCommandHandler_Description { get; set; } = "Отправить свой вариант задания для следующего челенджа";
         public string TaskSuggestCommandHandler_OnlyAvailableInSuggestionCollectionState { get; set; } = "Прием заданий (пока) закрыт. Дождитесь следующего голосования за задание!";
-        public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = $"Отправьте свой вариант задания следующим сообщением (текст от 10 символов).\n\nТакже обратите внимание на то, <a href=\"{LocTokens.VotingChannelLink}\">какие задания уже предложили</a>, чтобы не повторяться";
+        public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = $@"Отправьте свой вариант задания следующим сообщением (текст от 10 символов). Повторное использование команды обновит уже существующее задание.
+
+Обратите внимание на то, <a href=\""{LocTokens.VotingChannelLink}\"">какие задания уже предложили</a>, чтобы не повторяться.";
         public string TaskSuggestCommandHandler_SubmitionFailed { get; set; } = "Сообщение должно содержать текст длиной от 10 символов";
         public string TaskSuggestCommandHandler_SubmitionSucceeded { get; set; } = "Спасибо за участие! Ваше задание было принято";
         
         public string NextRoundTaskPollController_SuggestionTemplate { get; set; } = $"<b>Задание от </b>{LocTokens.User}{Environment.NewLine}{LocTokens.Details}";
 
-        public string NextRoundTaskPollController_AnnouncementTemplateMainChannel { get; set; } = $"Temp main channel template. Deadline: {LocTokens.Deadline}, VotingChannelLink: <a href=\"{LocTokens.VotingChannelLink}\">";
+        public string NextRoundTaskPollController_AnnouncementTemplateMainChannel { get; set; } = 
+            $@"Победитель предыдущего раунда, {LocTokens.User}, решил решил отдать выбор задания комьюнити ПесноПисца.
 
-        public string NextRoundTaskPollController_AnnouncementTemplateVotingChannel { get; set; } = $"Temp voing channel template";
+Процедура будет проходить в два этапа:
+1) Принятие ботом @nsctheorbot заданий от участников с помощью команды /<code>tasksuggest</code> <b>(команда отсылается в *личке* боту)</b>. Приём задание закончится в <b>{LocTokens.Deadline}</b>.
+
+2) Голосование за лучшую работу в <a href=""{LocTokens.VotingChannelLink}"">музыкальном архиве</a>. Оно начнётся сразу после закрытия принятия работ.
+
+Если победивших будет 2 или больше, тот, чье задание будет взято для следующего челленджа определит рандомайзер.
+
+После определения победившей работы, сразу начнётся новый раунд челленджей.";
+
+        public string NextRoundTaskPollController_AnnouncementTemplateVotingChannel { get; set; } = $"🧐 <b>Начался выбор нового задания всем комьюнити!</b> 🧐";
 
         public string TaskSuggestionVotingStarted { get; set; } =
             $"Началось голосование за задание для следующего челенджа в Писце! 🎉 " +
             $"Пожалуйста, пройдите в <a href=\"{LocTokens.VotingChannelLink}\">канал для голосования</a> и проставьте всем честные оценки! " +
-            $"Голосование будет проходить до {LocTokens.Deadline}";
+            $"Голосование будет проходить до <b>{LocTokens.Deadline}</b>";
 
         public string WeHaveAWinnerTaskSuggestion { get; set; } = $@"В голосовании за следующее задание победил {LocTokens.User} ({LocTokens.VoteCount} голосов), в скором времени начнется следующий раунд челенджей...";
         public string WeHaveWinnersTaskSuggestion { get; set; } = $"В голосовании за следующее задание первое место разделили несколько человек: {LocTokens.Users} ({LocTokens.VoteCount} голосов). " +
