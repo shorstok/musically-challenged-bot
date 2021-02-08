@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
+using NUnit.Framework;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -29,8 +32,8 @@ namespace tests.Mockups
             new ConcurrentDictionary<string, int>();
 
 
-
-        public MockTelegramClient(UserScenarioController userScenarioController, MockMessageMediatorService mediatorService)
+        public MockTelegramClient(UserScenarioController userScenarioController,
+            MockMessageMediatorService mediatorService)
         {
             _userScenarioController = userScenarioController;
             _mediatorService = mediatorService;
@@ -81,6 +84,8 @@ namespace tests.Mockups
             bool disableWebPagePreview = false, InlineKeyboardMarkup replyMarkup = null,
             CancellationToken cancellationToken = default)
         {
+            MaybeAssertValidHTML(parseMode, text);
+
             await _userScenarioController.SendMessageToMockUsers(chatId,
                 new MessageEditedMock(chatId, messageId, text, parseMode, disableWebPagePreview, replyMarkup),
                 cancellationToken);
@@ -160,6 +165,8 @@ namespace tests.Mockups
             var id = MockConfiguration.CreateNewMockMessageId();
             Message replyMessage = null;
 
+            MaybeAssertValidHTML(parseMode, text);
+
             if (replyToMessageId != 0)
                 _mockMessages.TryGetValue(Tuple.Create(chatId.Identifier, replyToMessageId), out replyMessage);
 
@@ -208,14 +215,32 @@ namespace tests.Mockups
 
         internal virtual void InvokeOnCallbackQuery(CallbackQueryEventArgs e)
         {
-            _userIdForPendingCallbackQueries.AddOrUpdate(e.CallbackQuery.Id, e.CallbackQuery.From.Id, (s, existing) => e.CallbackQuery.From.Id);
+            _userIdForPendingCallbackQueries.AddOrUpdate(e.CallbackQuery.Id, e.CallbackQuery.From.Id,
+                (s, existing) => e.CallbackQuery.From.Id);
 
             OnCallbackQuery?.Invoke(this, e);
         }
 
         public Message GetMockMessageById(long chatIdIdentifier, int messageSentMessageId)
         {
-            return !_mockMessages.TryGetValue(Tuple.Create(chatIdIdentifier, messageSentMessageId), out var message) ? null : message;
+            return !_mockMessages.TryGetValue(Tuple.Create(chatIdIdentifier, messageSentMessageId), out var message)
+                ? null
+                : message;
+        }
+
+
+        private void MaybeAssertValidHTML(ParseMode parseMode, string text)
+        {
+            if (parseMode == ParseMode.Default)
+                return;
+
+            if (parseMode == ParseMode.Html)
+            {
+                LocalizationTestingHelper.AssertValidTelegramHtml(text);
+            }
+
+            if (parseMode == ParseMode.Markdown)
+                Assert.Fail("We're not using Markdown in this bot, use HTML plz");
         }
     }
 }
