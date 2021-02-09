@@ -9,6 +9,20 @@ using Telegram.Bot.Types;
 
 namespace musicallychallenged.Domain
 {
+    public static class SystemStateExtension
+    {
+        private static readonly ContestState[] _timeBoundStates = new ContestState[]
+        {
+            ContestState.Contest,
+            ContestState.Voting,
+            ContestState.TaskSuggestionCollection,
+            ContestState.TaskSuggestionVoting,
+        };
+
+        public static bool IsTimeBound(this ContestState state) =>
+            _timeBoundStates.Contains(state);
+    }
+
     public enum ContestState : int
     {
         Standby = 0,

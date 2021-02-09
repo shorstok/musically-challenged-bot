@@ -47,7 +47,7 @@ namespace musicallychallenged.Commands
 
             logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} about to ffwd");
 
-            if (state.State != ContestState.Contest  && state.State != ContestState.Voting)
+            if (!state.State.IsTimeBound())
             {
                 logger.Info($"Bot in state {state.State}, denied");
                 await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, $"Allowed only in `Contest/Voting` state, now in `{state.State}`");

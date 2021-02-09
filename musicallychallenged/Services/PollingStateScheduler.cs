@@ -78,7 +78,7 @@ namespace musicallychallenged.Services
 
                 var state = _repository.GetOrCreateCurrentState();
 
-                if (!IsTimeBoundState(state.State))
+                if (state.State.IsTimeBound())
                     continue;
 
                 if (lastState != state.State)
@@ -117,17 +117,6 @@ namespace musicallychallenged.Services
 
             } while (!_stopIssued);
         }
-
-        private static readonly ContestState[] _timeBoundStates = new ContestState[]
-        { 
-            ContestState.Contest,
-            ContestState.Voting,
-            ContestState.TaskSuggestionCollection,
-            ContestState.TaskSuggestionVoting,
-        };
-
-        private bool IsTimeBoundState(ContestState state) =>
-            _timeBoundStates.Contains(state);
 
         private Duration GetPreDeadlineDuration(ContestState state)
         {
