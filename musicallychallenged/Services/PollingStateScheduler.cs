@@ -78,7 +78,7 @@ namespace musicallychallenged.Services
 
                 var state = _repository.GetOrCreateCurrentState();
 
-                if (state.State.IsTimeBound())
+                if (!state.State.IsTimeBound())
                     continue;
 
                 if (lastState != state.State)
