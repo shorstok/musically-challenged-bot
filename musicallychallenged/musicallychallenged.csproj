@@ -216,6 +216,7 @@
     <Compile Include="Commands\DescribeContestEntryCommandHandler.cs" />
     <Compile Include="Commands\FastForwardCommandHandler.cs" />
     <Compile Include="Commands\KickstartCommandHandler.cs" />
+    <Compile Include="Commands\KickstartNextRoundTaskPollCommandHandler.cs" />
     <Compile Include="Commands\PostponeCommandHandler.cs" />
     <Compile Include="Commands\RemindCommandHandler.cs" />
     <Compile Include="Commands\Schema.cs" />
@@ -261,6 +262,7 @@
     <Compile Include="Logging\Log.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\Events\KickstartNextRoundTaskPollEvent.cs" />
     <Compile Include="Services\VotingController.cs" />
     <Compile Include="Services\CrypticNameResolver.cs" />
     <Compile Include="Services\Events\AggregateSubscription.cs" />

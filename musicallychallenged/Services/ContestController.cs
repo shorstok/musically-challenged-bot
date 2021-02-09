@@ -215,7 +215,7 @@ namespace musicallychallenged.Services
                 _repository.UpdateState(s => s.CurrentChallengeRoundNumber,state.CurrentChallengeRoundNumber+1);
             }
 
-            _repository.UpdateState(s => s.CurrentTaskTemplate,responseText);
+            _repository.SetCurrentTask(SelectedTaskKind.Manual, responseText);
             _repository.UpdateState(s => s.CurrentWinnerId,user.Id);
 
             _aggregator.Publish(new KickstartContestEvent());

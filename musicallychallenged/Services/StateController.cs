@@ -110,6 +110,7 @@ namespace musicallychallenged.Services
             {
                 _eventAggregator.Subscribe<KickstartContestEvent>(OnKickstartContest),
                 _eventAggregator.Subscribe<ChatMigrationFailedEvent>(OnChatMigrationFailed),
+                _eventAggregator.Subscribe<KickstartNextRoundTaskPollEvent>(OnKickstartNextRoundTaskPoll),
                 _eventAggregator.Subscribe<DemandStandbyEvent>((s) =>
                     _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby))
             };
@@ -127,6 +128,7 @@ namespace musicallychallenged.Services
             //just switch to whatever state was requested
             _stateMachine.Configure(ContestState.Standby).PermitDynamic(_explicitStateSwitchTrigger, state => state);
             _stateMachine.Configure(ContestState.Standby).Permit(Trigger.TaskApproved, ContestState.Contest);
+            _stateMachine.Configure(ContestState.Standby).Permit(Trigger.InitiatedNextRoundTaskPoll, ContestState.TaskSuggestionCollection);
 
             _stateMachine.Configure(ContestState.Voting).PermitDynamic(_explicitStateSwitchTrigger, state => state);
             _stateMachine.Configure(ContestState.Contest).PermitDynamic(_explicitStateSwitchTrigger, state => state);
@@ -260,6 +262,11 @@ namespace musicallychallenged.Services
         private void OnKickstartContest(KickstartContestEvent kickstartContestEvent)
         {
             _stateMachine.Fire(Trigger.TaskApproved);
+        }
+
+        private void OnKickstartNextRoundTaskPoll(KickstartNextRoundTaskPollEvent kickstartNextRoundTaskPollEvent)
+        {
+            _stateMachine.Fire(Trigger.InitiatedNextRoundTaskPoll);
         }
 
         private void _scheduler_PreviewDeadlineHit()

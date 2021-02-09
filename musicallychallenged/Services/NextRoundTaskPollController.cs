@@ -1,6 +1,7 @@
 ﻿using log4net;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
+using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
@@ -25,6 +26,7 @@ namespace musicallychallenged.Services
         private readonly ITelegramClient _client;
         private readonly TimeService _timeService;
         private readonly BroadcastController _broadcastController;
+        private readonly IEventAggregator _aggregator;
 
         private ISubscription[] _subscriptions;
 
@@ -45,6 +47,7 @@ namespace musicallychallenged.Services
             _client = client;
             _timeService = timeService;
             _broadcastController = broadcastController;
+            _aggregator = eventAggregator;
 
             _subscriptions = new ISubscription[]
             {
@@ -160,6 +163,16 @@ namespace musicallychallenged.Services
             {
                 _messageSemaphoreSlim.Release();
             }
+        }
+
+        public Task KickstartContestAsync(string responseText, User user)
+        {
+            _repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
+
+
+            _aggregator.Publish(new KickstartNextRoundTaskPollEvent());
+
+            return Task.CompletedTask;
         }
     }
 }
