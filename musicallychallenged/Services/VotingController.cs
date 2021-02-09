@@ -15,7 +15,6 @@ using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
-using NUnit.Framework.Internal.Commands;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;

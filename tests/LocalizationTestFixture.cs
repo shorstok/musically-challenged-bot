@@ -23,7 +23,7 @@ namespace tests
         private static readonly ILog Logger = Log.Get(typeof(LocalizationTestFixture));
 
         [Test]
-        public async Task LocalizationTextShouldHaveValidHTML()
+        public void LocalizationTextShouldHaveValidHTML()
         {
             using (var compartment = new TestCompartment())
             {

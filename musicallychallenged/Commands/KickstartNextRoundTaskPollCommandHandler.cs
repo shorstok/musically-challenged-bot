@@ -12,6 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace musicallychallenged.Commands
 {
@@ -50,18 +51,33 @@ namespace musicallychallenged.Commands
                 return;
             }
 
-            await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Please send task template in next message (you have 1 hour)");
+            var message = await dialog.TelegramClient.SendTextMessageAsync(
+                dialog.ChatId,
+                "Confirm your intentions -- kickstart task poll?", 
+                replyMarkup: new InlineKeyboardMarkup(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("YES","y"),
+                    InlineKeyboardButton.WithCallbackData("NO","n")
+                }));
 
-            var response = await dialog.GetMessageInThreadAsync(
-                new CancellationTokenSource(TimeSpan.FromMinutes(60)).Token);
+            var response = await dialog.GetCallbackQueryAsync(
+                new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token);
 
-            if (null == response)
+            //remove buttons
+            await dialog.TelegramClient.EditMessageReplyMarkupAsync(
+                message.Chat.Id,message.MessageId,
+                replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); 
+
+            if (response?.Data != "y")
             {
-                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, ":(");
+                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,"Cancelled");
                 return;
             }
+            
+            await dialog.TelegramClient.AnswerCallbackQueryAsync(response.Id);           
+            await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Confirmed");
 
-            await _controller.KickstartContestAsync(response.Text, user);
+            await _controller.KickstartContestAsync(user);
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Looks like all OK");
 

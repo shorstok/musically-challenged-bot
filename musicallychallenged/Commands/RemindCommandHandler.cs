@@ -66,6 +66,8 @@ namespace musicallychallenged.Commands
                   
             await _contestController.UpdateCurrentTaskMessage();
             await _votingController.UpdateCurrentTaskMessage();
+            
+            await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,"Reminder issued");
 
             logger.Info($"Reminded OK");
         }

@@ -463,7 +463,7 @@ namespace musicallychallenged.Services
         }
 
         
-        private async void OnFinalizingActivate()
+        private void OnFinalizingActivate()
         {
             if(!_isActivating)
                 return;
@@ -472,7 +472,7 @@ namespace musicallychallenged.Services
         }
 
         
-        private async void EnteredFinalizingVoting(StateMachine<ContestState, Trigger>.Transition arg)
+        private void EnteredFinalizingVoting(StateMachine<ContestState, Trigger>.Transition arg)
         {
             OnFinalizingRoundInternal();
         }
@@ -550,7 +550,7 @@ namespace musicallychallenged.Services
             return _repository.GetOrCreateCurrentState().State;
         }
 
-        private async void OnTaskSuggestionCollectionActivated()
+        private void OnTaskSuggestionCollectionActivated()
         {
             if (!_isActivating)
                 return;
@@ -578,7 +578,7 @@ namespace musicallychallenged.Services
             }
         }
 
-        private async void OnTaskSuggestionVotingActivated()
+        private void OnTaskSuggestionVotingActivated()
         {
             if (!_isActivating)
                 return;
@@ -650,7 +650,7 @@ namespace musicallychallenged.Services
             }
         }
 
-        private async void OnFinalizingNextRoundTaskPollVotingActivated()
+        private void OnFinalizingNextRoundTaskPollVotingActivated()
         {
             if (!_isActivating)
                 return;
