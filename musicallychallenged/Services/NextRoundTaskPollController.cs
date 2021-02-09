@@ -167,8 +167,6 @@ namespace musicallychallenged.Services
 
         public Task KickstartContestAsync( User user)
         {
-            _repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
-
             _aggregator.Publish(new KickstartNextRoundTaskPollEvent());
 
             return Task.CompletedTask;

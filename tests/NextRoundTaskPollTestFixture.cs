@@ -267,5 +267,46 @@ namespace tests
                     "Non-consolidated suggestions were left after switching to standby");
             }
         }
+
+        [Test]
+        public async Task KickstartedPollShouldSucceed()
+        {
+            using (var compartment = new TestCompartment())
+            {
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    context.SendCommand(Schema.KickstartNextRoundTaskPollCommandName);
+
+                    var pleaseConfirmResponse = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+                    Assert.That(pleaseConfirmResponse, Is.Not.Null,
+                        "Command response was not sent");
+                    Assert.That(pleaseConfirmResponse.ReplyMarkup.InlineKeyboard?.FirstOrDefault()?.Count(),
+                        Is.EqualTo(2), "Reply markup doesn't have 2 buttons");
+
+                    context.SendQuery("y", pleaseConfirmResponse);
+
+                    var confirmationResponse = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+                    Assert.That(confirmationResponse, Is.Not.Null,
+                        "Confirmation message was not sent");
+                }, UserCredentials.Supervisor).ScenarioTask;
+
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+                    Is.True, "Failed to switch to TaskSuggestionCollection on kickstart issued");
+
+                await compartment.GenericScenarios.PopulateWithTaskSuggestionsAndSwitchToVoting(compartment, 2);
+
+                // voting
+                var winningSuggestion = await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment);
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
+                    Is.True, "Failed to switch to Contest");
+
+                var state = compartment.Repository.GetOrCreateCurrentState();
+                Assert.That(state.CurrentTaskTemplate, Is.EqualTo(winningSuggestion.Description),
+                    $"Started contest with a wrong task: {state.CurrentTaskTemplate} when should be {winningSuggestion.Description}");
+
+                Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
+                    "Active suggestions left in post-taskpoll state");
+            }
+        }
     }
 }
