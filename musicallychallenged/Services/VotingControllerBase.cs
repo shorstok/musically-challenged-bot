@@ -328,7 +328,7 @@ namespace musicallychallenged.Services
                     return Tuple.Create<VotingFinalizationResult, User>(VotingFinalizationResult.Halt, null);
                 }
 
-                var voteCount = winnersGroup?.Key ?? 0;
+                var voteCount = GetVotesForEntry(winnersGroup.FirstOrDefault().Id).Count();
 
                 if (!IsValidStateToProduceAVotingWinner(voteCount, entries.Count))
                 {
