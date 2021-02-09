@@ -144,7 +144,7 @@ namespace musicallychallenged.Localization
         public string TaskSuggestCommandHandler_OnlyAvailableInSuggestionCollectionState { get; set; } = "Прием заданий (пока) закрыт. Дождитесь следующего голосования за задание!";
         public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = $@"Отправьте свой вариант задания следующим сообщением (текст от 10 символов). Повторное использование команды обновит уже существующее задание.
 
-Обратите внимание на то, <a> href=""{LocTokens.VotingChannelLink}"">какие задания уже предложили</a>, чтобы не повторяться.";
+Обратите внимание на то, <a href=""{LocTokens.VotingChannelLink}"">какие задания уже предложили</a>, чтобы не повторяться.";
         public string TaskSuggestCommandHandler_SubmitionFailed { get; set; } = "Сообщение должно содержать текст длиной от 10 символов";
         public string TaskSuggestCommandHandler_SubmitionSucceeded { get; set; } = "Спасибо за участие! Ваше задание было принято";
         
@@ -156,7 +156,7 @@ namespace musicallychallenged.Localization
 Процедура будет проходить в два этапа:
 1) Прием ботом @nsctheorbot заданий от участников с помощью команды /<code>tasksuggest</code> <b>(команда отсылается в *личке* боту)</b>. Приём заданий закончится в <b>{LocTokens.Deadline}</b>.
 
-2) Голосование за лучшую работу в <a> href=""{LocTokens.VotingChannelLink}"">музыкальном архиве</a>. Оно начнётся сразу после закрытия принятия работ.
+2) Голосование за лучшую работу в <a href=""{LocTokens.VotingChannelLink}"">музыкальном архиве</a>. Оно начнётся сразу после закрытия принятия работ.
 
 Если победивших будет 2 или больше, тот, чье задание будет взято для следующего челленджа определит рандомайзер.
 

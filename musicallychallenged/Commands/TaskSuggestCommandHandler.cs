@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using User = musicallychallenged.Domain.User;
 
 namespace musicallychallenged.Commands
@@ -64,7 +65,8 @@ namespace musicallychallenged.Commands
             // send the guidelines
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
                 LocTokens.SubstituteTokens(_loc.TaskSuggestCommandHandler_SubmitGuidelines,
-                Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)));
+                Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
+                ParseMode.Html);
 
             // get a suggestion message
             var response = await dialog.GetMessageInThreadAsync(
