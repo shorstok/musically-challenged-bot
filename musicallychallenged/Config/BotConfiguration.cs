@@ -179,6 +179,9 @@ namespace musicallychallenged.Config
         [JsonProperty("MaxSuggestionVoteValue")]
         public int MaxSuggestionVoteValue { get; set; } = 1;
 
+        [JsonProperty("RulesURL")]
+        public string RulesURL { get; set; } = "https://telegra.ph/FAQ-po-PesnoPiscu-02-10";
+
         public static BotConfiguration LoadOrCreate(bool saveIfNew = false)
         {
             lock (_configReaderWriterLock)
