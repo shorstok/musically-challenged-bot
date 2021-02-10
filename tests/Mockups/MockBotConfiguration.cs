@@ -71,6 +71,7 @@ namespace tests.Mockups
         public int MinSuggestionVoteValue { get; set; } = -1;
 
         public int MaxSuggestionVoteValue { get; set; } = 1;
+        public string RulesURL { get; set; } = "https://telegra.ph/FAQ-po-PesnoPiscu-02-10";
 
         public bool Reload() =>
             true;

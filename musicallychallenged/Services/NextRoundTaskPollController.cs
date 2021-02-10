@@ -98,6 +98,7 @@ namespace musicallychallenged.Services
                 _loc.NextRoundTaskPollController_AnnouncementTemplateMainChannel,
                 Tuple.Create(LocTokens.User, previousWinner?.GetUsernameOrNameWithCircumflex()??"SOMEBODY"),
                 Tuple.Create(LocTokens.Deadline, deadlineText),
+                Tuple.Create(LocTokens.RulesUrl, _configuration.RulesURL),
                 Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
                 true);
             await _broadcastController.AnnounceInVotingChannel(LocTokens.SubstituteTokens(

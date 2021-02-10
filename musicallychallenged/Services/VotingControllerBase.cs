@@ -413,7 +413,7 @@ namespace musicallychallenged.Services
             catch (Exception e)
             {
                 logger.Error($"Unexpected exception: {e}");
-                throw e;
+                throw;
             }
         }
 

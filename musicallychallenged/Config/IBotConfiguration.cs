@@ -59,6 +59,7 @@ namespace musicallychallenged.Config
         int MinSuggestionVoteValue { get; set; }
 
         int MaxSuggestionVoteValue { get; set; }
+        string RulesURL { get; set; }
 
         bool Reload();
 

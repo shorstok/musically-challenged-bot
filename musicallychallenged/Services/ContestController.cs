@@ -202,6 +202,7 @@ namespace musicallychallenged.Services
                 Tuple.Create(LocTokens.User,winner?.GetHtmlUserLink()?? _loc.AnonymousAuthor) ,
                 Tuple.Create(LocTokens.TaskDescription,EscapeTgHtml(state.CurrentTaskTemplate)),
                 Tuple.Create(LocTokens.Deadline,deadlineText),
+                Tuple.Create(LocTokens.RulesUrl,_configuration.RulesURL),
                 Tuple.Create(LocTokens.VotingChannelLink,_configuration.VotingChannelInviteLink));
         }
 

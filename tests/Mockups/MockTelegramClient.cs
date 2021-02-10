@@ -231,16 +231,20 @@ namespace tests.Mockups
 
         private void MaybeAssertValidHTML(ParseMode parseMode, string text)
         {
-            if (parseMode == ParseMode.Default)
-                return;
-
-            if (parseMode == ParseMode.Html)
+            switch (parseMode)
             {
-                LocalizationTestingHelper.AssertValidTelegramHtml(text);
+                case ParseMode.Default:
+                    LocalizationTestingHelper.AssertNoHTML(text);
+                    break;
+                case ParseMode.Html:
+                    LocalizationTestingHelper.AssertValidTelegramHtml(text);
+                    break;
+                case ParseMode.Markdown:
+                    Assert.Fail("We're not using Markdown in this bot, use HTML plz");
+                    break;
             }
 
-            if (parseMode == ParseMode.Markdown)
-                Assert.Fail("We're not using Markdown in this bot, use HTML plz");
+            LocalizationTestingHelper.AssertNoUnsubstitutedLocTokens(text);
         }
     }
 }
