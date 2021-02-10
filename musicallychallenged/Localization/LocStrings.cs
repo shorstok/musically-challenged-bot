@@ -86,6 +86,7 @@ namespace musicallychallenged.Localization
         
         public string RandomTaskSelectedMessage { get; set; } = "Для следующего раунда будет использовано случаное задание";
         public string TaskSelectedMessage { get; set; } = "Задание отправлено Администрации";
+        public string InitiatedNextRoundTaskPollMessage { get; set; } = "Задание будет выбрано комьюнити";
 
         public string InvalidTaskMessage { get; set; } = "Извините, это не похоже на задание. Отошлите следующим в сообщении текст задания следующего раунда";
         public string SlackWarningMesage { get; set; } = $"Внимание, время на формулировку задания ограничено ({LocTokens.Time} ч.), " +

@@ -40,6 +40,13 @@ namespace musicallychallenged.Services
             _client = client;
             _loc = loc;
             _configuration = configuration;
+
+            _replyMessageForSelectedTaskKind = new Dictionary<SelectedTaskKind, string>
+            {
+                {SelectedTaskKind.Random,  _loc.RandomTaskSelectedMessage},
+                {SelectedTaskKind.Manual, _loc.TaskSelectedMessage },
+                {SelectedTaskKind.Poll, _loc.InitiatedNextRoundTaskPollMessage },
+            };
         }
 
         public async Task<Tuple<SelectedTaskKind, string>> SelectTaskAsync(User winner)
@@ -57,7 +64,7 @@ namespace musicallychallenged.Services
                 logger.Warn($"Got unexpected exception {e.Message}");
             }
 
-            return Tuple.Create(SelectedTaskKind.Random, string.Empty);
+            return Tuple.Create(SelectedTaskKind.Poll, string.Empty);
         }
 
         private async Task<Tuple<SelectedTaskKind, string>> SelectTaskAsyncInternal(User winner)
@@ -79,9 +86,9 @@ namespace musicallychallenged.Services
                 if (null == message)
                 {
                     logger.Warn($"For some reason couldnt start task selection sequence with {winner.GetUsernameOrNameWithCircumflex()}, " +
-                                $"falling back to 'random' choice");
+                                $"falling back to 'poll' choice");
 
-                    return Tuple.Create(SelectedTaskKind.Random, string.Empty);
+                    return Tuple.Create(SelectedTaskKind.Poll, string.Empty);
                 }
 
                 using (var cancellationTokenSource =
@@ -140,20 +147,18 @@ namespace musicallychallenged.Services
                     }
                     catch (Exception)
                     {
-                        proposedTask = Tuple.Create(SelectedTaskKind.Random, string.Empty);
+                        proposedTask = Tuple.Create(SelectedTaskKind.Poll, string.Empty);
                     }
 
                     cancellationTokenSource.Cancel();
                 }
 
-                //Remove 'random' button
+                //Remove reply buttons
                 await _client.EditMessageReplyMarkupAsync(message.Chat.Id, message.MessageId,
                     replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); //remove
 
                 await _client.SendTextMessageAsync(dialog.ChatId,
-                    proposedTask.Item1 == SelectedTaskKind.Random ?
-                        _loc.RandomTaskSelectedMessage :
-                        _loc.TaskSelectedMessage,
+                    _replyMessageForSelectedTaskKind[proposedTask.Item1],
                     ParseMode.Html,
                     cancellationToken: CancellationToken.None);
 
@@ -162,6 +167,8 @@ namespace musicallychallenged.Services
 
             return proposedTask;
         }
+
+        private readonly Dictionary<SelectedTaskKind, string> _replyMessageForSelectedTaskKind;
 
         private async Task<Tuple<SelectedTaskKind, string>> ParseCallbackQuery(CallbackQuery query, CancellationToken token)
         {
@@ -178,9 +185,9 @@ namespace musicallychallenged.Services
                     return Tuple.Create(SelectedTaskKind.Poll, string.Empty);
             }
 
-            logger.Error($"Wtf, got callback data = {query.Data}, falling back to random task");
+            logger.Error($"Wtf, got callback data = {query.Data}, falling back to 'poll'");
 
-            return Tuple.Create(SelectedTaskKind.Random, string.Empty);
+            return Tuple.Create(SelectedTaskKind.Poll, string.Empty);
         }
     }
 }

@@ -399,10 +399,10 @@ namespace musicallychallenged.Services
 
             if (null == state.CurrentWinnerId)
             {
-                logger.Error("state.CurrentWinnerId == null unexpected");
+                logger.Error("state.CurrentWinnerId == null unexpected, falling back to NextRoundTaskPoll");
 
-                _repository.SetCurrentTask(SelectedTaskKind.Random, string.Empty);
-                _stateMachine.Fire(Trigger.TaskSelectedByWinner);
+                _repository.SetCurrentTask(SelectedTaskKind.Poll, string.Empty);
+                _stateMachine.Fire(Trigger.InitiatedNextRoundTaskPoll);
                 return;
             }
 
@@ -410,14 +410,14 @@ namespace musicallychallenged.Services
 
             if (winner?.ChatId == null)
             {
-                logger.Error("_repository.GetUserWithTgId(state.CurrentWinnerId.Value)?.ChatId == null unexpected (winner user deleted?)");
+                logger.Error("_repository.GetUserWithTgId(state.CurrentWinnerId.Value)?.ChatId == null unexpected (winner user deleted?) falling back to NextRoundTaskPoll");
 
-                _repository.SetCurrentTask(SelectedTaskKind.Random, string.Empty);
-                _stateMachine.Fire(Trigger.TaskSelectedByWinner);
+                _repository.SetCurrentTask(SelectedTaskKind.Poll, string.Empty);
+                _stateMachine.Fire(Trigger.InitiatedNextRoundTaskPoll);
                 return;
             }
 
-            var taskTuple = Tuple.Create(SelectedTaskKind.Random, string.Empty);
+            var taskTuple = Tuple.Create(SelectedTaskKind.Poll, string.Empty);
 
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
 
