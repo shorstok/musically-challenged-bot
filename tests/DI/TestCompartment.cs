@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Autofac;
 using log4net;
 using musicallychallenged;
+using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
@@ -33,6 +34,7 @@ namespace tests.DI
         public LocStrings Localization { get; private set; }
         public UserScenarioController ScenarioController { get; private set; }
         public GenericUserScenarios GenericScenarios { get; private set; }
+        public IBotConfiguration Configuration { get; private set; }
 
         public TestCompartment()
         {
@@ -104,9 +106,11 @@ namespace tests.DI
             _serviceHost = Container.Resolve<ServiceHost>();
             Repository = Container.Resolve<IRepository>();
             Localization = Container.Resolve<LocStrings>();
+            Configuration = Container.Resolve<IBotConfiguration>();
             ScenarioController = Container.Resolve<UserScenarioController>();
             GenericScenarios = Container.Resolve<GenericUserScenarios>();
         }
+
 
         private void RunInMemorySqliteMigrations(string connectionString)
         {
