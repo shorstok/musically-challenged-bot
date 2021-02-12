@@ -196,6 +196,10 @@ namespace tests
                     Contains.Substring(mockTaskText),
                     "Invalid task chosen for next round");
 
+                Assert.That(
+                    compartment.Repository.GetOrCreateCurrentState().CurrentTaskKind,
+                    Is.EqualTo(SelectedTaskKind.Manual),
+                    "SelectedTaskKind was not set correctly");
             }
         }
     }

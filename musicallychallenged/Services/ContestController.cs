@@ -193,7 +193,7 @@ namespace musicallychallenged.Services
         {            
             var state = _repository.GetOrCreateCurrentState();
 
-            int? winnerId = state.CurrentTaskKind == SelectedTaskKind.Poll ? _repository.GetLastTaskPollWinner() : state.CurrentWinnerId;
+            int? winnerId = state.CurrentTaskKind == SelectedTaskKind.Poll ? _repository.GetLastTaskPollWinnerId() : state.CurrentWinnerId;
             var winner = winnerId != null ? _repository.GetExistingUserWithTgId(state.CurrentWinnerId.Value) : null;
 
             var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);

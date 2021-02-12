@@ -415,7 +415,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public int? GetLastTaskPollWinner()
+        public int? GetLastTaskPollWinnerId()
         {
             using (var connection = CreateOpenConnection())
             {

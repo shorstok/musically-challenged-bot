@@ -84,6 +84,8 @@ namespace musicallychallenged.Services
         {
             logger.Info("Initiating NextRoundTaskPoll");
 
+            _repository.UpdateState(s => s.CurrentTaskKind, SelectedTaskKind.Poll);
+
             var state = _repository.GetOrCreateCurrentState();
             _repository.CreateNextRoundTaskPoll();
             var deadline = _timeService.ScheduleNextDeadlineIn(_configuration.TaskSuggestionCollectionDeadlineTimeHours);

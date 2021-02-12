@@ -74,6 +74,12 @@ namespace tests
                 Assert.That(state.CurrentTaskTemplate, Is.EqualTo(winningSuggestion.Description),
                     $"Started contest with a wrong task: {state.CurrentTaskTemplate} when should be {winningSuggestion.Description}");
 
+                Assert.That(state.CurrentTaskKind, Is.EqualTo(SelectedTaskKind.Poll),
+                    $"Didn't set CurrentTaskKind properly");
+
+                Assert.That(compartment.Repository.GetLastTaskPollWinnerId(), Is.EqualTo(winningSuggestion.AuthorUserId),
+                    "LastTaskPollWinner wasn't set correctly");
+
                 Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
                     "Active suggestions left in post-taskpoll state");
             }
@@ -230,12 +236,18 @@ namespace tests
 
                 var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
                 Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
-                    "Non-consolidated suggestions were left after switching to standby");
+                    "Non-consolidated suggestions were left after falling through");
 
                 var state = compartment.Repository.GetOrCreateCurrentState();
                 Assert.That(state.CurrentTaskTemplate, Is.EqualTo(singleSuggestion.Description),
                     $"Started contest with a wrong task: {state.CurrentTaskTemplate} when should be {singleSuggestion.Description}");
-                                
+
+                Assert.That(state.CurrentTaskKind, Is.EqualTo(SelectedTaskKind.Poll),
+                    $"Didn't set CurrentTaskKind properly");
+
+                Assert.That(compartment.Repository.GetLastTaskPollWinnerId(), Is.EqualTo(singleSuggestion.AuthorUserId),
+                    "LastTaskPollWinner wasn't set correctly");
+
                 Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
                     "Active suggestions left in post-taskpoll state");
             }
@@ -303,6 +315,12 @@ namespace tests
                 var state = compartment.Repository.GetOrCreateCurrentState();
                 Assert.That(state.CurrentTaskTemplate, Is.EqualTo(winningSuggestion.Description),
                     $"Started contest with a wrong task: {state.CurrentTaskTemplate} when should be {winningSuggestion.Description}");
+
+                Assert.That(state.CurrentTaskKind, Is.EqualTo(SelectedTaskKind.Poll),
+                    $"Didn't set CurrentTaskKind properly");
+
+                Assert.That(compartment.Repository.GetLastTaskPollWinnerId(), Is.EqualTo(winningSuggestion.AuthorUserId),
+                    "LastTaskPollWinner wasn't set correctly");
 
                 Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
                     "Active suggestions left in post-taskpoll state");
