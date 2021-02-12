@@ -109,6 +109,10 @@ namespace tests
                 Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Standby),
                     Is.True,
                     "Failed switching to Standby state after deadline hit");
+
+                Assert.That(compartment.Repository.ConsolidateVotesForActiveEntriesGetAffected().Count(),
+                    Is.EqualTo(0),
+                    "Failed to close active entries when switched to standby");
             }
         }
 

@@ -321,10 +321,13 @@ namespace musicallychallenged.Services
                     if (activeEntries < _configuration.MinAllowedContestEntriesToStartVoting)
                     {
                         logger.Warn(
-                            $"GetActiveContestEntries found no active entries, announcing and switching to standby");
+                            $"GetActiveContestEntries found less active entries than {_configuration.MinAllowedContestEntriesToStartVoting}, announcing and switching to standby");
 
                         await _broadcastController.AnnounceInMainChannel(_loc.NotEnoughEntriesAnnouncement,
                             pin: true);
+
+                        // closing this rounds' entries
+                        _repository.ConsolidateVotesForActiveEntriesGetAffected();
 
                         _stateMachine.Fire(Trigger.NotEnoughContesters);
 
