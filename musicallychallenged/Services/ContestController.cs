@@ -190,12 +190,12 @@ namespace musicallychallenged.Services
         }
 
         public string MaterializeTaskUsingCurrentTemplate()
-        {            
+        {
             var state = _repository.GetOrCreateCurrentState();
 
             int? winnerId = state.CurrentTaskKind == SelectedTaskKind.Poll ? _repository.GetLastTaskPollWinnerId() : state.CurrentWinnerId;
-            var winner = winnerId != null ? _repository.GetExistingUserWithTgId(state.CurrentWinnerId.Value) : null;
-
+            var winner = winnerId.HasValue ? _repository.GetExistingUserWithTgId(winnerId.Value) : null;
+            
             var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
 
             return LocTokens.SubstituteTokens(_loc.ContestStartMessageTemplateForMainChannelPin,

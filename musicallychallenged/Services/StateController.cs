@@ -291,7 +291,7 @@ namespace musicallychallenged.Services
             {
                 if (arg.Trigger == Trigger.PreviewDeadlineHit)
                     await _contestController.WarnAboutContestDeadlineSoon();
-                else if (arg.Trigger == Trigger.TaskApproved || arg.Trigger == Trigger.TaskSelectedByPoll)
+                else
                     await _contestController.InitiateContestAsync();
             }
             catch (Exception e)
