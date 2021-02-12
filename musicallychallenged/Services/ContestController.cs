@@ -189,6 +189,20 @@ namespace musicallychallenged.Services
                 Replace("\"", "&quot;");
         }
 
+        public static Dictionary<SelectedTaskKind, string> TaskPrefaces = new Dictionary<SelectedTaskKind, string>
+        {
+            { SelectedTaskKind.Manual, "Задание от" },
+            { SelectedTaskKind.Random, "Случайно выбраное задание по воле"},
+            { SelectedTaskKind.Poll, "Коллективно было выбрано задание от"},
+        };
+
+        public string GetTaskPreface(SelectedTaskKind taskKind)
+        {
+            if (TaskPrefaces.TryGetValue(taskKind, out var preface))
+                return preface;
+            return "Задания от";
+        }
+
         public string MaterializeTaskUsingCurrentTemplate()
         {
             var state = _repository.GetOrCreateCurrentState();
@@ -199,6 +213,7 @@ namespace musicallychallenged.Services
             var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
 
             return LocTokens.SubstituteTokens(_loc.ContestStartMessageTemplateForMainChannelPin,
+                Tuple.Create(LocTokens.TaskFromPreface, GetTaskPreface(state.CurrentTaskKind)),
                 Tuple.Create(LocTokens.User,winner?.GetHtmlUserLink()?? _loc.AnonymousAuthor) ,
                 Tuple.Create(LocTokens.TaskDescription,EscapeTgHtml(state.CurrentTaskTemplate)),
                 Tuple.Create(LocTokens.Deadline,deadlineText),

@@ -22,6 +22,7 @@ namespace musicallychallenged.Localization
         public const string Deadline = "%DEADLINE%";
         public const string VotingChannelLink = "%VOTECHANLNK%";
         public const string RulesUrl = "%RULES%";
+        public const string TaskFromPreface = "%FROMPREFACE%";
 
         public static string SubstituteTokens(string template, params Tuple<string, string>[] tokens)
         {
@@ -205,7 +206,7 @@ namespace musicallychallenged.Localization
                                                                                   $"Задание:{Environment.NewLine}{Environment.NewLine}" +
                                                                                   $"{LocTokens.TaskDescription}";
 
-        public string ContestStartMessageTemplateForMainChannelPin { get; set; } = $@"Задание от {LocTokens.User}:
+        public string ContestStartMessageTemplateForMainChannelPin { get; set; } = $@"{LocTokens.TaskFromPreface} {LocTokens.User}:
 
 {LocTokens.TaskDescription}
 

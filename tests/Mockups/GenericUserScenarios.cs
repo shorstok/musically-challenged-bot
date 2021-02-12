@@ -539,7 +539,6 @@ namespace tests.Mockups
                 await enteredContestStateSource.Task;
 
                 var token = new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token;
-                Logger.Info("Starting to read messages in the main chat");
                 var curTaskTemplate = compartment.Repository.GetOrCreateCurrentState().CurrentTaskTemplate;
 
                 Message announcement = null;
@@ -547,9 +546,7 @@ namespace tests.Mockups
                 {
                     do
                     {
-                        Logger.Info($"main chat id: {MockConfiguration.MainChat.Id}");
                         announcement = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
-                        Logger.Info($"Read something: {announcement.Text}");
                     } while (!(announcement.Text.Contains(curTaskTemplate) || token.IsCancellationRequested));
                 }
                 catch (TimeoutException)
