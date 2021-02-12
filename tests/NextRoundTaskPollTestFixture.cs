@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Remoting.Contexts;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot.Types;
 using tests.DI;
@@ -50,6 +51,13 @@ namespace tests
         {
             using (var compartment = new TestCompartment())
             {
+                TaskSuggestion winningSuggestion = null;
+
+                var enteredContestSource = new TaskCompletionSource<bool>();
+                var assertCorrectTaskGiver = compartment.GenericScenarios.AssertCorrectTaskGiverMainChatAnnouncement(
+                    compartment, enteredContestSource, 
+                    () => compartment.Repository.GetExistingUserWithTgId(winningSuggestion.AuthorUserId));
+
                 // setting up a poll
                 var votingEntities = compartment.GenericScenarios.
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
@@ -66,9 +74,13 @@ namespace tests
                 await compartment.GenericScenarios.PopulateWithTaskSuggestionsAndSwitchToVoting(compartment, 2);
 
                 // voting
-                var winningSuggestion = await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment);
+                winningSuggestion = await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment);
                 Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
                     Is.True, "Failed to switch to Contest");
+
+                // Assert
+                enteredContestSource.SetResult(true);
+                await assertCorrectTaskGiver;
 
                 var state = compartment.Repository.GetOrCreateCurrentState();
                 Assert.That(state.CurrentTaskTemplate, Is.EqualTo(winningSuggestion.Description),
@@ -210,6 +222,13 @@ namespace tests
         {
             using (var compartment = new TestCompartment())
             {
+                TaskSuggestion singleSuggestion = null;
+
+                var enteredContestSource = new TaskCompletionSource<bool>();
+                var assertCorrectTaskGiver = compartment.GenericScenarios.AssertCorrectTaskGiverMainChatAnnouncement(
+                    compartment, enteredContestSource,
+                    () => compartment.Repository.GetExistingUserWithTgId(singleSuggestion.AuthorUserId));
+
                 var configuration = compartment.Container.Resolve<IBotConfiguration>();
                 var clock = compartment.Container.Resolve<IClock>();
                 var mediator = compartment.Container.Resolve<MockMessageMediatorService>();
@@ -224,7 +243,7 @@ namespace tests
                     .StartUserScenario(compartment.GenericScenarios.TaskSuggesterUserScenario)
                     .ScenarioTask;
 
-                var singleSuggestion = compartment.Repository.GetActiveTaskSuggestions().Single();
+                singleSuggestion = compartment.Repository.GetActiveTaskSuggestions().Single();
 
                 // ffwd
                 compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
@@ -233,6 +252,8 @@ namespace tests
                     Is.True, "Failed to fallthrough to Contest state");
 
                 //Assert
+                enteredContestSource.SetResult(true);
+                await assertCorrectTaskGiver;
 
                 var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
                 Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
@@ -285,6 +306,12 @@ namespace tests
         {
             using (var compartment = new TestCompartment())
             {
+                TaskSuggestion winningSuggestion = null;
+                var enteredContestSource = new TaskCompletionSource<bool>();
+                var assertCorrectTaskGiver = compartment.GenericScenarios.AssertCorrectTaskGiverMainChatAnnouncement(
+                    compartment, enteredContestSource,
+                    () => compartment.Repository.GetExistingUserWithTgId(winningSuggestion.AuthorUserId));
+
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
                     context.SendCommand(Schema.KickstartNextRoundTaskPollCommandName);
@@ -308,7 +335,7 @@ namespace tests
                 await compartment.GenericScenarios.PopulateWithTaskSuggestionsAndSwitchToVoting(compartment, 2);
 
                 // voting
-                var winningSuggestion = await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment);
+                winningSuggestion = await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment);
                 Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
                     Is.True, "Failed to switch to Contest");
 

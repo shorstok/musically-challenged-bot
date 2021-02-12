@@ -5,6 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using log4net;
@@ -528,6 +529,40 @@ namespace tests.Mockups
             _repository.UpdateState(state => state.State, ContestState.Contest);
 
             Logger.Info($"Voting cycle set with {submissionCount} submissions");
+        }
+
+        public async Task AssertCorrectTaskGiverMainChatAnnouncement(TestCompartment compartment, 
+            TaskCompletionSource<bool> enteredContestStateSource, Func<musicallychallenged.Domain.User> winnerSelector)
+        {
+            await compartment.ScenarioController.StartUserScenario(async context =>
+            {
+                await enteredContestStateSource.Task;
+
+                var token = new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token;
+                Logger.Info("Starting to read messages in the main chat");
+                var curTaskTemplate = compartment.Repository.GetOrCreateCurrentState().CurrentTaskTemplate;
+
+                Message announcement = null;
+                try
+                {
+                    do
+                    {
+                        Logger.Info($"main chat id: {MockConfiguration.MainChat.Id}");
+                        announcement = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
+                        Logger.Info($"Read something: {announcement.Text}");
+                    } while (!(announcement.Text.Contains(curTaskTemplate) || token.IsCancellationRequested));
+                }
+                catch (TimeoutException)
+                {
+                    Assert.Fail("Couldn't read any more messages");
+                }
+
+                Assert.True(!token.IsCancellationRequested,
+                    "Couldn't receive an announcement message");
+
+                Assert.That(announcement.Text, Contains.Substring(winnerSelector().GetHtmlUserLink()),
+                    "Didn't set a correct task giver in announcement message");
+            }).ScenarioTask;
         }
     }
 }
