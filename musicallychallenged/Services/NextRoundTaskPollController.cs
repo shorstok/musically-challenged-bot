@@ -25,6 +25,7 @@ namespace musicallychallenged.Services
         private readonly LocStrings _loc;
         private readonly ITelegramClient _client;
         private readonly TimeService _timeService;
+        private readonly ContestController _contestController;
         private readonly BroadcastController _broadcastController;
         private readonly IEventAggregator _aggregator;
 
@@ -38,6 +39,7 @@ namespace musicallychallenged.Services
             LocStrings loc,
             ITelegramClient client,
             TimeService timeService,
+            ContestController contestController,
             BroadcastController broadcastController,
             IEventAggregator eventAggregator)
         {
@@ -46,6 +48,7 @@ namespace musicallychallenged.Services
             _loc = loc;
             _client = client;
             _timeService = timeService;
+            _contestController = contestController;
             _broadcastController = broadcastController;
             _aggregator = eventAggregator;
 
@@ -168,8 +171,10 @@ namespace musicallychallenged.Services
             }
         }
 
-        public Task KickstartContestAsync( User user)
+        public Task KickstartTaskPollAsync( User user)
         {
+            _contestController.IsolatePreviousRoundTasks();
+            
             _aggregator.Publish(new KickstartNextRoundTaskPollEvent());
 
             return Task.CompletedTask;

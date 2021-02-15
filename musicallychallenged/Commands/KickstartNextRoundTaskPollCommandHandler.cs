@@ -77,7 +77,7 @@ namespace musicallychallenged.Commands
             await dialog.TelegramClient.AnswerCallbackQueryAsync(response.Id);           
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Confirmed");
 
-            await _controller.KickstartContestAsync(user);
+            await _controller.KickstartTaskPollAsync(user);
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Looks like all OK");
 

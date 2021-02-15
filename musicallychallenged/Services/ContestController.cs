@@ -221,15 +221,20 @@ namespace musicallychallenged.Services
                 Tuple.Create(LocTokens.VotingChannelLink,_configuration.VotingChannelInviteLink));
         }
 
-        public Task KickstartContestAsync(string responseText, User user)
+        public void IsolatePreviousRoundTasks()
         {
             var votes = _repository.ConsolidateVotesForActiveEntriesGetAffected();
 
-            if (votes.Any())
-            {
-                var state = _repository.GetOrCreateCurrentState();
-                _repository.UpdateState(s => s.CurrentChallengeRoundNumber,state.CurrentChallengeRoundNumber+1);
-            }
+            if (!votes.Any())
+                return;
+
+            var state = _repository.GetOrCreateCurrentState();
+            _repository.UpdateState(s => s.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);
+        }
+        
+        public Task KickstartContestAsync(string responseText, User user)
+        {
+            IsolatePreviousRoundTasks();
 
             _repository.SetCurrentTask(SelectedTaskKind.Manual, responseText);
             _repository.UpdateState(s => s.CurrentWinnerId,user.Id);
