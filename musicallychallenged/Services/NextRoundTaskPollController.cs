@@ -119,14 +119,14 @@ namespace musicallychallenged.Services
             _repository.CloseNextRoundTaskPollAndConsolidateVotes();
         }
 
-        public string GetTaskSuggestionMessageText(User user, string voteDetails, string description)
+        public string GetTaskSuggestionMessageText(User user, string voteDetails, string descriptionEscaped)
         {
             StringBuilder detailsBuilder = new StringBuilder();
 
-            if (!string.IsNullOrWhiteSpace(description))
+            if (!string.IsNullOrWhiteSpace(descriptionEscaped))
             {
                 detailsBuilder.AppendLine();
-                detailsBuilder.AppendLine(description);
+                detailsBuilder.AppendLine(descriptionEscaped);
             }
 
             if (!string.IsNullOrWhiteSpace(voteDetails))
@@ -137,7 +137,7 @@ namespace musicallychallenged.Services
                 Tuple.Create(LocTokens.Details, detailsBuilder.ToString()));
         }
 
-        public async Task SaveTaskSuggestion(string description, User user)
+        public async Task SaveTaskSuggestion(string descriptionUnescaped, User user)
         {
             await _messageSemaphoreSlim.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(25)).Token).ConfigureAwait(false);
 
@@ -151,13 +151,15 @@ namespace musicallychallenged.Services
                     return;
                 }
 
-                var container = await _client.SendTextMessageAsync(state.VotingChannelId.Value, 
-                    GetTaskSuggestionMessageText(user, string.Empty, description), ParseMode.Html);
+                var container = await _client.SendTextMessageAsync(
+                    state.VotingChannelId.Value, 
+                    GetTaskSuggestionMessageText(user, string.Empty, ContestController.EscapeTgHtml(descriptionUnescaped)),
+                    ParseMode.Html);
 
                 if (container == null)
                     throw new InvalidOperationException($"Could not send {user.GetUsernameOrNameWithCircumflex()} suggestion to voting channel {state.VotingChannelId}");
 
-                _repository.CreateOrUpdateTaskSuggestion(user, description,
+                _repository.CreateOrUpdateTaskSuggestion(user, descriptionUnescaped,
                     container.Chat.Id, container.MessageId, out var previous);
 
                 if (previous != null)

@@ -10,6 +10,7 @@ using NodaTime;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Remoting.Contexts;
 using System.Text;
@@ -186,6 +187,64 @@ namespace tests
                     $"suggestion count from user {usrScenario.MockUser.Id} is {suggestions.Count()}, expected 1");
                 Assert.That(suggestions.FirstOrDefault().Description, Contains.Substring(updatedSuggestion),
                     $"The suggestion from user {usrScenario.MockUser.Id} didn't contain his suggestion {updatedSuggestion}");
+            }
+        }
+        
+        [Test]
+        public async Task ShoudlScreenHTMLInSuggestions()
+        {
+            using (var compartment = new TestCompartment())
+            {
+                // setting up a TaskSuggestionCollection state
+                var clock = compartment.Container.Resolve<IClock>();
+
+                compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
+                await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
+
+                var usrScenario = compartment.ScenarioController.StartUserScenario(
+                    async context => context.PersistUserChatId());
+
+                var initialSuggestion = "Initial fake \"'<>'\" suggestion";
+                var screenedSuggestion = ContestController.EscapeTgHtml(initialSuggestion);
+                
+                await compartment.ScenarioController.StartUserScenarioForExistingUser(usrScenario.MockUser.Id, async context => 
+                {
+                    // suggesting the first time
+                    context.SendCommand(Schema.TaskSuggestCommandName);
+                    
+                    var guidelineMessage = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+                    Assert.That(guidelineMessage?.Text, Contains.Substring(
+                        LocTokens.SubstituteTokens(context.Localization.TaskSuggestCommandHandler_SubmitGuidelines,
+                        Tuple.Create(LocTokens.VotingChannelLink, MockConfiguration.Snapshot.VotingChannelInviteLink))),
+                        "/tasksuggest command response should contain general submit pretext");
+
+                    context.SendMessage(initialSuggestion, context.PrivateChat);
+
+                    var screenedMessage = await context.ReadTillMessageReceived(MockConfiguration.VotingChat.Id);
+                    
+                    Assert.That(screenedMessage.Text, Contains.Substring(screenedSuggestion),
+                        "Didn't properly screen suggestion text");
+                    Assert.That(screenedMessage.Text, Does.Not.Contain(initialSuggestion),
+                        "Didn't properly screen suggestion text");
+                    
+                    //Check that screened text gets to main announcement in fallthrough case
+                    
+                    // ffwd
+                    compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
+
+                    Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
+                        Is.True, "Failed to fallthrough to Contest state");
+                    
+                    var mainChatMessage = await context.ReadTillMessageReceived(mock=>
+                        mock.ChatId.Identifier == MockConfiguration.MainChat.Id &&
+                        mock.Text.Contains(screenedSuggestion));
+                    
+                    Assert.That(mainChatMessage.Text, Contains.Substring(screenedSuggestion),
+                        "Didn't properly screen suggestion text");
+                    Assert.That(mainChatMessage.Text, Does.Not.Contain(initialSuggestion),
+                        "Didn't properly screen suggestion text");
+                    
+                }).ScenarioTask;
             }
         }
 

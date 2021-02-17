@@ -81,8 +81,7 @@ namespace musicallychallenged.Commands
                 return;
             }
 
-            var text = ContestController.EscapeTgHtml(response.Text);
-            await _pollController.SaveTaskSuggestion(text, user);
+            await _pollController.SaveTaskSuggestion(response.Text, user);
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, 
                 _loc.TaskSuggestCommandHandler_SubmitionSucceeded);
@@ -92,7 +91,7 @@ namespace musicallychallenged.Commands
 
         bool IsValidTaskSuggestion(Message message)
         {
-            var text = message.Text;
+            var text = message?.Text;
 
             if (string.IsNullOrWhiteSpace(text) || text.Length < MinimumTaskSuggestionLength)
                 return false;

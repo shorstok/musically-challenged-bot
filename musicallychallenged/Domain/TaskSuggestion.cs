@@ -19,6 +19,7 @@ namespace musicallychallenged.Domain
 
         public Instant Timestamp { get; set; }
 
+        /* Task suggestion description (unescaped) */
         public string Description { get; set; }
         public int? ConsolidatedVoteCount { get; set; }
 

@@ -113,13 +113,17 @@ namespace musicallychallenged.Services
             VotingSmiles[vote.Value];
 
         protected override string GetEntryText(User user, string votingDetails, string extra) =>
-            _pollController.GetTaskSuggestionMessageText(user, votingDetails, extra);
+            _pollController.GetTaskSuggestionMessageText(
+                user, 
+                votingDetails, 
+                ContestController.EscapeTgHtml(extra));
 
         protected override Task OnWinnerChosen(User winner, TaskSuggestion winningEntry)
         {
             Repository.UpdateState(s => s.CurrentTaskTemplate, winningEntry.Description);
             Repository.SetNextRoundTaskPollWinner(winner.Id);
-            return Task.Run(() => { });
+            
+            return Task.CompletedTask;
         }
 
         protected override bool IsValidStateToProduceAVotingWinner(int voteCount, int entriesCount) => 

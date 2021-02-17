@@ -436,7 +436,7 @@ namespace musicallychallenged.Data
 
         public void CreateOrUpdateTaskSuggestion(
             User author, 
-            string description, 
+            string descriptionUnescaped, 
             long containerChatId, 
             int containerMessageId,
             out TaskSuggestion previous)
@@ -482,7 +482,7 @@ namespace musicallychallenged.Data
 
                     existing.PollId = poll.Id;
                     existing.AuthorUserId = author.Id;
-                    existing.Description = description;
+                    existing.Description = descriptionUnescaped;
                     existing.ContainerChatId = containerChatId;
                     existing.ContainerMesssageId = containerMessageId;
                     existing.Timestamp = _clock.GetCurrentInstant();

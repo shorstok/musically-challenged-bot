@@ -189,18 +189,19 @@ namespace musicallychallenged.Services
                 Replace("\"", "&quot;");
         }
 
-        public static Dictionary<SelectedTaskKind, string> TaskPrefaces = new Dictionary<SelectedTaskKind, string>
+        private string GetTaskPreface(SelectedTaskKind taskKind)
         {
-            { SelectedTaskKind.Manual, "Задание от" },
-            { SelectedTaskKind.Random, "Случайно выбраное задание по воле"},
-            { SelectedTaskKind.Poll, "Коллективно было выбрано задание от"},
-        };
-
-        public string GetTaskPreface(SelectedTaskKind taskKind)
-        {
-            if (TaskPrefaces.TryGetValue(taskKind, out var preface))
-                return preface;
-            return "Задания от";
+            switch (taskKind)
+            {
+                case SelectedTaskKind.Manual:
+                    return _loc.ContestTaskPreface_Manual;
+                case SelectedTaskKind.Random:
+                    return _loc.ContestTaskPreface_Random;
+                case SelectedTaskKind.Poll:
+                    return _loc.ContestTaskPreface_Poll;
+                default:
+                    return _loc.ContestTaskPreface_Manual;
+            }
         }
 
         public string MaterializeTaskUsingCurrentTemplate()

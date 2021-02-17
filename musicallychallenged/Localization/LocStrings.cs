@@ -193,6 +193,10 @@ namespace musicallychallenged.Localization
 
         public string AnonymousAuthor { get; set; } = "🤖";
 
+        public string ContestTaskPreface_Manual { get; set; } = $"Задание от";
+        public string ContestTaskPreface_Random { get; set; } = $"Случайно выбраное задание по воле";
+        public string ContestTaskPreface_Poll { get; set; } = $"Коллективно было выбрано задание от";
+        
         public string Contest_FreshEntryTemplate { get; set; } = $"<b>⬆️ работа </b>{LocTokens.User}{Environment.NewLine}{LocTokens.Details}";
 
         public string ContestDeadline_EnoughEntriesTemplateFinal { get; set; } = $"Внимание, до конца приема работ на Писец осталось <b>{LocTokens.Time}</b>. После этого начнется этап голосования. Подавайте работы вовремя, ведь бот неумолим! 😊";
