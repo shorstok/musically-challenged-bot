@@ -7,6 +7,7 @@ using Autofac;
 using musicallychallenged.Commands;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
+using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Services;
 using musicallychallenged.Services.Events;
@@ -42,8 +43,14 @@ namespace musicallychallenged
             builder.RegisterType<TimeService>().AsSelf().SingleInstance();
             builder.RegisterType<PollingStateScheduler>().As<IStateScheduler>().SingleInstance();
 
+            builder.RegisterType<NextRoundTaskPollController>().AsSelf().SingleInstance();
+            builder.RegisterType<NextRoundTaskPollVotingController>().AsSelf().SingleInstance();
+
             builder.RegisterType<SqliteRepository>().As<IRepository>().SingleInstance();
             builder.RegisterType<TelegramClient>().As<ITelegramClient>().SingleInstance();
+
+            // builder.RegisterType<VotingControllerHelper<ActiveContestEntry, Vote>>().SingleInstance();
+            // builder.RegisterType<VotingControllerHelper<TaskSuggestion, TaskPollVote>>().SingleInstance();
             
             //Register all telegram command handlers
 

@@ -4,6 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+// ReSharper disable StringLiteralTypo
+// ReSharper disable InconsistentNaming
+
 namespace musicallychallenged.Localization
 {
     public static class LocTokens
@@ -18,6 +21,8 @@ namespace musicallychallenged.Localization
         public const string TaskDescription = "%TASK%";
         public const string Deadline = "%DEADLINE%";
         public const string VotingChannelLink = "%VOTECHANLNK%";
+        public const string RulesUrl = "%RULES%";
+        public const string TaskFromPreface = "%FROMPREFACE%";
 
         public static string SubstituteTokens(string template, params Tuple<string, string>[] tokens)
         {
@@ -72,6 +77,8 @@ namespace musicallychallenged.Localization
         public string NotEnoughEntriesAnnouncement { get; set; } = "Челленджи приостановлены из-за нехватки участников 😐";
         public string NotEnoughVotesAnnouncement { get; set; } = $"Челленджи приостановлены из-за недостаточной активности участников (максимум голосовавших - {LocTokens.VoteCount} чел.) 😐";
 
+        public string NotEnoughSuggestionsAnnouncement { get; set; } = "Челленджи приостановлены из-за нехватки предложенных заданий 😐";
+
         public string WeHaveAWinner { get; set; } = $@"В раунде Писца победил(а) {LocTokens.User} ({LocTokens.VoteCount} голосов), в данный момент он(а) выбирает задание для следующего раунда...";
         public string WeHaveWinners { get; set; } = $"В раунде Писца первое место разделили несколько человек: {LocTokens.Users} ({LocTokens.VoteCount} голосов). " +
                                                     $"С помощью рулетки из них был выбран {LocTokens.User}, который в данный момент он выбирает задание для следующего раунда...";
@@ -80,16 +87,17 @@ namespace musicallychallenged.Localization
         public string ChooseWiselyPrivateMessage { get; set; } = "Постарайтесь сформулировать задание для следующего раунда с учетом пожеланий Администрации 🧐";
 
         public string RandomTaskButtonLabel { get; set; } = "Давайте случайное";
+        public string NextRoundTaskPollButtonLabel { get; set; } = "создадим Го";
         
         public string RandomTaskSelectedMessage { get; set; } = "Для следующего раунда будет использовано случаное задание";
         public string TaskSelectedMessage { get; set; } = "Задание отправлено Администрации";
+        public string InitiatedNextRoundTaskPollMessage { get; set; } = "Задание будет выбрано комьюнити";
 
         public string InvalidTaskMessage { get; set; } = "Извините, это не похоже на задание. Отошлите следующим в сообщении текст задания следующего раунда";
         public string SlackWarningMesage { get; set; } = $"Внимание, время на формулировку задания ограничено ({LocTokens.Time} ч.), " +
                                                          $"по истечению будет автоматически выбран вариант со случайным заданием";
 
-        public string ChooseNextRoundTaskPrivateMessage { get; set; } = "Опишите в следующем сообщении задание для следующего раунда, либо выберите случайное задание " +
-                                                                        "(оно будет выбрано из внутреннего пула заданий случайным образом)";
+        public string ChooseNextRoundTaskPrivateMessage { get; set; } = "Опишите в следующем сообщении задание для следующего раунда, выберите случайное задание (оно будет выбрано из внутреннего пула заданий случайным образом), либо создайте публичное голосование за новое задание";
         public string InnerCircleApprovedTaskMessage { get; set; } =
             "Ваше задание получило одобрение Администрации 🤩";
         public string InnerCircleDeclinedMessage { get; set; } =
@@ -117,6 +125,7 @@ namespace musicallychallenged.Localization
 
 
         public string KickstartCommandHandler_Description { get; set; } = "Начать новый раунд с ноги";
+        public string KickstartNextRoundTaskPollCommandHandler_Description { get; set; } = "Начать выбор нового задания комьюнити с ноги";
         public string StandbyCommandHandler_Description { get; set; } = "Присыпить бота";
         public string FastForwardCommandHandler_Description { get; set; } = "Промотать время вперед";
 
@@ -137,6 +146,37 @@ namespace musicallychallenged.Localization
         public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только аудиофайлы и ссылки (на вашу работу в youtube, например) 🧐";
         public string SubmitContestEntryCommandHandler_SubmissionSucceeded { get; set; } = "Спасибо за участие! Ваша работа принята";
 
+        public string TaskSuggestCommandHandler_Description { get; set; } = "Отправить свой вариант задания для следующего челенджа";
+        public string TaskSuggestCommandHandler_OnlyAvailableInSuggestionCollectionState { get; set; } = "Прием заданий (пока) закрыт. Дождитесь следующего голосования за задание!";
+        public string TaskSuggestCommandHandler_SubmitGuidelines { get; set; } = $@"Отправьте свой вариант задания следующим сообщением (текст от 10 символов). Повторное использование команды обновит уже существующее задание.
+
+Обратите внимание на то, <a href=""{LocTokens.VotingChannelLink}"">какие задания уже предложили</a>, чтобы не повторяться.";
+        public string TaskSuggestCommandHandler_SubmitionFailed { get; set; } = "Сообщение должно содержать текст длиной от 10 символов";
+        public string TaskSuggestCommandHandler_SubmitionSucceeded { get; set; } = "Спасибо за участие! Ваше задание было принято";
+        
+        public string NextRoundTaskPollController_SuggestionTemplate { get; set; } = $"<b>Задание от </b>{LocTokens.User}{Environment.NewLine}{LocTokens.Details}";
+
+        public string NextRoundTaskPollController_AnnouncementTemplateMainChannel { get; set; } = 
+            $@"Победитель предыдущего раунда, {LocTokens.User}, решил отдать выбор задания комьюнити ПесноПисца.
+
+Процедура будет проходить в два этапа:
+1) Прием ботом @nsctheorbot заданий от участников с помощью команды /<code>tasksuggest</code> <b>(команда отсылается в *личке* боту)</b>. Приём заданий закончится в <b>{LocTokens.Deadline}</b>.
+
+2) Голосование за лучшее задание в <a href=""{LocTokens.VotingChannelLink}"">музыкальном архиве</a>. Оно начнётся сразу после закрытия принятия работ.
+
+<a href=""{LocTokens.RulesUrl}"">Все правила</a>";
+
+        public string NextRoundTaskPollController_AnnouncementTemplateVotingChannel { get; set; } = $"🧐 <b>Начался выбор нового задания всем комьюнити!</b> 🧐";
+
+        public string TaskSuggestionVotingStarted { get; set; } =
+            $"Началось голосование за задание для следующего челенджа в Писце! 🎉 " +
+            $"Пожалуйста, пройдите в <a href=\"{LocTokens.VotingChannelLink}\">канал для голосования</a> и проставьте всем честные оценки! " +
+            $"Голосование будет проходить до <b>{LocTokens.Deadline}</b>";
+
+        public string WeHaveAWinnerTaskSuggestion { get; set; } = $@"В голосовании за следующее задание победил {LocTokens.User} ({LocTokens.VoteCount} голосов), в скором времени начнется следующий раунд челенджей...";
+        public string WeHaveWinnersTaskSuggestion { get; set; } = $"В голосовании за следующее задание первое место разделили несколько человек: {LocTokens.Users} ({LocTokens.VoteCount} голосов). " +
+                                                    $"С помощью рулетки из них был выбран {LocTokens.User}, чье задание будет использовано в следующем раунде челенджей, который начнется в скором времени...";
+
         public string VotingStarted { get; set; } =
             $"Началось голосование за лучшие работы в Писце! 🎉 " +
             $"Пожалуйста, пройдите в <a href=\"{LocTokens.VotingChannelLink}\">канал для голосования</a> и проставьте всем честные оценки! " +
@@ -153,6 +193,10 @@ namespace musicallychallenged.Localization
 
         public string AnonymousAuthor { get; set; } = "🤖";
 
+        public string ContestTaskPreface_Manual { get; set; } = $"Задание от";
+        public string ContestTaskPreface_Random { get; set; } = $"Случайно выбраное задание по воле";
+        public string ContestTaskPreface_Poll { get; set; } = $"Коллективно было выбрано задание от";
+        
         public string Contest_FreshEntryTemplate { get; set; } = $"<b>⬆️ работа </b>{LocTokens.User}{Environment.NewLine}{LocTokens.Details}";
 
         public string ContestDeadline_EnoughEntriesTemplateFinal { get; set; } = $"Внимание, до конца приема работ на Писец осталось <b>{LocTokens.Time}</b>. После этого начнется этап голосования. Подавайте работы вовремя, ведь бот неумолим! 😊";
@@ -166,27 +210,13 @@ namespace musicallychallenged.Localization
                                                                                   $"Задание:{Environment.NewLine}{Environment.NewLine}" +
                                                                                   $"{LocTokens.TaskDescription}";
 
-        public string ContestStartMessageTemplateForMainChannelPin { get; set; } = $@"Задание от {LocTokens.User}:
+        public string ContestStartMessageTemplateForMainChannelPin { get; set; } = $@"{LocTokens.TaskFromPreface} {LocTokens.User}:
 
 {LocTokens.TaskDescription}
 
-Написать работу и отправить ее боту @nsctheorbot с помощью команды /<code>submit</code> <b>(команда отсылается в *личке* боту)</b> нужно до <b>{LocTokens.Deadline}</b>
-Текстовое описание к работе (по желанию) можно отправить командой /<code>describe</code>
+Написать работу и отправить ее боту @nsctheorbot нужно до <b>{LocTokens.Deadline}</b>
 
-Если вы залили видео на ютуб, то, пожалуйста, вставьте ссылку на оригинал в описании вашего видео.
-
-Голосование за лучшую работу начнется по окончанию принятия работ. Победитель определит задание для следующего челленджа и должен будет написать его администрации.
-
-Если победивших будет 2 или больше, тот, чье задание будет взято для следующего челленджа определит рандомайзер. Если победитель не объявится, будет использовано случайное задание из пула с идеями.
-
-Администрация имеет последнее слово в вопросе о допущении задания для челленджа и может как изменить его, так и отвергнуть.
-
-Если у вас будут какие-то идеи для новый челленджей, пишите в чат. Администрация перешлет их боту.
-
-Оставайтесь маленькими музыкашками 😊
-
-Не забывайте о нашем <a href=""{LocTokens.VotingChannelLink}"">музыкальном архиве</a>
-";
+<a href=""{LocTokens.RulesUrl}"">Правила/вопросы/что происходит</a>";
 
         public string Never { get; set; } = "Никогда";
         public string NotAvailable { get; set; } = "н/д";

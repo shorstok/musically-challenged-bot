@@ -109,6 +109,10 @@ namespace tests
                 Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Standby),
                     Is.True,
                     "Failed switching to Standby state after deadline hit");
+
+                Assert.That(compartment.Repository.ConsolidateVotesForActiveEntriesGetAffected().Count(),
+                    Is.EqualTo(0),
+                    "Failed to close active entries when switched to standby");
             }
         }
 
@@ -224,7 +228,8 @@ namespace tests
                 {
                     await compartment.ScenarioController.StartUserScenario(async context =>
                     {
-                        var maxVoteSmile = VotingController._votingSmiles.Last();
+                        var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
+                        var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
                         var button = votingEntities[1].Item2.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                             FirstOrDefault(b => b.Text == maxVoteSmile);
 
@@ -281,6 +286,83 @@ namespace tests
                         Is.All.EqualTo(voterCount * averageVoteValue),
                         "Wrong vote sum for non-winners");
                 }
+            }
+        }       
+        
+        [Test]
+        public async Task ShouldFallbackToTaskPollOnSuggestionTimeout()
+        {
+            using (var compartment = new TestCompartment())
+            {
+                //Setup
+                
+                //Force immediate timeout on task selection
+                compartment.Configuration.MaxTaskSelectionTimeHours = 0;
+
+                var mediator = compartment.Container.Resolve<MockMessageMediatorService>();
+                var votingController = compartment.Container.Resolve<VotingController>();
+
+                var votingEntities = compartment.GenericScenarios.
+                    PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
+                    ToArray();
+
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                        Is.True, "Failed switching to Voting state after deadline hit");
+
+                    await context.ReadTillMessageReceived(mock =>
+                        mock.ChatId.Identifier == MockConfiguration.VotingChat.Id &&
+                        mock.Text.Contains(context.Localization.VotingStatsHeader));
+
+                    //Check that system created voting buttons markup on voting start
+
+                    foreach (var votingEntity in votingEntities)
+                    {
+                        var votingMessage =
+                            mediator.GetMockMessage(votingEntity.Item2.Chat.Id, votingEntity.Item2.MessageId);
+
+                        Assert.That(votingMessage.ReplyMarkup?.InlineKeyboard?.SelectMany(buttons => buttons)?.Count(),
+                            Is.EqualTo(5),
+                            $"Didn't create five voting buttons for entry {votingEntity.Item2.Text}");
+                    }
+                }).ScenarioTask;
+
+                //Vote for entry 1 with 5 users with max vote
+
+                var voterCount = 5;
+
+                for (var nuser = 0; nuser < voterCount; nuser++)
+                {
+                    await compartment.ScenarioController.StartUserScenario(async context =>
+                    {
+                        var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
+                        var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
+                        var button = votingEntities[1].Item2.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
+                            FirstOrDefault(b => b.Text == maxVoteSmile);
+
+                        Assert.That(button, Is.Not.Null,
+                            $"Max voting value button (labelled {maxVoteSmile}) not found in reply markup");
+
+                        context.SendQuery(button.CallbackData, votingEntities[1].Item2);
+                    }).ScenarioTask;
+                }
+
+                //Ffwd voting
+
+                await compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    await compartment.GenericScenarios.SupervisorSetDeadlineToNow(context);
+
+                    var votingPinEdited =
+                        await context.ReadTillMessageEdited(MockConfiguration.MainChat.Id, TimeSpan.FromSeconds(10));
+                }, UserCredentials.Supervisor).ScenarioTask;
+
+                Assert.That(await compartment.WaitTillStateMatches(state =>
+                        state.State == ContestState.TaskSuggestionCollection || state.State == ContestState.Contest),
+                    Is.True, "Failed switching to TaskSuggestionCollection on task selection timeout");
+
+                
             }
         }
     }

@@ -64,6 +64,15 @@ namespace tests.Mockups
         //How many users required to trigger postpone
         public int PostponeQuorum { get; set; } = 3;
 
+        public int TaskSuggestionCollectionDeadlineTimeHours { get; set; } = 12;
+
+        public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
+
+        public int MinSuggestionVoteValue { get; set; } = -1;
+
+        public int MaxSuggestionVoteValue { get; set; } = 1;
+        public string RulesURL { get; set; } = "https://telegra.ph/FAQ-po-PesnoPiscu-02-10";
+
         public bool Reload() =>
             true;
 

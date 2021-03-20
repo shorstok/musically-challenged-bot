@@ -63,7 +63,9 @@ namespace musicallychallenged.Services
 
                 logger.Info($"Finally, voting resulted in following task: {state.CurrentTaskTemplate}");
 
-                _repository.UpdateState(_ => _.CurrentTaskTemplate, result.Item2);
+                // I don't really have a clue how to set CurrentTaskType in this case (or whether I even should)
+                // In any case, it doesn't seem to matter at this point
+                _repository.UpdateState(s => s.CurrentTaskTemplate, result.Item2);
 
                 return true;
             }
@@ -90,11 +92,15 @@ namespace musicallychallenged.Services
                         await _client.SendTextMessageAsync(dialog.ChatId, _loc.InnerCircleApprovedTaskMessage,
                             ParseMode.Html);
 
+                    // Sets a task kind to manual. Makes sense when overriding a random task
+                    if (result.Item1 == null)
+                        _repository.UpdateState(s => s.CurrentTaskKind, SelectedTaskKind.Manual);
+
                     //(Say nothing to CurrentWinnerId on override)
 
                     logger.Info($"Finally, voting resulted in following task: {state.CurrentTaskTemplate}");
 
-                    _repository.UpdateState(_ => _.CurrentTaskTemplate, result.Item2);
+                    _repository.UpdateState(s => s.CurrentTaskTemplate, result.Item2);
                 }
                 finally
                 {
@@ -124,13 +130,15 @@ namespace musicallychallenged.Services
                 return Tuple.Create<bool?, string>(true, null);
             }
 
-            var taskTemplate = state.CurrentTaskTemplate;
+            var taskInfo = state.CurrentTaskInfo;
 
-            bool isOptedForRandomTask = string.IsNullOrWhiteSpace(taskTemplate) ||
-                                        taskTemplate == NewTaskSelectorController.RandomTaskCallbackId;
+            bool isOptedForRandomTask = taskInfo.Item1 == SelectedTaskKind.Random;
 
             if (isOptedForRandomTask)
-                taskTemplate = _randomTaskRepository.GetRandomTaskDescription();
+            {
+                var randomTask = _randomTaskRepository.GetRandomTaskDescription();
+                taskInfo = Tuple.Create(SelectedTaskKind.Random, randomTask);
+            }
 
             //start administrative voting cycle
 
@@ -138,7 +146,7 @@ namespace musicallychallenged.Services
             var cts = new CancellationTokenSource();
 
             var completedTasks = await Task.WhenAll(allAdmins.Select(admin => VoteAsync(admin,
-                taskTemplate,
+                taskInfo.Item2,
                 isOptedForRandomTask,
                 preliminaryVotingCompletionSource,
                 isReactivation, isVotingWithoutWinner,
@@ -156,13 +164,12 @@ namespace musicallychallenged.Services
                 return Tuple.Create<bool?, string>(null, ovrResult.Item3);
 
             var denyResult = results.FirstOrDefault(r => r.Item2 == VotingResult.Deny);
-
             //we got denial
             if (denyResult != null)
                 return Tuple.Create<bool?, string>(false, denyResult.Item3);
 
             //approved
-            return Tuple.Create<bool?, string>(true, taskTemplate);
+            return Tuple.Create<bool?, string>(true, taskInfo.Item2);
         }
 
         private async Task<Tuple<User, VotingResult, string>> NotifyOthersReturnResult(
@@ -326,7 +333,7 @@ namespace musicallychallenged.Services
                                 var reason = await dialog.AskForMessageWithConfirmation(token,
                                     _loc.AdminVotingTypeReasonForDeclineMessage);
 
-                                logger.Info($"Admin {admin.GetUsernameOrNameWithCircumflex()} reson: `{reason}`");
+                                logger.Info($"Admin {admin.GetUsernameOrNameWithCircumflex()} reason: `{reason}`");
 
                                 return Tuple.Create(admin, VotingResult.Deny, reason);
                             }

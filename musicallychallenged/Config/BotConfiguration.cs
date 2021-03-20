@@ -167,6 +167,21 @@ namespace musicallychallenged.Config
         [JsonProperty("PostponeQuorum")]
         public int PostponeQuorum { get; set; } = 3;
 
+        [JsonProperty("TaskSuggestionCollectionDeadlineTimeHours")]
+        public int TaskSuggestionCollectionDeadlineTimeHours { get; set; } = 12;
+
+        [JsonProperty("TaskSuggestionVotingDeadlineTimeHours")]
+        public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
+
+        [JsonProperty("MinSuggestionVoteValue")]
+        public int MinSuggestionVoteValue { get; set; } = -1;
+
+        [JsonProperty("MaxSuggestionVoteValue")]
+        public int MaxSuggestionVoteValue { get; set; } = 1;
+
+        [JsonProperty("RulesURL")]
+        public string RulesURL { get; set; } = "https://telegra.ph/FAQ-po-PesnoPiscu-02-10";
+
         public static BotConfiguration LoadOrCreate(bool saveIfNew = false)
         {
             lock (_configReaderWriterLock)

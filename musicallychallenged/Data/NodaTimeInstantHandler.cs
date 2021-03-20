@@ -38,7 +38,7 @@ namespace musicallychallenged.Data
                 {
                     return InstantPattern.General.Parse(iso).Value;
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     return Instant.MinValue;                    
                 }

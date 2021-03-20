@@ -1,25 +1,29 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Dapper.Contrib.Extensions;
 using NodaTime;
 
 namespace musicallychallenged.Domain
 {
-    [Table("ActiveContestEntry")]
-    public class ActiveContestEntry : IVotable
+    [Table("TaskSuggestion")]
+    public class TaskSuggestion : IVotable
     {
         [Key]
         public int Id { get; set; }
 
         public int AuthorUserId { get; set; }
-        public int ChallengeRoundNumber { get; set; }
+        public int PollId { get; set; }
 
         public Instant Timestamp { get; set; }
 
+        /* Task suggestion description (unescaped) */
+        public string Description { get; set; }
         public int? ConsolidatedVoteCount { get; set; }
 
         public long ContainerChatId { get; set; }
         public int ContainerMesssageId { get; set; }
-        public int ForwardedPayloadMessageId { get; set; }
-        public string Description { get; set; }
     }
 }

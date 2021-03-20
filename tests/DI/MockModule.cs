@@ -20,21 +20,11 @@ namespace tests.DI
         {
             builder.RegisterInstance(MockConfiguration.Snapshot).As<IBotConfiguration>().SingleInstance();
 
-            builder.RegisterType<InMemorySqliteRepository>().As<IRepository>().OnActivated(OnSqliteInMemoryActivated).SingleInstance();
             builder.RegisterType<MockTelegramClient>().AsSelf().As<ITelegramClient>().SingleInstance();
             builder.RegisterType<UserScenarioContext>().AsSelf().InstancePerDependency();
             builder.RegisterType<UserScenarioController>().AsSelf().SingleInstance();
             builder.RegisterType<GenericUserScenarios>().AsSelf().SingleInstance();
             builder.RegisterType<MockMessageMediatorService>().AsSelf().SingleInstance();
-        }
-
-        private void OnSqliteInMemoryActivated(IActivatedEventArgs<InMemorySqliteRepository> obj)
-        {
-            Logger.Info("Applying migrations for in-memory sqlite db...");
-
-            new AdHocMigrationRunner(obj.Instance.GetInMemoryConnectionString()).RunMigrations();
-
-            Logger.Info("Applied migrations for in-memory sqlite db");
         }
     }
 }

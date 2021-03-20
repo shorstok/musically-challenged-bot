@@ -13,11 +13,14 @@ namespace musicallychallenged.Commands
         public const string DeployCommandName  = "deploy";
         public const string FastForwardCommandName = "ffwd";
         public const string KickstartCommandName = "kickstart";
+        public const string KickstartNextRoundTaskPollCommandName = "pollkickstart";
 
         public const string RemindCommandName = "remind";
 
         public const string SubmitCommandName = "submit";
         public const string DescribeCommandName = "describe";
         public const string PostponeCommandName = "postpone";
+
+        public const string TaskSuggestCommandName = "tasksuggest";
     }
 }

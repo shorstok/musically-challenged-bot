@@ -63,6 +63,9 @@ namespace musicallychallenged.Services
 
         private void OnBotBlocked(BotBlockedEvent obj)
         {
+            if(null == obj.ChatId)
+                return;
+
             _repository.DeleteUserWithPrivateChatId(obj.ChatId?.Identifier);
         }
 
@@ -71,7 +74,9 @@ namespace musicallychallenged.Services
             var deletedEntry = _repository.
                 GetActiveContestEntries().
                 ToArray().
-                FirstOrDefault(e=>e.ContainerMesssageId == obj.MessageId && e.ContainerChatId == obj.ChatId.Identifier);
+                FirstOrDefault(e =>
+                    e.ContainerMesssageId == obj.MessageId && 
+                    e.ContainerChatId == obj.ChatId?.Identifier);
 
             if(null == deletedEntry)
                 return;
@@ -184,32 +189,55 @@ namespace musicallychallenged.Services
                 Replace("\"", "&quot;");
         }
 
+        private string GetTaskPreface(SelectedTaskKind taskKind)
+        {
+            switch (taskKind)
+            {
+                case SelectedTaskKind.Manual:
+                    return _loc.ContestTaskPreface_Manual;
+                case SelectedTaskKind.Random:
+                    return _loc.ContestTaskPreface_Random;
+                case SelectedTaskKind.Poll:
+                    return _loc.ContestTaskPreface_Poll;
+                default:
+                    return _loc.ContestTaskPreface_Manual;
+            }
+        }
+
         public string MaterializeTaskUsingCurrentTemplate()
-        {            
+        {
             var state = _repository.GetOrCreateCurrentState();
 
-            var winner = state.CurrentWinnerId != null ? _repository.GetExistingUserWithTgId(state.CurrentWinnerId.Value) : null;
-
+            int? winnerId = state.CurrentTaskKind == SelectedTaskKind.Poll ? _repository.GetLastTaskPollWinnerId() : state.CurrentWinnerId;
+            var winner = winnerId.HasValue ? _repository.GetExistingUserWithTgId(winnerId.Value) : null;
+            
             var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
 
             return LocTokens.SubstituteTokens(_loc.ContestStartMessageTemplateForMainChannelPin,
+                Tuple.Create(LocTokens.TaskFromPreface, GetTaskPreface(state.CurrentTaskKind)),
                 Tuple.Create(LocTokens.User,winner?.GetHtmlUserLink()?? _loc.AnonymousAuthor) ,
                 Tuple.Create(LocTokens.TaskDescription,EscapeTgHtml(state.CurrentTaskTemplate)),
                 Tuple.Create(LocTokens.Deadline,deadlineText),
+                Tuple.Create(LocTokens.RulesUrl,_configuration.RulesURL),
                 Tuple.Create(LocTokens.VotingChannelLink,_configuration.VotingChannelInviteLink));
         }
 
-        public Task KickstartContestAsync(string responseText, User user)
+        public void IsolatePreviousRoundTasks()
         {
             var votes = _repository.ConsolidateVotesForActiveEntriesGetAffected();
 
-            if (votes.Any())
-            {
-                var state = _repository.GetOrCreateCurrentState();
-                _repository.UpdateState(s => s.CurrentChallengeRoundNumber,state.CurrentChallengeRoundNumber+1);
-            }
+            if (!votes.Any())
+                return;
 
-            _repository.UpdateState(s => s.CurrentTaskTemplate,responseText);
+            var state = _repository.GetOrCreateCurrentState();
+            _repository.UpdateState(s => s.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);
+        }
+        
+        public Task KickstartContestAsync(string responseText, User user)
+        {
+            IsolatePreviousRoundTasks();
+
+            _repository.SetCurrentTask(SelectedTaskKind.Manual, responseText);
             _repository.UpdateState(s => s.CurrentWinnerId,user.Id);
 
             _aggregator.Publish(new KickstartContestEvent());
@@ -284,7 +312,8 @@ namespace musicallychallenged.Services
 
         public void Dispose()
         {
-
+            foreach (var subscription in _subscriptions)
+                subscription.Dispose();
         }
     }
 }

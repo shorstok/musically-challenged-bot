@@ -9,11 +9,14 @@ using System.Threading.Tasks;
 using Autofac;
 using log4net;
 using musicallychallenged;
+using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
+using musicallychallenged.Services;
 using musicallychallenged.Services.Telegram;
+using NodaTime;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using tests.Mockups;
@@ -31,6 +34,7 @@ namespace tests.DI
         public LocStrings Localization { get; private set; }
         public UserScenarioController ScenarioController { get; private set; }
         public GenericUserScenarios GenericScenarios { get; private set; }
+        public IBotConfiguration Configuration { get; private set; }
 
         public TestCompartment()
         {
@@ -102,11 +106,20 @@ namespace tests.DI
             _serviceHost = Container.Resolve<ServiceHost>();
             Repository = Container.Resolve<IRepository>();
             Localization = Container.Resolve<LocStrings>();
+            Configuration = Container.Resolve<IBotConfiguration>();
             ScenarioController = Container.Resolve<UserScenarioController>();
             GenericScenarios = Container.Resolve<GenericUserScenarios>();
         }
 
 
+        private void RunInMemorySqliteMigrations(string connectionString)
+        {
+            Logger.Info("Applying migrations for in-memory sqlite db...");
+
+            new AdHocMigrationRunner(connectionString).RunMigrations();
+
+            Logger.Info("Applied migrations for in-memory sqlite db");
+        }
 
         private void BuildMockContainer()
         {
@@ -114,6 +127,14 @@ namespace tests.DI
 
             containerBuilder.RegisterModule<ProductionModule>();
             containerBuilder.RegisterModule<MockModule>();
+
+            // Registering an InMemorySqliteRepository instance separately to be able to run migrations before the container is built
+            var clock = new SystemClockService();
+            var inMemorySqlite = new InMemorySqliteRepository(clock);
+            RunInMemorySqliteMigrations(inMemorySqlite.GetInMemoryConnectionString());
+
+            containerBuilder.RegisterInstance(clock).As<IClock>().SingleInstance();
+            containerBuilder.RegisterInstance(inMemorySqlite).As<IRepository>().SingleInstance();
 
             containerBuilder.RegisterInstance(this).AsSelf().SingleInstance();
 

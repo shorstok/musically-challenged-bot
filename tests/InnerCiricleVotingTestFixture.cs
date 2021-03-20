@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Autofac;
 using log4net;
@@ -70,11 +71,11 @@ namespace tests
                 //Vote for entry 1 with 5 users with max vote
                 
                 var voterCount = 5;
-
                 for (var nuser = 0; nuser < voterCount; nuser++)
                     await compartment.ScenarioController.StartUserScenario(async context =>
                     {
-                        var maxVoteSmile = VotingController._votingSmiles.Last();
+                        var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
+                        var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
                         var button = votingEntities[1].Item2.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                             FirstOrDefault(b => b.Text == maxVoteSmile);
 
@@ -178,8 +179,8 @@ namespace tests
                                 msg.Text == compartment.Localization.ChooseNextRoundTaskPrivateMessage,
                             TimeSpan.FromSeconds(1));
 
-                        Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.Count(), Is.EqualTo(1),
-                            "Winner task selector should have 1 reply button (for random task selection)");
+                        Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(2),
+                            "Winner task selector should have 2 reply buttons (for random task selection and starting the next round task poll)");
 
                         winnerCtx.SendMessage(mockTaskText, winnerCtx.PrivateChat);
 
@@ -195,6 +196,10 @@ namespace tests
                     Contains.Substring(mockTaskText),
                     "Invalid task chosen for next round");
 
+                Assert.That(
+                    compartment.Repository.GetOrCreateCurrentState().CurrentTaskKind,
+                    Is.EqualTo(SelectedTaskKind.Manual),
+                    "SelectedTaskKind was not set correctly");
             }
         }
     }

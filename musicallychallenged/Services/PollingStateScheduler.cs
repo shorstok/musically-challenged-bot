@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
@@ -28,7 +29,7 @@ namespace musicallychallenged.Services
 
         private ISubscription[] _subscriptions = new ISubscription[0];
 
-        public PollingStateScheduler(IRepository repository, 
+        public PollingStateScheduler(IRepository repository,
             IClock clock,
             ContestController contestController,
             IEventAggregator eventAggregator,
@@ -52,11 +53,11 @@ namespace musicallychallenged.Services
 
             if (demandFastForwardEvent.IsPreDeadline)
             {
-                _repository.UpdateState(x=>x.NextDeadlineUTC,_clock.GetCurrentInstant().Plus(GetPreDeadlineDuration(state.State)));
+                _repository.UpdateState(x => x.NextDeadlineUTC, _clock.GetCurrentInstant().Plus(GetPreDeadlineDuration(state.State)));
             }
             else
             {
-                _repository.UpdateState(x=>x.NextDeadlineUTC,_clock.GetCurrentInstant());
+                _repository.UpdateState(x => x.NextDeadlineUTC, _clock.GetCurrentInstant());
             }
 
             await _contestController.UpdateCurrentTaskMessage();
@@ -71,18 +72,18 @@ namespace musicallychallenged.Services
             do
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(_botConfiguration.DeadlinePollingPeriodMs)).ConfigureAwait(false);
-                
-                if(_stopIssued)
+
+                if (_stopIssued)
                     return;
 
                 var state = _repository.GetOrCreateCurrentState();
-                
-                if(!IsTimeBoundState(state.State))
+
+                if (!state.State.IsTimeBound())
                     continue;
 
                 if (lastState != state.State)
                 {
-                    logger.Info($"Detected state change from {lastState?.ToString()??"<null state>"} to {state.State}, resetting signaled status");
+                    logger.Info($"Detected state change from {lastState?.ToString() ?? "<null state>"} to {state.State}, resetting signaled status");
 
                     await Task.Delay(_botConfiguration.DeadlinePollingPeriodMs).ConfigureAwait(false);
 
@@ -93,14 +94,14 @@ namespace musicallychallenged.Services
 
                 if (_stopIssued)
                     return;
-                
+
                 state = _repository.GetOrCreateCurrentState();
 
                 var deadline = state.NextDeadlineUTC;
 
                 var now = _clock.GetCurrentInstant();
 
-                if (!previewSignaled && now >= GetPreviewInstantTime(deadline,state.State))
+                if (!previewSignaled && now >= GetPreviewInstantTime(deadline, state.State))
                 {
                     OnPreviewDeadlineHit();
                     previewSignaled = true;
@@ -115,11 +116,6 @@ namespace musicallychallenged.Services
                 }
 
             } while (!_stopIssued);
-        }
-
-        private bool IsTimeBoundState(ContestState state)
-        {
-            return state == ContestState.Contest || state == ContestState.Voting;
         }
 
         private Duration GetPreDeadlineDuration(ContestState state)

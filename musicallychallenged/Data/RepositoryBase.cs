@@ -287,6 +287,343 @@ namespace musicallychallenged.Data
 
 
 
+        public NextRoundTaskPoll GetOpenNextRoundTaskPoll()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                return connection.Query<NextRoundTaskPoll>(
+                    @"select * from NextRoundTaskPoll where State=@State",
+                    new { State = NextRoundTaskPollState.Open })
+                    .FirstOrDefault();
+            }
+        }
+
+        public void CreateNextRoundTaskPoll()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    logger.Info("Creating a NextRoundTaskPoll");
+
+                    // checking whether a poll is already open
+                    if (GetOpenNextRoundTaskPoll() != null)
+                    {
+                        logger.Error($"Tried creating a new NextRoundTaskPoll, when one is already open");
+                        return;
+                    }
+
+                    // inserting a new poll
+                    var newPoll = new NextRoundTaskPoll
+                    {
+                        State = NextRoundTaskPollState.Open,
+                        Timestamp = _clock.GetCurrentInstant()
+                    };
+
+                    connection.Insert(newPoll, tx);
+
+                    logger.Info("NextRoundTaskPoll created");
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        class TaskSuggestionConsolidated
+        {
+            public int Id { get; set; }
+            public int Sum { get; set; }
+        }
+
+        public IEnumerable<TaskSuggestion> CloseNextRoundTaskPollAndConsolidateVotes()
+        {
+            var result = new List<TaskSuggestion>();
+
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    logger.Info("Closing NextRoundTaskPoll");
+
+                    var existing = GetOpenNextRoundTaskPoll();
+
+                    if (existing == null)
+                    {
+                        logger.Warn("No open NextRoundPoll found");
+                        return result;
+                    }
+
+                    // Consolidating vote count for suggestions
+                    var query = @"SELECT s.Id, COALESCE(SUM(v.sum_amount),0) AS Sum
+                    FROM TaskSuggestion s
+                    Left JOIN (
+                        SELECT TaskSuggestionId, SUM(Value) AS sum_amount
+                        FROM TaskPollVote
+                        GROUP BY TaskSuggestionId
+                    ) v on s.Id = v.TaskSuggestionId
+                    WHERE s.ConsolidatedVoteCount is NULL
+                    GROUP by s.Id";
+
+                    var consVotes = connection.Query<TaskSuggestionConsolidated>(query, transaction: tx);
+
+                    foreach (var consTask in consVotes)
+                    {
+                        var suggestion = connection.Get<TaskSuggestion>(consTask.Id, transaction: tx);
+                        suggestion.ConsolidatedVoteCount = consTask.Sum;
+
+                        result.Add(suggestion);
+
+                        connection.Update<TaskSuggestion>(suggestion, transaction: tx);
+                    }
+
+                    logger.Info("Consolidated vote count for TaskSuggestions");
+
+                    existing.State = NextRoundTaskPollState.Closed;
+                    connection.Update<NextRoundTaskPoll>(existing, transaction: tx);
+
+                    logger.Info("NextRoundTaskPoll closed");
+
+                    tx.Commit();
+                }
+            }
+
+            return result;
+        }
+
+        public void SetNextRoundTaskPollWinner(int? winnerId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var lastPoll = connection.Query<NextRoundTaskPoll>(
+                        "select * from NextRoundTaskPoll", transaction: tx)
+                        .OrderBy(p => p.Timestamp)
+                        .LastOrDefault();
+
+                    if (lastPoll == null)
+                    {
+                        logger.Warn("No last NextRoundTaskPoll found");
+                        return;
+                    }
+
+                    lastPoll.WinnerId = winnerId;
+                    connection.Update<NextRoundTaskPoll>(lastPoll, tx);
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public int? GetLastTaskPollWinnerId()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var lastPoll = connection.Query<NextRoundTaskPoll>(
+                    "select * from NextRoundTaskPoll")
+                    .OrderBy(p => p.Timestamp)
+                    .LastOrDefault();
+
+                if (lastPoll == null)
+                {
+                    logger.Warn("No last NextRoundTaskPoll found");
+                    return null;
+                }
+
+                return lastPoll.WinnerId;
+            }
+        }
+
+        public void CreateOrUpdateTaskSuggestion(
+            User author, 
+            string descriptionUnescaped, 
+            long containerChatId, 
+            int containerMessageId,
+            out TaskSuggestion previous)
+        {
+            previous = null;
+
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    // get an open NextRoundTaskPoll
+                    var poll = GetOpenNextRoundTaskPoll();
+                    if (poll == null)
+                    {
+                        logger.Error("Tried creating/updating a TaskSuggestion when no NextRoundTaskPoll is open");
+                        return;
+                    }
+
+                    // get the existing suggestions if exists
+                    bool create = false;
+                    var query = @"select * from TaskSuggestion where ConsolidatedVoteCount IS NULL and AuthorUserId=@AuthorId";
+
+                    var existing = connection.Query<TaskSuggestion>(query, new { AuthorId = author.Id }).FirstOrDefault();
+
+                    if (existing == null)
+                    {
+                        create = true;
+                        existing = new TaskSuggestion { AuthorUserId = author.Id };
+                    }
+                    else
+                    {
+                        previous = new TaskSuggestion
+                        {
+                            AuthorUserId = existing.AuthorUserId,
+                            PollId = existing.PollId,
+                            Timestamp = existing.Timestamp,
+                            Description = existing.Description,
+                            ConsolidatedVoteCount = existing.ConsolidatedVoteCount,
+                            ContainerChatId = existing.ContainerChatId,
+                            ContainerMesssageId = existing.ContainerMesssageId
+                        };
+                    }
+
+                    existing.PollId = poll.Id;
+                    existing.AuthorUserId = author.Id;
+                    existing.Description = descriptionUnescaped;
+                    existing.ContainerChatId = containerChatId;
+                    existing.ContainerMesssageId = containerMessageId;
+                    existing.Timestamp = _clock.GetCurrentInstant();
+
+                    if (create)
+                        connection.Insert(existing, transaction: tx);
+                    else
+                        connection.Update(existing, transaction: tx);
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public IEnumerable<TaskSuggestion> GetActiveTaskSuggestions()
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var query = @"select * from TaskSuggestion where ConsolidatedVoteCount IS NULL";
+                return connection.Query<TaskSuggestion>(query);
+            }
+        }
+
+        public TaskSuggestion GetExistingTaskSuggestion(int suggestionId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                return connection.Get<TaskSuggestion>(suggestionId);
+            }
+        }
+
+        public void DeleteTaskSuggestion(int suggestionId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    connection.Delete(
+                        connection.Get<TaskSuggestion>(suggestionId));
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public IEnumerable<Tuple<TaskPollVote, User>> GetVotesForTaskSuggestion(int suggestionId)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                var query = @"SELECT * from TaskPollVote v
+                    LEFT JOIN User u on v.UserId=u.Id
+                    WHERE v.TaskSuggestionId=@SuggestionId";
+
+                return connection.Query<TaskPollVote, User, Tuple<TaskPollVote, User>>(query,
+                    Tuple.Create<TaskPollVote, User>,
+                    new { SuggestionId = suggestionId },
+                    splitOn: "Id");
+            }
+        }
+
+        public void SetOrUpdateTaskPollVote(User voter, int suggestionId, 
+            int value, out bool updated)
+        {
+            updated = false;
+
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var existing = connection.Query<TaskPollVote>(
+                        @"select * from TaskPollVote 
+                          where UserId=@VoterId and TaskSuggestionId=@SuggestionId",
+                        new 
+                        { 
+                            VoterId = voter.Id, 
+                            SuggestionId = suggestionId 
+                        }, transaction: tx).FirstOrDefault();
+
+                    if (existing == null)
+                    {
+                        var vote = new TaskPollVote
+                        {
+                            UserId = voter.Id,
+                            TaskSuggestionId = suggestionId,
+                            Value = value
+                        };
+
+                        connection.Insert<TaskPollVote>(vote, transaction: tx);
+                    }
+                    else
+                    {
+                        updated = true;
+
+                        if (existing.Value == value)
+                            return;
+
+                        existing.Value = value;
+                        connection.Update<TaskPollVote>(existing, transaction: tx);
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public bool MaybeCreateVoteForAllActiveSuggestionsExcept(User user, int suggestionId, int defaultVoteValue)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var qry = @"select count(v.Value) from TaskPollVote v
+                    inner join TaskSuggestion ts on ts.Id = v.TaskSuggestionId
+                    where v.UserId = @Id and ts.ConsolidatedVoteCount is null";
+
+                    var count = connection.Query<int?>(qry, new { Id = user.Id }, transaction: tx).
+                                    FirstOrDefault() ?? 0;
+
+                    //Votes present
+                    if (0 != count)
+                        return false;
+
+                    var multiInsertQry = @"insert into TaskPollVote(UserId, TaskSuggestionId, Value, Timestamp)
+                    select @UserID, ts.Id, @VoteVal, @Timestamp from TaskSuggestion ts
+                    where ts.ConsolidatedVoteCount is NULL and ts.Id != @SuggestionId";
+
+                    connection.Execute(multiInsertQry,
+                        new
+                        {
+                            UserID = user.Id,
+                            VoteVal = defaultVoteValue,
+                            Timestamp = _clock.GetCurrentInstant(),
+                            SuggestionId = suggestionId,
+                        }, transaction: tx);
+
+                    tx.Commit();
+
+                    return true;
+                }
+            }
+        }
 
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {
@@ -677,6 +1014,12 @@ namespace musicallychallenged.Data
                 connection.Delete(new ActiveChat { Id = chatId });
             }
 
+        }
+
+        public void SetCurrentTask(SelectedTaskKind taskKind, string template)
+        {
+            UpdateState(s => s.CurrentTaskKind, taskKind);
+            UpdateState(s => s.CurrentTaskTemplate, template);
         }
 
 

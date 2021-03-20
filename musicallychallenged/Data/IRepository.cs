@@ -34,6 +34,7 @@ namespace musicallychallenged.Data
         
         SystemState GetOrCreateCurrentState();
         void UpdateState<T>(Expression<Func<SystemState, T>> propertyExpression, T value);
+        void SetCurrentTask(SelectedTaskKind taskKind, string template);
 
 
         void AddOrUpdateActiveChat(long chatId, string chatName);
@@ -53,5 +54,20 @@ namespace musicallychallenged.Data
         long GetUsedPostponeQuotaForCurrentRoundMinutes();
         PostponeRequest[] CreatePostponeRequestRetrunOpen(User author, Duration postponeDuration);
         void FinalizePostponeRequests(PostponeRequest keyRequest);
+
+        NextRoundTaskPoll GetOpenNextRoundTaskPoll();
+        void CreateNextRoundTaskPoll();
+        IEnumerable<TaskSuggestion> CloseNextRoundTaskPollAndConsolidateVotes();
+        void CreateOrUpdateTaskSuggestion(User author, string description, long containerChatId,
+            int containerMessageId, out TaskSuggestion previous);
+        IEnumerable<TaskSuggestion> GetActiveTaskSuggestions();
+        TaskSuggestion GetExistingTaskSuggestion(int suggestionId);
+        IEnumerable<Tuple<TaskPollVote, User>> GetVotesForTaskSuggestion(int suggestionId);
+        void SetOrUpdateTaskPollVote(User voter, int suggestionId,
+            int value, out bool updated);
+        bool MaybeCreateVoteForAllActiveSuggestionsExcept(User user, int suggestionId, int defaultVoteValue);
+        void SetNextRoundTaskPollWinner(int? winnerId);
+        int? GetLastTaskPollWinnerId();
+        void DeleteTaskSuggestion(int suggestionId);
     }
 }
