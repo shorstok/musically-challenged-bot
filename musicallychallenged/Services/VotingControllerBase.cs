@@ -422,7 +422,7 @@ namespace musicallychallenged.Services
         /// </summary>
         protected abstract bool IsValidStateToProduceAVotingWinner(int voteCount, int entriesCount);
 
-        private async Task CreateVotingControlsForEntry(TVotable activeEntry)
+        public async Task CreateVotingControlsForEntry(TVotable activeEntry)
         {
             var inlineKeyboardButtons = CreateVotingButtonsForEntry(activeEntry);
 

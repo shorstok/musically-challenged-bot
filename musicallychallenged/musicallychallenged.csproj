@@ -209,6 +209,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\AddMidvotePinCommandHandler.cs" />
     <Compile Include="Commands\DescribeContestEntryCommandHandler.cs" />
     <Compile Include="Commands\FastForwardCommandHandler.cs" />
     <Compile Include="Commands\KickstartCommandHandler.cs" />
@@ -259,6 +260,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\Events\KickstartNextRoundTaskPollEvent.cs" />
+    <Compile Include="Services\MidvoteEntryController.cs" />
     <Compile Include="Services\VotingController.cs" />
     <Compile Include="Services\CrypticNameResolver.cs" />
     <Compile Include="Services\Events\AggregateSubscription.cs" />
