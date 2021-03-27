@@ -38,17 +38,17 @@ namespace musicallychallenged.Services
         protected override string _weHaveAWinnerTemplate => Loc.WeHaveAWinnerTaskSuggestion;
         protected override string _weHaveWinnersTemplate => Loc.WeHaveWinnersTaskSuggestion;
 
-        public NextRoundTaskPollVotingController(
-            ITelegramClient client,
+        public NextRoundTaskPollVotingController(ITelegramClient client,
             IBotConfiguration botConfiguration,
             IRepository repository,
             LocStrings loc,
             CrypticNameResolver crypticNameResolver,
             BroadcastController broadcastController,
             NextRoundTaskPollController pollController,
-            TimeService timeService)
+            TimeService timeService,
+            Lazy<MidvoteEntryController> midvoteEntryController)
             : base(client, botConfiguration, repository, loc,
-                  crypticNameResolver, broadcastController, timeService)
+                  crypticNameResolver, broadcastController, midvoteEntryController, timeService)
         {
             _pollController = pollController;
         }
