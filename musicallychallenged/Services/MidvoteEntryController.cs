@@ -171,5 +171,8 @@ namespace musicallychallenged.Services
 
             return Task.FromResult(_activeMidvotePins.TryRemove(pin, out _));
         }
+
+        public Task<int> GetCurrentPinCount() =>
+            Task.FromResult(_activeMidvotePins.Count);
     }
 }

@@ -84,6 +84,7 @@
     <Compile Include="InnerCiricleVotingTestFixture.cs" />
     <Compile Include="LocalizationTestFixture.cs" />
     <Compile Include="LocalizationTestingHelper.cs" />
+    <Compile Include="MidvoteSubmissionTestFixture.cs" />
     <Compile Include="Mockups\GenericUserScenarios.cs" />
     <Compile Include="Mockups\Messaging\MockMessageMediatorService.cs" />
     <Compile Include="Mockups\MockBotConfiguration.cs" />

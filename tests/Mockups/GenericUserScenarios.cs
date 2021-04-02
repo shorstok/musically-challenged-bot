@@ -197,9 +197,30 @@ namespace tests.Mockups
         /// </summary>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async Task ContesterUserScenario(UserScenarioContext context)
+        public async Task ContesterUserScenario(UserScenarioContext context, 
+            string pin, bool pinValid = true, Func<Task> postSubmissionValidation = null)
         {
             context.SendCommand(Schema.SubmitCommandName);
+
+            if (pin != null)
+            {
+                var message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+                Assert.That(message, Is.Not.Null, "Didn't receive a 'provide a pin' message");
+                Assert.That(message.Text, Contains.Substring(_localization.SubmitContestEntryCommandHandler_ProvideMidvotePin),
+                    "The message received does not contain 'provide a pin' substring");
+
+                context.SendMessage(pin, context.PrivateChat);
+
+                if (!pinValid)
+                {
+                    message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+                    Assert.That(message, Is.Not.Null, "Didn't receive a 'pin invalid' message");
+                    Assert.That(message.Text, Contains.Substring(_localization.SubmitContestEntryCommandHandler_InvalidMidvotePin),
+                        "The message received does not contain 'pin invalid' substring");
+
+                    return;
+                }
+            }
 
             var answer = await context.ReadTillMessageReceived(context.PrivateChat.Id);
 
@@ -224,9 +245,15 @@ namespace tests.Mockups
             var ackMessage = await context.ReadTillMessageReceived(mock =>
                 mock.ChatId.Identifier == context.PrivateChat.Id &&
                 mock.Text.Contains(_localization.SubmitContestEntryCommandHandler_SubmissionSucceeded));
+
+            postSubmissionValidation = postSubmissionValidation ?? (() => Task.Run(() => { }));
+            await postSubmissionValidation();
         }
 
-  
+        public async Task ContesterUserScenario(UserScenarioContext context) =>
+            await ContesterUserScenario(context, null);
+
+
         public async Task<int?> FinishContestAndSimulateVoting(TestCompartment compartment, 
             Action<UserScenarioContext, Message> winnerAction = null)
         {
@@ -560,6 +587,22 @@ namespace tests.Mockups
                 Assert.That(announcement.Text, Contains.Substring(winnerSelector().GetHtmlUserLink()),
                     "Didn't set a correct task giver in announcement message");
             }).ScenarioTask;
+        }
+
+        public async Task SupervisorAddPin(TestCompartment compartment, string pin)
+        {
+            await compartment.ScenarioController.StartUserScenario(async context =>
+            {
+                context.SendCommand(Schema.AddMidvotePin);
+
+                var message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+                Assert.That(message, Is.Not.Null, "'Send your pin' message was not received");
+
+                context.SendMessage(pin, context.PrivateChat);
+
+                message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+                Assert.That(message, Is.Not.Null, "'Pin received' message was not received");
+            }, UserCredentials.Supervisor).ScenarioTask;
         }
     }
 }
