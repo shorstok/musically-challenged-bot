@@ -124,9 +124,8 @@ namespace tests
             }
         }
 
-        // [Test]
-        // more input needed
-        public async Task ShouldDenyAddingPinWhenNotInVotin()
+        [Test]
+        public async Task ShouldDenyAddingPinWhenNotInVoting()
         {
             using (var compartment = new TestCompartment())
             {
@@ -140,8 +139,9 @@ namespace tests
 
                         var message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
                         Assert.That(message, Is.Not.Null, "'Wrong state' message was not received");
-                        Assert.That(message.Text, Contains.Substring(":("));
-                    }).ScenarioTask;
+                        Assert.That(message.Text, Contains.Substring("denied"),
+                            "Message didn't contain an appropriate 'denied' string");
+                    }, UserCredentials.Supervisor).ScenarioTask;
                 }
             }
         }
