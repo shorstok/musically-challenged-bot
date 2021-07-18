@@ -123,9 +123,11 @@ namespace musicallychallenged.Commands
                 return;
             }
             
-            _repository.UpdateState(x=>x.NextDeadlineUTC,overriddenDeadline);           
+            _repository.UpdateState(x=>x.NextDeadlineUTC,overriddenDeadline);
+            
             await _contestController.UpdateCurrentTaskMessage();
             await _votingController.UpdateCurrentTaskMessage();
+            await _contestController.AnnounceNewDeadline("божественное вмешательство");
 
             logger.Info($"Deadline submitted");
         }
