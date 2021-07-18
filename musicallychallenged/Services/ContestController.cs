@@ -285,13 +285,13 @@ namespace musicallychallenged.Services
 
             if (state.MainChannelId == null)
             {
-                logger.Error($"state.MainChannelId == null - cant updte current task");
+                logger.Error($"state.MainChannelId == null - cant update current task");
                 return;
             }
 
             if (state.CurrentTaskMessagelId == null)
             {
-                logger.Error($"state.CurrentTaskMessagelId == null - cant updte current task");
+                logger.Error($"state.CurrentTaskMessageId == null - cant update current task");
                 return;
             }
 
@@ -307,6 +307,18 @@ namespace musicallychallenged.Services
             {
                 logger.Error($"UpdateCurrentTaskMessage:EditMessageTextAsync exception",e);
             }
+        }
+
+        public async Task AnnounceNewDeadline(string reason)
+        {
+            var state = _repository.GetOrCreateCurrentState();
+            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(state.NextDeadlineUTC);
+
+            await _broadcastController.AnnounceInMainChannel(LocTokens.SubstituteTokens(
+                    _loc.ContestController_DeadlinePostponed,
+                    Tuple.Create(LocTokens.Deadline, deadlineText),
+                    Tuple.Create(LocTokens.Details, reason)),
+                true);
         }
 
 

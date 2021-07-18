@@ -8,6 +8,7 @@ using log4net;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
+using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using NodaTime;
 
@@ -20,6 +21,7 @@ namespace musicallychallenged.Services
         private readonly IClock _clock;
         private readonly Lazy<ContestController> _contestController;
         private readonly Lazy<VotingController> _votingController;
+        private readonly LocStrings _loc;
 
         private static readonly ILog Logger = Log.Get(typeof(PostponeService));
 
@@ -38,13 +40,15 @@ namespace musicallychallenged.Services
             IBotConfiguration configuration,
             IClock clock,
             Lazy<ContestController> contestController,
-            Lazy<VotingController> votingController)
+            Lazy<VotingController> votingController,
+            LocStrings loc)
         {
             _repository = repository;
             _configuration = configuration;
             _clock = clock;
             _contestController = contestController;
             _votingController = votingController;
+            _loc = loc;
         }
 
         public async Task CloseAllPostponeRequests(PostponeRequestState finalState)
@@ -161,6 +165,8 @@ namespace musicallychallenged.Services
             await _contestController.Value.UpdateCurrentTaskMessage();
             await _votingController.Value.UpdateCurrentTaskMessage();
 
+            await _contestController.Value.AnnounceNewDeadline(_loc.PostponeService_DeadlinePostponedQuorumFulfilled);
+            
             return true;
         }
     }

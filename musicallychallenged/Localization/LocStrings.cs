@@ -69,6 +69,13 @@ namespace musicallychallenged.Localization
         public string PostponeCommandHandler_Preamble { get; set; } =
             "С помощью этой команды можно отложить дедлайн на некоторе время. Укажите, на какое время вы хотите отложить дедлайн";
 
+        public string PostponeService_DeadlinePostponedQuorumFulfilled { get; set; } =
+            $"Достаточное количество людей попросило отсрочку";
+
+        public string ContestController_DeadlinePostponed { get; set; } =
+            $"Дедлайн был перенесён на {LocTokens.Deadline}.\n" +
+            $"Причина: {LocTokens.Details}";
+        
         public string YouAreBanned { get; set; } = "Извините, бот недоступен 🧐";
         public string MissingCredentials { get; set; } = "Извините, команда недоступна";
 
