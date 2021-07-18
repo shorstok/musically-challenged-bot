@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using Dapper;
@@ -305,6 +306,31 @@ namespace tests
         {
             using (var compartment = new TestCompartment())
             {
+                var postponeCompletedSource = new TaskCompletionSource<bool>();
+                compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    await postponeCompletedSource.Task;
+                    
+                    var token = new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token;
+                    var reason = compartment.Localization.PostponeService_DeadlinePostponedQuorumFulfilled;
+                    
+                    Message announcement = null;
+                    try
+                    {
+                        do
+                        {
+                            announcement = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
+                        } while (!(announcement.Text.Contains(reason) || token.IsCancellationRequested));
+                    }
+                    catch (TimeoutException)
+                    {
+                        Assert.Fail("Couldn't read any more messages");
+                    }
+
+                    Assert.True(!token.IsCancellationRequested,
+                        "Couldn't receive a deadline change announcement message");
+                });
+                
                 var initialDeadline = Instant.FromUtc(2020, 01, 01, 11, 00);
                 var currentRoundNumber = 123;
 
@@ -374,8 +400,15 @@ namespace tests
                                 : Is.EqualTo(PostponeRequestState.ClosedDiscarded));
                     }
                 }
+            }
+        }
 
-
+        [Test]
+        public async Task ShouldAnnounceDeadlineChangeInMainChannel()
+        {
+            using (var compartement = new TestCompartment())
+            {
+                
             }
         }
     }

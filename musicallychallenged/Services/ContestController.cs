@@ -319,6 +319,8 @@ namespace musicallychallenged.Services
                     Tuple.Create(LocTokens.Deadline, deadlineText),
                     Tuple.Create(LocTokens.Details, reason)),
                 true);
+            
+            logger.Info("Announced deadline change in main channel");
         }
 
 
