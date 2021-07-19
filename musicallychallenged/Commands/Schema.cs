@@ -13,6 +13,7 @@ namespace musicallychallenged.Commands
         public const string DeployCommandName  = "deploy";
         public const string FastForwardCommandName = "ffwd";
         public const string KickstartCommandName = "kickstart";
+        public const string AddMidvotePin = "addpin";
         public const string KickstartNextRoundTaskPollCommandName = "pollkickstart";
 
         public const string RemindCommandName = "remind";

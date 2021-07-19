@@ -33,6 +33,7 @@ namespace musicallychallenged.Services
     public abstract class VotingControllerBase<TVotable, TVote> : ITelegramQueryHandler
         where TVotable : IVotable where TVote : IVote
     {
+        private readonly Lazy<MidvoteEntryController> _midvoteEntryController;
         private static readonly ILog logger = Log.Get(typeof(VotingControllerBase<TVotable, TVote>));
 
         protected ITelegramClient Client { get; }
@@ -55,8 +56,10 @@ namespace musicallychallenged.Services
             LocStrings loc,
             CrypticNameResolver crypticNameResolver,
             BroadcastController broadcastController,
+            Lazy<MidvoteEntryController> midvoteEntryController,
             TimeService timeService)
         {
+            _midvoteEntryController = midvoteEntryController;
             Client = client;
             Configuration = botConfiguration;
             Repository = repository;
@@ -268,6 +271,7 @@ namespace musicallychallenged.Services
             var activeEntries = GetActiveEntries();
 
             NameResolver.Reset();
+            await _midvoteEntryController.Value.ClearMidvotePins();
 
             var deadline = ScheduleNextDeadline();
 
@@ -296,6 +300,8 @@ namespace musicallychallenged.Services
             try
             {
                 await UpdateVotingStats(true);
+
+                await _midvoteEntryController.Value.ClearMidvotePins();
 
                 var entries = await ConsolidateActiveVotes();
 
@@ -422,7 +428,7 @@ namespace musicallychallenged.Services
         /// </summary>
         protected abstract bool IsValidStateToProduceAVotingWinner(int voteCount, int entriesCount);
 
-        private async Task CreateVotingControlsForEntry(TVotable activeEntry)
+        public async Task CreateVotingControlsForEntry(TVotable activeEntry)
         {
             var inlineKeyboardButtons = CreateVotingButtonsForEntry(activeEntry);
 

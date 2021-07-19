@@ -45,17 +45,17 @@ namespace musicallychallenged.Services
         protected override string _weHaveWinnersTemplate =>
             Loc.WeHaveWinners;
 
-        public VotingController(
-            ITelegramClient client,
+        public VotingController(ITelegramClient client,
             IBotConfiguration botConfiguration,
             IRepository repository,
             LocStrings loc,
             CrypticNameResolver crypticNameResolver,
             BroadcastController broadcastController,
             ContestController contestController,
-            TimeService timeService) 
+            TimeService timeService,
+            Lazy<MidvoteEntryController> midvoteEntryController) 
             : base(client, botConfiguration, repository, loc, 
-                  crypticNameResolver, broadcastController, timeService)
+                  crypticNameResolver, broadcastController,midvoteEntryController, timeService)
         {
             _contestController = contestController;
         }

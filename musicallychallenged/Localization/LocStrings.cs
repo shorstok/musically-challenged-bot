@@ -69,6 +69,13 @@ namespace musicallychallenged.Localization
         public string PostponeCommandHandler_Preamble { get; set; } =
             "С помощью этой команды можно отложить дедлайн на некоторе время. Укажите, на какое время вы хотите отложить дедлайн";
 
+        public string PostponeService_DeadlinePostponedQuorumFulfilled { get; set; } =
+            $"Достаточное количество людей попросило отсрочку";
+
+        public string ContestController_DeadlinePostponed { get; set; } =
+            $"Дедлайн был перенесён на {LocTokens.Deadline}.\n" +
+            $"Причина: {LocTokens.Details}";
+        
         public string YouAreBanned { get; set; } = "Извините, бот недоступен 🧐";
         public string MissingCredentials { get; set; } = "Извините, команда недоступна";
 
@@ -125,6 +132,7 @@ namespace musicallychallenged.Localization
 
 
         public string KickstartCommandHandler_Description { get; set; } = "Начать новый раунд с ноги";
+        public string AddMidvotePinCommandHandler_Description { get; set; } = "Добавить пин для участия по блату";
         public string KickstartNextRoundTaskPollCommandHandler_Description { get; set; } = "Начать выбор нового задания комьюнити с ноги";
         public string StandbyCommandHandler_Description { get; set; } = "Присыпить бота";
         public string FastForwardCommandHandler_Description { get; set; } = "Промотать время вперед";
@@ -141,6 +149,8 @@ namespace musicallychallenged.Localization
 
         public string SubmitContestEntryCommandHandler_Description { get; set; } = "Отправить работу на текущий конкурс";
         public string SubmitContestEntryCommandHandler_OnlyAvailableInContestState { get; set; } = "Прием работ (пока) закрыт. Дождитесь начала следующего раунда!";
+        public string SubmitContestEntryCommandHandler_ProvideMidvotePin { get; set; } = "Следующим сообщением напишите пин для подачи работы 'по блату'";
+        public string SubmitContestEntryCommandHandler_InvalidMidvotePin { get; set; } = "Неверный пин :(";
         public string SubmitContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте работу следующим сообщением в виде аудиофайла либо ссылки ⬇️";
 
         public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только аудиофайлы и ссылки (на вашу работу в youtube, например) 🧐";
