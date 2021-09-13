@@ -91,7 +91,7 @@ namespace musicallychallenged.Services
                 votingResults.AppendLine($"{user.GetHtmlUserLink()} : {entry.ConsolidatedVoteCount ?? 0}");
             }
 
-            await Controller.AnnounceInMainChannel(Loc.VotigResultsTemplate, false,
+            await BroadcastController.AnnounceInMainChannel(Loc.VotigResultsTemplate, false,
                 Tuple.Create(LocTokens.Users, votingResults.ToString()));
 
             return activeSuggestions;
