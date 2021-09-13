@@ -140,7 +140,7 @@ namespace tests
                 await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
 
                 var usrScenario = compartment.ScenarioController.StartUserScenario(
-                    async context => context.PersistUserChatId());
+                    context => context.PersistUserChatId());
 
                 var initialSuggestion = "Initial fake suggestion";
                 var updatedSuggestion = "Updated fake suggestion";
@@ -201,7 +201,7 @@ namespace tests
                 await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
 
                 var usrScenario = compartment.ScenarioController.StartUserScenario(
-                    async context => context.PersistUserChatId());
+                    context => context.PersistUserChatId());
 
                 var initialSuggestion = "Initial fake \"'<>'\" suggestion";
                 var screenedSuggestion = ContestController.EscapeTgHtml(initialSuggestion);

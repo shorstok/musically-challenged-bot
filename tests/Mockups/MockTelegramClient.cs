@@ -246,5 +246,14 @@ namespace tests.Mockups
 
             LocalizationTestingHelper.AssertNoUnsubstitutedLocTokens(text);
         }
+
+        protected virtual void InvokeInlineResultChosen(ChosenInlineResultEventArgs e) => 
+            OnInlineResultChosen?.Invoke(this, e);
+
+        protected virtual void InvokeReceiveError(ReceiveErrorEventArgs e) => 
+            OnReceiveError?.Invoke(this, e);
+
+        protected virtual void InvokeInlineQuery(InlineQueryEventArgs e) => 
+            OnInlineQuery?.Invoke(this, e);
     }
 }

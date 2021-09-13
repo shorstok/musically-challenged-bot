@@ -52,7 +52,7 @@ namespace tests
                 var targetVotingMessage = votingEntities[0].Item2;
                 for (int i = 0; i < voterCount; i++)
                 {
-                    await compartment.ScenarioController.StartUserScenario(async context => 
+                    await compartment.ScenarioController.StartUserScenario(context => 
                     {
                         var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
                         var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
@@ -60,13 +60,15 @@ namespace tests
                         FirstOrDefault(b => b.Text == maxVoteSmile);
 
                         context.SendQuery(button.CallbackData, targetVotingMessage);
+                        
+                        return Task.CompletedTask;
                     }).ScenarioTask;
                 }
 
                 // Submitting an entry
                 await compartment.ScenarioController.StartUserScenario(async context => 
                     await compartment.GenericScenarios.ContesterUserScenario(context, pin, 
-                    postSubmissionValidation: async () =>
+                    postSubmissionValidation: () =>
                     {
                         // entry exist
                         var entry = compartment.Repository.GetActiveContestEntryForUser(context.MockUser.Id);
@@ -82,6 +84,8 @@ namespace tests
                         var entryVotes = compartment.Repository.GetVotesForEntry(entry.Id);
                         Assert.That(entryVotes.Count(), Is.EqualTo(voterCount),
                             $"Expected {voterCount} votes for a midvote entry, but got {entryVotes.Count()}");
+                        
+                        return Task.CompletedTask;
                     }))
                     .ScenarioTask;
 
@@ -236,7 +240,7 @@ namespace tests
                 var targetVotingMessage = votingEntities[0].Item2;
                 for (int i = 0; i < voterCount; i++)
                 {
-                    await compartment.ScenarioController.StartUserScenario(async context =>
+                    await compartment.ScenarioController.StartUserScenario(context =>
                     {
                         var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
                         var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
@@ -252,7 +256,7 @@ namespace tests
                 // Submitting an entry
                 await compartment.ScenarioController.StartUserScenario(async context =>
                     await compartment.GenericScenarios.ContesterUserScenario(context, pin,
-                    postSubmissionValidation: async () =>
+                    postSubmissionValidation: () =>
                     {
                         // entry exist
                         midvoteEntry = compartment.Repository.GetActiveContestEntryForUser(context.MockUser.Id);
@@ -268,6 +272,8 @@ namespace tests
                         var entryVotes = compartment.Repository.GetVotesForEntry(midvoteEntry.Id);
                         Assert.That(entryVotes.Count(), Is.EqualTo(voterCount),
                             $"Expected {voterCount} votes for a midvote entry, but got {entryVotes.Count()}");
+
+                        return Task.CompletedTask;
                     }))
                     .ScenarioTask;
 

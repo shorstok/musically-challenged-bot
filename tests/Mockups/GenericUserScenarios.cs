@@ -302,7 +302,7 @@ namespace tests.Mockups
             var votingController = compartment.Container.Resolve<VotingController>();
             for (var nuser = 0; nuser < voterCount; nuser++)
             {
-                await compartment.ScenarioController.StartUserScenario(async context =>
+                await compartment.ScenarioController.StartUserScenario(context =>
                 {
                     var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
                     var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
@@ -475,7 +475,7 @@ namespace tests.Mockups
 
             for (var nuser = 0; nuser < voterCount; nuser++)
             {
-                await compartment.ScenarioController.StartUserScenario(async context =>
+                await compartment.ScenarioController.StartUserScenario(context =>
                 {
                     var button = targetVotingMessage.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
                         FirstOrDefault(b => b.Text == "👍");
