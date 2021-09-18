@@ -16,6 +16,9 @@ namespace musicallychallenged.Logging
     {
         static Log()
         {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+
             Log4NetCfgFilename = Path.Combine(PathService.AppData, "log4net.config");
 
             if (File.Exists(Log4NetCfgFilename))

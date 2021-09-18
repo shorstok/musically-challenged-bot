@@ -176,7 +176,7 @@ namespace musicallychallenged.Config
         [JsonProperty("TaskSuggestionCollectionExtendTimeHours")]
         public int TaskSuggestionCollectionExtendTimeHours { get; set; } = 24 * 3;
 
-        [JsonProperty("TaskSuggestionCollectionExtendTimeHours")]
+        [JsonProperty("TaskSuggestionCollectionMaxExtendTimeHours")]
         public int TaskSuggestionCollectionMaxExtendTimeHours { get; set; } = 24 * 7;
 
         [JsonProperty("TaskSuggestionVotingDeadlineTimeHours")]
