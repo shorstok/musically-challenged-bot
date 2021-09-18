@@ -44,6 +44,7 @@ namespace tests.Mockups
         public double ContestDeadlineEventPreviewTimeHours { get; set; } = 8;
 
         public double VotingDeadlineEventPreviewTimeHours { get; set; } = 12;
+        public double TaskSuggestionCollectionDeadlineEventPreviewTimeHours { get; set; } = 0.5;
 
         public double PostponeHoursAllowed { get; set; } = 7 * 2 * 24 + 1; //two weeks plus 1 hour for last-time entries
 
@@ -59,12 +60,14 @@ namespace tests.Mockups
                 new BotDeployment {Name = "Mockup", MainChatId = MockConfiguration.MainChat.Id, VotingChatId = MockConfiguration.VotingChat.Id}
             };
 
-        public int DeadlinePollingPeriodMs { get; set; } = 50;
+        public int DeadlinePollingPeriodMs { get; set; } = 10;
 
         //How many users required to trigger postpone
         public int PostponeQuorum { get; set; } = 3;
 
         public int TaskSuggestionCollectionDeadlineTimeHours { get; set; } = 12;
+        public int TaskSuggestionCollectionExtendTimeHours { get; set; } = 24 * 3;
+        public int TaskSuggestionCollectionMaxExtendTimeHours { get; set; } = 24 * 7;
 
         public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
 
@@ -72,6 +75,7 @@ namespace tests.Mockups
 
         public int MaxSuggestionVoteValue { get; set; } = 1;
         public string RulesURL { get; set; } = "https://telegra.ph/FAQ-po-PesnoPiscu-02-10";
+        public int MinSuggestedTasksBeforeVotingStarts { get; set; } = 2;
 
         public bool Reload() =>
             true;

@@ -141,6 +141,9 @@ namespace musicallychallenged.Config
         [JsonProperty("VotingDeadlineEventPreviewTimeHours")]
         public double VotingDeadlineEventPreviewTimeHours { get; set; } = 12;
 
+        [JsonProperty("TaskSuggestionCollectionDeadlineEventPreviewTimeHours")]
+        public double TaskSuggestionCollectionDeadlineEventPreviewTimeHours { get; set; } = 0.5;
+
         [JsonProperty("PostponeHoursAllowed")]
         public double PostponeHoursAllowed { get; set; } = 7*2*24 + 1; //two weeks plus 1 hour for last-time entries
 
@@ -170,9 +173,18 @@ namespace musicallychallenged.Config
         [JsonProperty("TaskSuggestionCollectionDeadlineTimeHours")]
         public int TaskSuggestionCollectionDeadlineTimeHours { get; set; } = 12;
 
+        [JsonProperty("TaskSuggestionCollectionExtendTimeHours")]
+        public int TaskSuggestionCollectionExtendTimeHours { get; set; } = 24 * 3;
+
+        [JsonProperty("TaskSuggestionCollectionExtendTimeHours")]
+        public int TaskSuggestionCollectionMaxExtendTimeHours { get; set; } = 24 * 7;
+
         [JsonProperty("TaskSuggestionVotingDeadlineTimeHours")]
         public int TaskSuggestionVotingDeadlineTimeHours { get; set; } = 12;
 
+        [JsonProperty("MinSuggestedTasksBeforeVotingStarts")]
+        public int MinSuggestedTasksBeforeVotingStarts { get; set; } = 2;
+        
         [JsonProperty("MinSuggestionVoteValue")]
         public int MinSuggestionVoteValue { get; set; } = -1;
 

@@ -35,6 +35,8 @@ namespace tests.DI
         public UserScenarioController ScenarioController { get; private set; }
         public GenericUserScenarios GenericScenarios { get; private set; }
         public IBotConfiguration Configuration { get; private set; }
+        public TweakableClockService Clock { get; private set; }
+
 
         public TestCompartment()
         {
@@ -109,8 +111,9 @@ namespace tests.DI
             Configuration = Container.Resolve<IBotConfiguration>();
             ScenarioController = Container.Resolve<UserScenarioController>();
             GenericScenarios = Container.Resolve<GenericUserScenarios>();
+            Clock = (TweakableClockService)Container.Resolve<IClock>();
         }
-
+        
 
         private void RunInMemorySqliteMigrations(string connectionString)
         {
@@ -129,7 +132,7 @@ namespace tests.DI
             containerBuilder.RegisterModule<MockModule>();
 
             // Registering an InMemorySqliteRepository instance separately to be able to run migrations before the container is built
-            var clock = new SystemClockService();
+            var clock = new TweakableClockService();
             var inMemorySqlite = new InMemorySqliteRepository(clock);
             RunInMemorySqliteMigrations(inMemorySqlite.GetInMemoryConnectionString());
 

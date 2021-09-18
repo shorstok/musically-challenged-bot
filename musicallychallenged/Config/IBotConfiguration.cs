@@ -41,6 +41,7 @@ namespace musicallychallenged.Config
         double ContestDeadlineEventPreviewTimeHours { get; set; }
 
         double VotingDeadlineEventPreviewTimeHours { get; set; }
+        double TaskSuggestionCollectionDeadlineEventPreviewTimeHours { get; set; }
 
         double PostponeHoursAllowed { get; set; }
 
@@ -53,6 +54,9 @@ namespace musicallychallenged.Config
         int PostponeQuorum { get; set; }
 
         int TaskSuggestionCollectionDeadlineTimeHours { get; set; }
+        int TaskSuggestionCollectionExtendTimeHours { get; set; }
+        
+        int TaskSuggestionCollectionMaxExtendTimeHours { get; set; }
 
         int TaskSuggestionVotingDeadlineTimeHours { get; set; }
 
@@ -60,6 +64,7 @@ namespace musicallychallenged.Config
 
         int MaxSuggestionVoteValue { get; set; }
         string RulesURL { get; set; }
+        int MinSuggestedTasksBeforeVotingStarts { get; set; }
 
         bool Reload();
 

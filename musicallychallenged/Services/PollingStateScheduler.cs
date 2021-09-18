@@ -27,7 +27,7 @@ namespace musicallychallenged.Services
         public event Action PreviewDeadlineHit;
         public event Action DeadlineHit;
 
-        private ISubscription[] _subscriptions = new ISubscription[0];
+        private readonly ISubscription[] _subscriptions;
 
         public PollingStateScheduler(IRepository repository,
             IClock clock,
@@ -63,11 +63,14 @@ namespace musicallychallenged.Services
             await _contestController.UpdateCurrentTaskMessage();
         }
 
+        private record SignaledDescriptor(Instant Deadline, bool Signaled);
+
         public async Task Activate()
         {
-            bool previewSignaled = false;
-            bool deadlineSignaled = false;
             ContestState? lastState = null;
+
+            var preview = new SignaledDescriptor(Instant.MinValue, Signaled: false);
+            var final = new SignaledDescriptor(Instant.MinValue, Signaled: false);
 
             do
             {
@@ -88,8 +91,8 @@ namespace musicallychallenged.Services
                     await Task.Delay(_botConfiguration.DeadlinePollingPeriodMs).ConfigureAwait(false);
 
                     lastState = state.State;
-                    previewSignaled = false;
-                    deadlineSignaled = false;
+                    preview = new SignaledDescriptor(Instant.MinValue, Signaled: false);
+                    final = new SignaledDescriptor(Instant.MinValue, Signaled: false);
                 }
 
                 if (_stopIssued)
@@ -101,43 +104,41 @@ namespace musicallychallenged.Services
 
                 var now = _clock.GetCurrentInstant();
 
-                if (!previewSignaled && now >= GetPreviewInstantTime(deadline, state.State))
+                //If deadline is shifted, reset 'preview' signaled status to re-issue a preview message
+                //(or to give chance for an extra postpone)
+
+                if (preview.Signaled && preview.Deadline != deadline)
                 {
+                    logger.Info($"Deadline moved - resetting preview signaled status");
+                    preview = preview with { Signaled = false };
+                }
+
+                if (!preview.Signaled && now >= GetPreviewInstantTime(deadline, state.State))
+                {
+                    preview = preview with { Deadline = deadline, Signaled = true};
                     OnPreviewDeadlineHit();
-                    previewSignaled = true;
                     continue;
                 }
 
-                if (!deadlineSignaled && now >= deadline)
+                if (!final.Signaled && now >= deadline)
                 {
                     OnDeadlineHit();
-                    deadlineSignaled = true;
+                    final = final with { Deadline = deadline, Signaled = true};
                     continue;
                 }
 
             } while (!_stopIssued);
         }
 
-        private Duration GetPreDeadlineDuration(ContestState state)
-        {
-            switch (state)
+        private Duration GetPreDeadlineDuration(ContestState state) =>
+            state switch
             {
-
-                case ContestState.Contest:
-
-                    return Duration.FromHours(_botConfiguration.ContestDeadlineEventPreviewTimeHours);
-
-                    
-                case ContestState.Voting:
-
-                    return Duration.FromHours(_botConfiguration.VotingDeadlineEventPreviewTimeHours);
-                    
-                default:
-                    return Duration.Zero;
-                    
-            }
-
-        }
+                ContestState.Contest => Duration.FromHours(_botConfiguration.ContestDeadlineEventPreviewTimeHours),
+                ContestState.Voting => Duration.FromHours(_botConfiguration.VotingDeadlineEventPreviewTimeHours),
+                ContestState.TaskSuggestionCollection => Duration.FromHours(_botConfiguration
+                    .TaskSuggestionCollectionDeadlineEventPreviewTimeHours),
+                _ => Duration.Zero
+            };
 
         private Instant GetPreviewInstantTime(Instant deadline, ContestState state) => 
             deadline.Minus(GetPreDeadlineDuration(state));

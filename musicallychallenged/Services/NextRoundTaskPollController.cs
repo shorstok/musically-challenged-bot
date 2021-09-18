@@ -12,15 +12,17 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using NodaTime;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using User = musicallychallenged.Domain.User;
 
 namespace musicallychallenged.Services
 {
-    public class NextRoundTaskPollController
+    public class NextRoundTaskPollController : IDisposable
     {
         private readonly IRepository _repository;
+        private readonly IClock _clock;
         private readonly IBotConfiguration _configuration;
         private readonly LocStrings _loc;
         private readonly ITelegramClient _client;
@@ -29,12 +31,13 @@ namespace musicallychallenged.Services
         private readonly BroadcastController _broadcastController;
         private readonly IEventAggregator _aggregator;
 
-        private ISubscription[] _subscriptions;
+        private readonly ISubscription[] _subscriptions;
 
         private static readonly ILog logger = Log.Get(typeof(NextRoundTaskPollController));
 
         public NextRoundTaskPollController(
             IRepository repository,
+            IClock clock,
             IBotConfiguration configuration,
             LocStrings loc,
             ITelegramClient client,
@@ -44,6 +47,7 @@ namespace musicallychallenged.Services
             IEventAggregator eventAggregator)
         {
             _repository = repository;
+            _clock = clock;
             _configuration = configuration;
             _loc = loc;
             _client = client;
@@ -87,6 +91,8 @@ namespace musicallychallenged.Services
         {
             logger.Info("Initiating NextRoundTaskPoll");
 
+            _initialCollectionDedaline = null;
+
             _repository.UpdateState(s => s.CurrentTaskKind, SelectedTaskKind.Poll);
 
             var state = _repository.GetOrCreateCurrentState();
@@ -117,6 +123,7 @@ namespace musicallychallenged.Services
         public void HaltTaskPoll()
         {
             _repository.CloseNextRoundTaskPollAndConsolidateVotes();
+            _initialCollectionDedaline = null;
         }
 
         public string GetTaskSuggestionMessageText(User user, string voteDetails, string descriptionEscaped)
@@ -179,7 +186,60 @@ namespace musicallychallenged.Services
             
             _aggregator.Publish(new KickstartNextRoundTaskPollEvent());
 
+            _initialCollectionDedaline = null;
+
             return Task.CompletedTask;
+        }
+
+        public enum ExtendAction
+        {
+            None,
+            Postpone,
+            Standby
+        }
+
+        private Instant? _initialCollectionDedaline = null;
+        
+        public async Task<ExtendAction> MaybeExtendCollectionPhase()
+        {
+            var activeEntries = _repository.GetActiveTaskSuggestions().ToArray();
+            
+            //Already have enough tasks - no need to postpone collection deadline
+            if (activeEntries.Length >= _configuration.MinSuggestedTasksBeforeVotingStarts)
+            {
+                _initialCollectionDedaline = null;
+                return ExtendAction.None;
+            }
+
+            _initialCollectionDedaline ??= _repository.GetOrCreateCurrentState().NextDeadlineUTC;
+
+            if (_clock.GetCurrentInstant() - _initialCollectionDedaline.Value >
+                Duration.FromHours(_configuration.TaskSuggestionCollectionMaxExtendTimeHours))
+            {
+                //Too many postpones - standby;
+                logger.Info($"Not enough task suggestions and too many postpones - standby");
+                await _broadcastController.AnnounceInMainChannel(_loc.GenericStandbyAnnouncement, false);
+                return ExtendAction.Standby;
+            }
+            
+            logger.Info($"Not enough task suggestions - " +
+                        $"setting deadline to {_configuration.TaskSuggestionCollectionExtendTimeHours} hours from now");
+            
+            var deadline = _timeService.ScheduleNextDeadlineIn(_configuration.TaskSuggestionCollectionExtendTimeHours);
+            var deadlineText = _timeService.FormatDateAndTimeToAnnouncementTimezone(deadline);
+            
+            var announcement = LocTokens.SubstituteTokens(_loc.NextRoundTaskPoll_PhasePostponed,
+                Tuple.Create(LocTokens.Deadline, deadlineText));
+
+            await _broadcastController.AnnounceInMainChannel(announcement, false);
+
+            return ExtendAction.Postpone;
+        }
+
+        public void Dispose()
+        {
+            foreach (var subscription in _subscriptions) 
+                subscription.Dispose();
         }
     }
 }

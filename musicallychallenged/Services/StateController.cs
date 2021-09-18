@@ -197,7 +197,9 @@ namespace musicallychallenged.Services
             //Community suggests possible tasks for the next challenge
             _stateMachine.Configure(ContestState.TaskSuggestionCollection)
                 .OnActivate(OnTaskSuggestionCollectionActivated)
-                .OnEntry(EnteredTaskSuggestionCollection)
+                .OnEntry(EnteredOrResumedTaskSuggestionCollection)
+                //check - whether to extend collection phase
+                .PermitReentry(Trigger.PreviewDeadlineHit)
                 .Permit(Trigger.NotEnoughContesters, ContestState.Standby)
                 .Permit(Trigger.DeadlineHit, ContestState.TaskSuggestionVoting);
 
@@ -561,13 +563,23 @@ namespace musicallychallenged.Services
             logger.Info($"Reactivated in TaskSuggestionCollection state");
         }
 
-        private async void EnteredTaskSuggestionCollection(StateMachine<ContestState, Trigger>.Transition arg)
+        private async void EnteredOrResumedTaskSuggestionCollection(StateMachine<ContestState, Trigger>.Transition arg)
         {
             await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
 
             try
             {
-                await _nextRoundTaskPollController.StartTaskPollAsync();
+                if (arg.Trigger == Trigger.PreviewDeadlineHit)
+                {
+                    var action = await _nextRoundTaskPollController.MaybeExtendCollectionPhase();
+                    
+                    if(action == NextRoundTaskPollController.ExtendAction.Standby)
+                        _stateMachine.Fire(_explicitStateSwitchTrigger, ContestState.Standby);
+                }
+                else
+                {
+                    await _nextRoundTaskPollController.StartTaskPollAsync();
+                }
             }
             catch (Exception e)
             {

@@ -188,7 +188,7 @@ namespace tests
                     $"The suggestion from user {usrScenario.MockUser.Id} didn't contain his suggestion {updatedSuggestion}");
             }
         }
-        
+
         [Test]
         public async Task ShoudlScreenHTMLInSuggestions()
         {
@@ -248,31 +248,60 @@ namespace tests
         }
 
         [Test]
-        public async Task ShouldGoToStandbyIfNoTaskSuggestions()
+        public async Task ShouldExtendCollectionIfNoTaskSuggestions()
         {
-            using (var compartment = new TestCompartment())
+            using var compartment = new TestCompartment();
+            
+            // setting up a TaskSuggestionCollection state
+            compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
+            await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
+
+            //No task suggestions sent before deadline hit
+
+            // ffwd to the deadline
+            var initialDeadline = compartment.Clock.GetCurrentInstant();
+            compartment.Repository.UpdateState(s => s.NextDeadlineUTC, initialDeadline);
+            
+            //Run new user scenario to capture messages
+            await compartment.ScenarioController.StartUserScenario(async context =>
             {
-                var clock = compartment.Container.Resolve<IClock>();
+                do
+                {
+                    var postponeMessage =
+                        await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id, TimeSpan.FromSeconds(2));
 
-                // setting up a TaskSuggestionCollection state
-                compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
-                await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
+                    Assert.That(
+                        await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+                        Is.True, "Failed to remain in TaskSuggestionCollection on not enough suggestions");
 
-                //No task suggestions sent before deadline hit
+                    //Advance fake clock to the next deadline
 
-                // ffwd
-                compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
+                    compartment.Clock.Offset = Duration.Add(compartment.Clock.Offset,
+                        Duration.FromHours(compartment.Configuration.TaskSuggestionCollectionExtendTimeHours+1));
+                    
+                } while (compartment.Clock.GetCurrentInstant() - initialDeadline <
+                         Duration.FromHours(compartment.Configuration.TaskSuggestionCollectionMaxExtendTimeHours));
+                
+                //Too many postpones - should fall to standby now
+                
+                var stopMessage =
+                    await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id, TimeSpan.FromSeconds(2));
+                
+                Assert.AreEqual(compartment.Localization.GenericStandbyAnnouncement,stopMessage.Text);
 
                 Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby),
-                    Is.True, "Failed to switch to Standby on not enough contesters");
-
-                var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
-                Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
-                    "Non-consolidated suggestions were left after switching to standby");
+                    Is.True, "Failed to transition to Standby on not enough suggestions and too many postpones");
                 
-                Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
-                    "Active suggestions left in post-taskpoll state");
-            }
+            }).ScenarioTask;
+
+            //Just in case check
+            
+            var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
+            Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
+                "Non-consolidated suggestions were left after switching to standby");
+                
+            Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
+                "Active suggestions left in post-taskpoll state");
         }
         
         [Test]

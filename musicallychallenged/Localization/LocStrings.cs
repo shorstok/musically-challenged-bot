@@ -81,6 +81,7 @@ namespace musicallychallenged.Localization
 
         public string UnknownCommandUsageTemplate { get; set; } = $"Добрый день! Я - бот для челленджей. Воспользуйтесь одной из следующих команд: {Environment.NewLine}{Environment.NewLine}{LocTokens.Details}";
 
+        public string GenericStandbyAnnouncement { get; set; } = "Челленджи приостановлены 😐";
         public string NotEnoughEntriesAnnouncement { get; set; } = "Челленджи приостановлены из-за нехватки участников 😐";
         public string NotEnoughVotesAnnouncement { get; set; } = $"Челленджи приостановлены из-за недостаточной активности участников (максимум голосовавших - {LocTokens.VoteCount} чел.) 😐";
 
@@ -177,6 +178,9 @@ namespace musicallychallenged.Localization
 <a href=""{LocTokens.RulesUrl}"">Все правила</a>";
 
         public string NextRoundTaskPollController_AnnouncementTemplateVotingChannel { get; set; } = $"🧐 <b>Начался выбор нового задания всем комьюнити!</b> 🧐";
+
+        public string NextRoundTaskPoll_PhasePostponed { get; set; } =
+            $"Из-за недостаточной активности (мало вариантов прислали!) фаза сбора заданий продолжается до <b>{LocTokens.Deadline}</b>! 🎉 ";
 
         public string TaskSuggestionVotingStarted { get; set; } =
             $"Началось голосование за задание для следующего челенджа в Писце! 🎉 " +
