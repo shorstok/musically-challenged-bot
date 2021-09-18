@@ -402,14 +402,6 @@ namespace tests
                 }
             }
         }
-
-        [Test]
-        public async Task ShouldAnnounceDeadlineChangeInMainChannel()
-        {
-            using (var compartement = new TestCompartment())
-            {
-                
-            }
-        }
+        
     }
 }

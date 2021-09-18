@@ -71,6 +71,14 @@ namespace tests.DI
             return StartUserScenario(scenario, credentials, userId);
         }
 
+        public UserScenarioContext StartUserScenario(Action<UserScenarioContext> scenario,
+            UserCredentials credentials = UserCredentials.User, int? useExistingUserId = null) =>
+            StartUserScenario(context =>
+            {
+                scenario(context);
+                return Task.CompletedTask;
+            }, credentials, useExistingUserId);
+
         public UserScenarioContext StartUserScenario(Func<UserScenarioContext, Task> scenario,
             UserCredentials credentials = UserCredentials.User, int? useExistingUserId = null)
         {

@@ -41,7 +41,7 @@ namespace musicallychallenged.Services
         protected IRepository Repository { get; }
         protected LocStrings Loc { get; }
         protected CrypticNameResolver NameResolver { get; }
-        protected BroadcastController Controller { get; }
+        protected BroadcastController BroadcastController { get; }
         protected TimeService Service { get; }
 
         protected bool ShowRealVotesAndVoters { get; set; } = false;
@@ -65,7 +65,7 @@ namespace musicallychallenged.Services
             Repository = repository;
             Loc = loc;
             NameResolver = crypticNameResolver;
-            Controller = broadcastController;
+            BroadcastController = broadcastController;
             Service = timeService;
         }
 
@@ -281,7 +281,7 @@ namespace musicallychallenged.Services
             //Get new deadline
             var state = Repository.GetOrCreateCurrentState();
 
-            var votingMesasge = await Controller.AnnounceInMainChannel(GetVotingStartedMessage(state), true);
+            var votingMesasge = await BroadcastController.AnnounceInMainChannel(GetVotingStartedMessage(state), true);
 
             if (null != votingMesasge)
                 Repository.UpdateState(x => x.CurrentVotingDeadlineMessageId, votingMesasge.MessageId);
@@ -291,7 +291,7 @@ namespace musicallychallenged.Services
 
         private async Task CreateVotingStatsMessageAsync()
         {
-            var votingStatsMessage = await Controller.AnnounceInVotingChannel(Loc.VotingStatsHeader, false);
+            var votingStatsMessage = await BroadcastController.AnnounceInVotingChannel(Loc.VotingStatsHeader, false);
             Repository.UpdateState(x => x.CurrentVotingStatsMessageId, votingStatsMessage?.MessageId);
         }
 
@@ -311,7 +311,7 @@ namespace musicallychallenged.Services
                 {
                     logger.Warn($"ConsolidateActiveVotes found no active entries, announcing and switching to standby");
 
-                    await Controller.AnnounceInMainChannel(Loc.NotEnoughEntriesAnnouncement,
+                    await BroadcastController.AnnounceInMainChannel(Loc.NotEnoughEntriesAnnouncement,
                         pin: true);
 
                     return Tuple.Create<VotingFinalizationResult, User>(VotingFinalizationResult.NotEnoughContesters, null);
@@ -343,7 +343,7 @@ namespace musicallychallenged.Services
                         $"that's less than lowest threshold for {this.GetType().Name}.IsValidStateToProduceAVotingWinner, " +
                         $"announcing and switching to standby");
 
-                    await Controller.AnnounceInMainChannel(Loc.NotEnoughVotesAnnouncement, true,
+                    await BroadcastController.AnnounceInMainChannel(Loc.NotEnoughVotesAnnouncement, true,
                         Tuple.Create(LocTokens.VoteCount, voteCount.ToString()));
 
                     return Tuple.Create<VotingFinalizationResult, User>(VotingFinalizationResult.NotEnoughVotes, null);
@@ -387,7 +387,7 @@ namespace musicallychallenged.Services
                     actualWinner = pair.Value;
                     winningEntry = pair.Key;
 
-                    await Controller.AnnounceInMainChannel(_weHaveAWinnerTemplate, false,
+                    await BroadcastController.AnnounceInMainChannel(_weHaveAWinnerTemplate, false,
                         Tuple.Create(LocTokens.User, actualWinner.GetHtmlUserLink()),
                         Tuple.Create(LocTokens.VoteCount, voteCount.ToString()));
                 }
@@ -403,7 +403,7 @@ namespace musicallychallenged.Services
                     var winnersList = string.Join(", ",
                         winnerDictionary.Values.Select(u => u.GetHtmlUserLink()));
 
-                    await Controller.AnnounceInMainChannel(_weHaveWinnersTemplate, false,
+                    await BroadcastController.AnnounceInMainChannel(_weHaveWinnersTemplate, false,
                         Tuple.Create(LocTokens.User, actualWinner.GetHtmlUserLink()),
                         Tuple.Create(LocTokens.Users, winnersList),
                         Tuple.Create(LocTokens.VoteCount, voteCount.ToString()));

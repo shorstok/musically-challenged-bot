@@ -226,7 +226,7 @@ namespace tests
 
                 for (var nuser = 0; nuser < voterCount; nuser++)
                 {
-                    await compartment.ScenarioController.StartUserScenario(async context =>
+                    await compartment.ScenarioController.StartUserScenario(context =>
                     {
                         var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
                         var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
@@ -334,7 +334,7 @@ namespace tests
 
                 for (var nuser = 0; nuser < voterCount; nuser++)
                 {
-                    await compartment.ScenarioController.StartUserScenario(async context =>
+                    await compartment.ScenarioController.StartUserScenario(context =>
                     {
                         var maxVoteValue = votingController.VotingSmiles.Max(x => x.Key);
                         var maxVoteSmile = votingController.VotingSmiles[maxVoteValue];
