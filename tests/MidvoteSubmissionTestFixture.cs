@@ -25,7 +25,7 @@ namespace tests
         [Test]
         public async Task ShouldSubmitEntrySuccessfully()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var midvoteController = compartment.Container.Resolve<MidvoteEntryController>();
                 var messageMediator = compartment.Container.Resolve<MockMessageMediatorService>();
@@ -36,7 +36,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -98,7 +98,7 @@ namespace tests
         [Test]
         public async Task UnusedPinShouldBeRemoved()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var midvoteController = compartment.Container.Resolve<MidvoteEntryController>();
 
@@ -107,7 +107,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -120,7 +120,7 @@ namespace tests
 
                 await compartment.GenericScenarios.FinishContestAndSimulateVoting(compartment);
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest), Is.True,
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest, false), Is.True,
                     "Failed to switch to Contest state");
 
                 pinCount = await midvoteController.GetCurrentPinCount();
@@ -132,7 +132,7 @@ namespace tests
         [Test]
         public async Task ShouldDenyAddingPinWhenNotInVoting()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var states = (ContestState[])Enum.GetValues(typeof(ContestState));
                 foreach (var state in states.Where(s => s != ContestState.Voting))
@@ -154,14 +154,14 @@ namespace tests
         [Test]
         public async Task ShouldDenyMidvoteSubmissionIfSubmittedEntryExists()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 // setting up a poll
                 var votingEntities = compartment.GenericScenarios.
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -189,14 +189,14 @@ namespace tests
         [Test]
         public async Task ShoudDenyInvalidPin()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 // setting up a poll
                 var votingEntities = compartment.GenericScenarios.
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -204,7 +204,7 @@ namespace tests
                 await compartment.GenericScenarios.SupervisorAddPin(compartment, pin);
 
                 await compartment.ScenarioController.StartUserScenario(async context => 
-                    await compartment.GenericScenarios.ContesterUserScenario(context, "invalid pin", pinValid: false))
+                    await compartment.GenericScenarios.ContesterUserScenario(context, "invalid pin", assertPinIsInvalid: false))
                     .ScenarioTask;
             }
         }
@@ -212,7 +212,7 @@ namespace tests
         [Test]
         public async Task ShouldRemoveVotingControlsAndUpdateStatsMessageOnVotingFinalization()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var midvoteController = compartment.Container.Resolve<MidvoteEntryController>();
                 var messageMediator = compartment.Container.Resolve<MockMessageMediatorService>();
@@ -224,7 +224,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToList();
 
-                Assert.That(await compartment.WaitTillStateMatches(stateVar => stateVar.State == ContestState.Voting),
+                Assert.That(await compartment.WaitTillStateMatches(stateVar => stateVar.State == ContestState.Voting, false),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -287,7 +287,7 @@ namespace tests
 
                 //await compartment.GenericScenarios.FinishContestAndSimulateVoting(compartment);
                 compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.ChoosingNextTask), Is.True,
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.ChoosingNextTask, false), Is.True,
                     "Didn't switch to ChoosingNextTask after voting");
 
                 var votingStatsMsg = messageMediator.GetMockMessage((long)state.VotingChannelId, (int)state.CurrentVotingStatsMessageId);

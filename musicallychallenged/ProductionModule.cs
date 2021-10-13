@@ -11,6 +11,7 @@ using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Services;
 using musicallychallenged.Services.Events;
+using musicallychallenged.Services.Sync;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
 
@@ -31,6 +32,11 @@ namespace musicallychallenged
             builder.RegisterType<CrypticNameResolver>().AsSelf().SingleInstance();
             builder.RegisterType<MidvoteEntryController>().AsSelf().SingleInstance();
             builder.RegisterType<StateController>().As<IStartable>().AsSelf().SingleInstance();
+            
+            builder.RegisterType<PesnocloudIngestService>().As<IPesnocloudIngestService>().AsSelf().SingleInstance();
+            builder.RegisterType<PesnocloudConformer>().AsSelf().SingleInstance();
+            builder.RegisterType<SyncService>().As<IStartable>().AsSelf().SingleInstance();
+            builder.RegisterType<TelegramPayloadExtractor>().As<PayloadExtractor>().AsSelf().SingleInstance();
 
             builder.RegisterType<EventAggregator>().As<IEventAggregator>().SingleInstance();
 

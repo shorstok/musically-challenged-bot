@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
-using FluentMigrator.Builders.Alter.Table;
 using log4net;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
@@ -16,12 +10,11 @@ using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
+using musicallychallenged.Services.Sync;
+using musicallychallenged.Services.Sync.DTO;
 using musicallychallenged.Services.Telegram;
 using Stateless;
-using Telegram.Bot.Exceptions;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
 using User = musicallychallenged.Domain.User;
 
 namespace musicallychallenged.Services
@@ -31,6 +24,7 @@ namespace musicallychallenged.Services
         private static readonly ILog logger = Log.Get(typeof(StateController));
 
         private readonly IRepository _repository;
+        private readonly SyncService _syncService;
         private readonly IEventAggregator _eventAggregator;
         private readonly BroadcastController _broadcastController;
         private readonly IBotConfiguration _configuration;
@@ -44,8 +38,6 @@ namespace musicallychallenged.Services
         private readonly VotingController _votingController;
         private readonly NextRoundTaskPollController _nextRoundTaskPollController;
         private readonly NextRoundTaskPollVotingController _nextRoundTaskPollVotingController;
-
-        private readonly Random _random = new Random();
 
         private enum Trigger
         {
@@ -74,6 +66,7 @@ namespace musicallychallenged.Services
             _explicitStateSwitchTrigger;
 
         public StateController(IRepository repository,
+            SyncService syncService,
             IEventAggregator eventAggregator,
             BroadcastController broadcastController,
             IBotConfiguration configuration,
@@ -89,6 +82,7 @@ namespace musicallychallenged.Services
             NextRoundTaskPollVotingController nextRoundTaskPollVotingController)
         {
             _repository = repository;
+            _syncService = syncService;
             _eventAggregator = eventAggregator;
             _broadcastController = broadcastController;
             _configuration = configuration;
@@ -126,7 +120,9 @@ namespace musicallychallenged.Services
             _explicitStateSwitchTrigger = _stateMachine.SetTriggerParameters<ContestState>(Trigger.Explicit);
 
             //just switch to whatever state was requested
-            _stateMachine.Configure(ContestState.Standby).PermitDynamic(_explicitStateSwitchTrigger, state => state);
+            _stateMachine.Configure(ContestState.Standby)
+                .OnEntry(OnStandbyEnteredOrResumed)
+                .PermitDynamic(_explicitStateSwitchTrigger, state => state);
             _stateMachine.Configure(ContestState.Standby).Permit(Trigger.TaskApproved, ContestState.Contest);
             _stateMachine.Configure(ContestState.Standby).Permit(Trigger.InitiatedNextRoundTaskPoll, ContestState.TaskSuggestionCollection);
 
@@ -301,6 +297,29 @@ namespace musicallychallenged.Services
                 logger.Error($"Exception while starting contest - {e.Message}");
                 await _broadcastController.SqueakToAdministrators(e.Message);
                 _stateMachine.Fire(_explicitStateSwitchTrigger,ContestState.Standby);
+            }
+            finally
+            {
+                _transitionSemaphoreSlim.Release();
+            }
+        }
+
+        private async void OnStandbyEnteredOrResumed(StateMachine<ContestState, Trigger>.Transition arg)
+        {
+            if(arg.Source == ContestState.Standby)
+                return;
+            
+            await _transitionSemaphoreSlim.WaitAsync(transitionMaxWaitMs).ConfigureAwait(false);
+
+            try
+            {
+                var state = _repository.GetOrCreateCurrentState();
+
+                if (arg.Source is ContestState.Voting or ContestState.Contest)
+                {
+                    logger.Info($"Syncing round {state.CurrentChallengeRoundNumber} as Closed");
+                    await _syncService.UpdateRoundState(state.CurrentChallengeRoundNumber, BotContestRoundState.Closed);
+                }
             }
             finally
             {
@@ -706,6 +725,32 @@ namespace musicallychallenged.Services
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
+            }
+        }
+
+       
+        /// <summary>
+        /// Awaits till state change transitions are finished. Returns false on timeout
+        /// </summary>
+        public async Task<bool> YieldTransitionComplete(CancellationToken token)
+        {
+            try
+            {
+                await _transitionSemaphoreSlim.WaitAsync(token);
+
+                try
+                {
+                    return true;
+                }
+
+                finally
+                {
+                    _transitionSemaphoreSlim.Release();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
             }
         }
 

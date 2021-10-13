@@ -1,13 +1,9 @@
-﻿using System;
-using System.Threading.Tasks;
-using Autofac;
-using Autofac.Core;
+﻿using Autofac;
 using log4net;
-using musicallychallenged.Data;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
 using musicallychallenged.Config;
-using NodaTime;
+using musicallychallenged.Services.Sync;
 using tests.Mockups;
 using tests.Mockups.Messaging;
 
@@ -26,6 +22,7 @@ namespace tests.DI
             builder.RegisterType<UserScenarioController>().AsSelf().SingleInstance();
             builder.RegisterType<GenericUserScenarios>().AsSelf().SingleInstance();
             builder.RegisterType<MockMessageMediatorService>().AsSelf().SingleInstance();
+            builder.RegisterType<MockIngestService>().AsSelf().As<IPesnocloudIngestService>().SingleInstance();
         }
     }
 }

@@ -14,7 +14,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -287,7 +286,12 @@ namespace musicallychallenged.Services
                 Repository.UpdateState(x => x.CurrentVotingDeadlineMessageId, votingMesasge.MessageId);
 
             await CreateVotingStatsMessageAsync();
+
+            await OnVotingStartedAsync();
         }
+
+        protected virtual Task OnVotingStartedAsync() => 
+            Task.CompletedTask;
 
         private async Task CreateVotingStatsMessageAsync()
         {

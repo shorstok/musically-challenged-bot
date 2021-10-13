@@ -33,7 +33,7 @@ namespace tests
                 ContestState.Voting
             };
 
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 foreach (var contestState in deniedStates)
                 {
@@ -58,7 +58,7 @@ namespace tests
         [Test]
         public async Task ShouldSwitchToStandbyWhenNotEnoughContestEntries()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 //Setup
 
@@ -66,7 +66,7 @@ namespace tests
                     StartUserScenario(compartment.GenericScenarios.SupervisorKickstartContest,
                         UserCredentials.Supervisor).ScenarioTask;
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null, false),
                     Is.True,
                     "Failed kickstarting contest (message id not set)");
 
@@ -91,14 +91,19 @@ namespace tests
 
                     var warningMessage = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
 
+                    var postponeMessagePreamble = compartment.Localization.ContestController_DeadlinePostponed[..10];
+                    Assert.That(warningMessage.Text, Contains.Substring(postponeMessagePreamble),
+                        "Didnt get deadline change message");
+                    
+                    warningMessage = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
+
                     var expectedWarningMessage = LocTokens.SubstituteTokens(compartment.Localization.
                             ContestDeadline_NotEnoughEntriesTemplateFinal,
                         Tuple.Create(
                             LocTokens.Time,
                             compartment.Localization.AlmostNothing));
-
                     Assert.That(warningMessage.Text, Contains.Substring(expectedWarningMessage),
-                        "Didnt get preview warning message");
+                        "Didnt get deadline change message");
 
                     var standbyMessage = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
 
@@ -106,7 +111,7 @@ namespace tests
                         Contains.Substring(compartment.Localization.NotEnoughEntriesAnnouncement));
                 }, UserCredentials.Supervisor).ScenarioTask;
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Standby),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Standby, false),
                     Is.True,
                     "Failed switching to Standby state after deadline hit");
 
@@ -119,7 +124,7 @@ namespace tests
         [Test]
         public async Task ShouldSwitchToVotingWhenEnoughContestEntries()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 //Setup
 
@@ -127,7 +132,7 @@ namespace tests
                     StartUserScenario(compartment.GenericScenarios.SupervisorKickstartContest,
                         UserCredentials.Supervisor).ScenarioTask;
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null, false),
                     Is.True,
                     "Failed kickstarting contest (message id not set)");
 
@@ -179,7 +184,7 @@ namespace tests
                 }, UserCredentials.Supervisor).ScenarioTask;
 
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                     Is.True, "Failed switching to Voting state after deadline hit");
             }
         }
@@ -187,7 +192,7 @@ namespace tests
         [Test]
         public async Task ShouldWinMostVotedUser()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 //Setup
 
@@ -200,7 +205,7 @@ namespace tests
 
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                         Is.True, "Failed switching to Voting state after deadline hit");
 
                     await context.ReadTillMessageReceived(mock =>
@@ -251,8 +256,11 @@ namespace tests
                 }, UserCredentials.Supervisor).ScenarioTask;
 
                 Assert.That(await compartment.WaitTillStateMatches(state =>
-                        state.State == ContestState.ChoosingNextTask || state.State == ContestState.Contest),
-                    Is.True, "Failed switching to ChoosingNextTask or Contest state after deadline hit");
+                        state.State == ContestState.ChoosingNextTask ||
+                        state.State == ContestState.Contest ||
+                        state.State == ContestState.TaskSuggestionCollection,
+                        false),
+                    Is.True, "Failed switching to ChoosingNextTask/Contest/TaskSuggestionCollection state after deadline hit");
 
                 //Ensure author for entry 1 won
 
@@ -292,7 +300,7 @@ namespace tests
         [Test]
         public async Task ShouldFallbackToTaskPollOnSuggestionTimeout()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 //Setup
                 
@@ -308,7 +316,7 @@ namespace tests
 
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                         Is.True, "Failed switching to Voting state after deadline hit");
 
                     await context.ReadTillMessageReceived(mock =>
@@ -359,7 +367,7 @@ namespace tests
                 }, UserCredentials.Supervisor).ScenarioTask;
 
                 Assert.That(await compartment.WaitTillStateMatches(state =>
-                        state.State == ContestState.TaskSuggestionCollection || state.State == ContestState.Contest),
+                        state.State == ContestState.TaskSuggestionCollection || state.State == ContestState.Contest, false),
                     Is.True, "Failed switching to TaskSuggestionCollection on task selection timeout");
 
                 

@@ -17,7 +17,8 @@ namespace musicallychallenged.Data
         void UpdateUser(User user, long chatId);
 
         User[] GetAllActiveUsersWithCredentials(UserCredentials userCredentials);
-        void GetOrCreateContestEntry(User user, long chatId, int forwaredMessageId, int containerMessageId,
+        ActiveContestEntry GetOrCreateContestEntry(User user, long chatId, int forwaredMessageId,
+            int containerMessageId,
             int challengeRoundNumber, out ActiveContestEntry previous);
 
         IEnumerable<Tuple<Vote, User>> GetVotesForEntry(int entryId);
@@ -70,5 +71,11 @@ namespace musicallychallenged.Data
         long? GetLastTaskPollWinnerId();
         void DeleteTaskSuggestion(int suggestionId);
         void MarkUserAsAdministrator(long result);
+
+        
+        long CreateSyncEvent(string payload); 
+        IEnumerable<SyncEvent> GetSyncEvents(bool onlyUnsynced); 
+        void MarkSynced(SyncEvent syncEvent);
+        int DeleteSyncEventsTill(Instant periodEnd);
     }
 }

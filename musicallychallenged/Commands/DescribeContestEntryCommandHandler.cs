@@ -82,6 +82,7 @@ namespace musicallychallenged.Commands
             _repository.UpdateContestEntry(entry);
             
             await _contestController.UpdateContestEntry(user, entry);
+            
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
                 _loc.DescribeContestEntryCommandHandler_SubmissionSucceeded);

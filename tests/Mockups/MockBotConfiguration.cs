@@ -61,7 +61,7 @@ namespace tests.Mockups
                 new BotDeployment {Name = "Mockup", MainChatId = MockConfiguration.MainChat.Id, VotingChatId = MockConfiguration.VotingChat.Id}
             };
 
-        public int DeadlinePollingPeriodMs { get; set; } = 10;
+        public int DeadlinePollingPeriodMs { get; set; } = 50;
 
         //How many users required to trigger postpone
         public int PostponeQuorum { get; set; } = 3;
@@ -77,6 +77,11 @@ namespace tests.Mockups
         public int MaxSuggestionVoteValue { get; set; } = 1;
         public string RulesURL { get; set; } = "https://telegra.ph/FAQ-po-PesnoPiscu-02-10";
         public int MinSuggestedTasksBeforeVotingStarts { get; set; } = 2;
+        public string PesnocloudBaseUri { get; set; } = "http://localhost:3000";
+        public string PesnocloudBotToken { get; set; } = "none";
+        public double PesnocloudTimeoutSeconds { get; set; } = 1;
+        public string FfmpegPath { get; set; } = string.Empty;
+        public int PesnocloudPollingPeriodMs { get; set; } = 100;
 
         public bool Reload() =>
             true;

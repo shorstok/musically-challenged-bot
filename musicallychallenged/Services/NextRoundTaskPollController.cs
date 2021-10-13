@@ -7,13 +7,11 @@ using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
 using musicallychallenged.Services.Telegram;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using User = musicallychallenged.Domain.User;
 

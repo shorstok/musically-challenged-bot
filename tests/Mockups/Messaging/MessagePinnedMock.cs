@@ -14,5 +14,10 @@ namespace tests.Mockups.Messaging
             MessageId = messageId;
             DisableNotification = disableNotification;
         }
+
+        public override string ToString()
+        {
+            return $"MessagePinned @ {ChatId.Identifier}";
+        }
     }
 }

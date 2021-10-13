@@ -191,27 +191,41 @@ namespace tests.Mockups
             return response.Text;
         }
 
+        public async Task ContesterUpdateDescription(UserScenarioContext context,string description)
+        {
+            context.SendCommand(Schema.DescribeCommandName);
+            
+            var message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+            Assert.That(message, Is.Not.Null, "Didn't receive a 'provide a description' message");
+            Assert.That(message.Text, Contains.Substring(_localization.DescribeContestEntryCommandHandler_SubmitGuidelines),
+                "The message received does not contain 'DescribeContestEntryCommandHandler_SubmitGuidelines' substring");
+            context.SendMessage(description,context.PrivateChat);
+            
+            message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+            Assert.That(message, Is.Not.Null, "Didn't receive a 'submitted ok' message");
+            Assert.That(message.Text, Contains.Substring(_localization.DescribeContestEntryCommandHandler_SubmissionSucceeded),
+                "The message received does not contain 'DescribeContestEntryCommandHandler_SubmissionSucceeded' substring");
+        }
 
         /// <summary>
         /// Submits fake file to challenge bot as contest entry
         /// </summary>
-        /// <param name="context"></param>
         /// <returns></returns>
         public async Task ContesterUserScenario(UserScenarioContext context, 
-            string pin, bool pinValid = true, Func<Task> postSubmissionValidation = null)
+            string midvotingPin, bool assertPinIsInvalid = true, Func<Task> postSubmissionValidation = null)
         {
             context.SendCommand(Schema.SubmitCommandName);
 
-            if (pin != null)
+            if (midvotingPin != null)
             {
                 var message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
                 Assert.That(message, Is.Not.Null, "Didn't receive a 'provide a pin' message");
                 Assert.That(message.Text, Contains.Substring(_localization.SubmitContestEntryCommandHandler_ProvideMidvotePin),
                     "The message received does not contain 'provide a pin' substring");
 
-                context.SendMessage(pin, context.PrivateChat);
+                context.SendMessage(midvotingPin, context.PrivateChat);
 
-                if (!pinValid)
+                if (!assertPinIsInvalid)
                 {
                     message = await context.ReadTillMessageReceived(context.PrivateChat.Id);
                     Assert.That(message, Is.Not.Null, "Didn't receive a 'pin invalid' message");
@@ -228,7 +242,7 @@ namespace tests.Mockups
                     SubmitContestEntryCommandHandler_SubmitGuidelines),
                 "/submit command response should contain general submit pretext");
 
-            var fakeFileTitle = Guid.NewGuid().ToString();
+            var fakeFileTitle = "fake!"+Guid.NewGuid();
 
             context.SendAudioFile(new Audio { FileSize = 10000, Title = fakeFileTitle }, context.PrivateChat);
 
@@ -246,7 +260,8 @@ namespace tests.Mockups
                 mock.ChatId.Identifier == context.PrivateChat.Id &&
                 mock.Text.Contains(_localization.SubmitContestEntryCommandHandler_SubmissionSucceeded));
 
-            postSubmissionValidation = postSubmissionValidation ?? (() => Task.Run(() => { }));
+            postSubmissionValidation ??= (() => Task.Run(() => { }));
+            
             await postSubmissionValidation();
         }
 
@@ -266,13 +281,13 @@ namespace tests.Mockups
             }
 
             _repository.UpdateState(state => state.State, ContestState.Contest);
+            _repository.UpdateState(state => state.NextDeadlineUTC, _clock.GetCurrentInstant());
 
-            _repository.UpdateState(state => state.NextDeadlineUTC,
-                _clock.GetCurrentInstant());
-
+            await Task.Delay(100);
+            
             await compartment.ScenarioController.StartUserScenario(async context =>
             {
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                     Is.True, "Failed switching to Voting state after deadline hit");
 
                 await context.ReadTillMessageReceived(mock =>
@@ -335,7 +350,7 @@ namespace tests.Mockups
                 async winnerCtx =>
                 {
                     Assert.That(await compartment.WaitTillStateMatches(state =>
-                            state.State == ContestState.ChoosingNextTask || state.State == ContestState.Contest),
+                            state.State == ContestState.ChoosingNextTask || state.State == ContestState.Contest, false),
                         Is.True, "Failed switching to ChoosingNextTask or Contest state after deadline hit");
 
                     //Ensure author for entry 1 won
@@ -358,7 +373,7 @@ namespace tests.Mockups
                     Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(2),
                         "Winner task selector should have 2 reply buttons (for random task selection and starting the next round task poll)");
 
-                    winnerAction = winnerAction ?? ((context, _) => context.SendMessage("mock task", context.PrivateChat));
+                    winnerAction ??= ((context, _) => context.SendMessage("mock task", context.PrivateChat));
                     winnerAction(winnerCtx, messageWithControls);
 
                     Logger.Info($"Completed task selection as winner");
@@ -404,7 +419,7 @@ namespace tests.Mockups
 
         public async Task PopulateWithTaskSuggestionsAndSwitchToVoting(TestCompartment compartment, int suggestionsCount)
         {
-            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection, false),
                 Is.True, "The state is not TaskSuggestionCollection");
 
             if (suggestionsCount < 1)
@@ -433,13 +448,13 @@ namespace tests.Mockups
             }
 
             _repository.UpdateState(s => s.NextDeadlineUTC, _clock.GetCurrentInstant());
-            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting),
+            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting, false),
                 Is.True, "Didn't switch to TaskSuggestionVoing on deadline hit");
         }
 
         public async Task<TaskSuggestion> FinishNextRoundTaskPollAndSimulateVoting(TestCompartment compartment, int voterCount = 5)
         {
-            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting),
+            Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting, false),
                 Is.True, "Contest state is not TaskSuggestion voting");
 
             var suggestions = _repository.GetActiveTaskSuggestions().ToArray();

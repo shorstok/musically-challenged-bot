@@ -717,7 +717,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public void GetOrCreateContestEntry(User user,
+        public ActiveContestEntry GetOrCreateContestEntry(User user,
             long chatId,
             int forwaredMessageId,
             int containerMessageId,
@@ -767,6 +767,8 @@ namespace musicallychallenged.Data
                         connection.Update(existing, transaction: tx);
 
                     tx.Commit();
+
+                    return existing;
                 }
             }
         }
@@ -854,6 +856,69 @@ namespace musicallychallenged.Data
             using (var connection = CreateOpenConnection())
             {
                 return connection.Get<ActiveContestEntry>(entryId);
+            }
+        }
+
+        public IEnumerable<SyncEvent> GetSyncEvents(bool onlyUnsynced)
+        {
+            using var connection = CreateOpenConnection();
+            
+            return connection.Query<SyncEvent>(
+                onlyUnsynced ?
+                    @"SELECT * from SyncEvent where SyncedAt IS NULL ORDER BY CreatedAt ASC":
+                    @"SELECT * from SyncEvent ORDER BY CreatedAt ASC");
+        }
+
+        public void MarkSynced(SyncEvent syncEvent)
+        {
+            using var connection = CreateOpenConnection();
+            using (var tx = connection.BeginTransaction())
+            {
+                var existing = connection.Get<SyncEvent>(syncEvent.Id, transaction: tx);
+
+                if (null != existing)
+                {
+                    existing.SyncedAt = _clock.GetCurrentInstant();
+                    connection.Update(existing, transaction: tx);
+                }
+
+                tx.Commit();
+            }
+        }
+        
+        public long CreateSyncEvent(string payload)
+        {
+            using var connection = CreateOpenConnection();
+            using (var tx = connection.BeginTransaction())
+            {
+                var id = connection.Insert(new SyncEvent
+                {
+                    CreatedAt = _clock.GetCurrentInstant(),
+                    SyncedAt = null,
+                    SerializedDto = payload,
+                }, transaction: tx);
+
+                tx.Commit();
+
+                return id;
+            }
+        }
+        
+        public int DeleteSyncEventsTill(Instant periodEnd)
+        {
+            using var connection = CreateOpenConnection();
+            using (var tx = connection.BeginTransaction())
+            {
+                var qty = connection.Execute(
+                    @"DELETE FROM SyncEvent WHERE SyncedAt <= @periodEnd AND SyncedAt IS NOT NULL",
+                    new
+                    {
+                        periodEnd = periodEnd,
+                    }, transaction: tx);
+
+                tx.Commit();
+
+                return qty;
             }
         }
 

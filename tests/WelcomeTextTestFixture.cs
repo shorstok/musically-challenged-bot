@@ -24,7 +24,7 @@ namespace tests
         [Test]
         public async Task ShouldSendUsageCasesForAnonymousUser()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 async Task UserScenario(UserScenarioContext context)
                 {
@@ -66,7 +66,7 @@ namespace tests
         {
             var setupComplete = new TaskCompletionSource<object>();
             
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 async Task UserScenario(UserScenarioContext context)
                 {

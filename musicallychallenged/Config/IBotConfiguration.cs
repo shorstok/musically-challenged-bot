@@ -67,6 +67,12 @@ namespace musicallychallenged.Config
         int MaxSuggestionVoteValue { get; set; }
         string RulesURL { get; set; }
         int MinSuggestedTasksBeforeVotingStarts { get; set; }
+        
+        string PesnocloudBaseUri { get; set; }
+        string PesnocloudBotToken { get; set; }
+        double PesnocloudTimeoutSeconds { get; set; }
+        string FfmpegPath { get; set; }
+        int PesnocloudPollingPeriodMs { get; set; }
 
         bool Reload();
 

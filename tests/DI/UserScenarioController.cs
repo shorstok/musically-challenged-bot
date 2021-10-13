@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Data.Common;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Autofac.Features.OwnedInstances;
 using Dapper.Contrib.Extensions;
 using log4net;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Logging;
-using NUnit.Framework.Internal;
 using Telegram.Bot.Types;
 using tests.Mockups;
 using tests.Mockups.Messaging;
@@ -106,7 +102,7 @@ namespace tests.DI
                 catch (Exception e)
                 {
                     Logger.Error(
-                        $"User {context.MockUser.Id} / {context.MockUser.Username} scenario resulted in exception");
+                        $"User {context.MockUser.Id} / {context.MockUser.Username} scenario resulted in exception `{e.Message}`");
                     //Marshal exception from thread pool to awaiting thread (should be test runner)
                     context.SetException(e);
                 }

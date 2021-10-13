@@ -154,18 +154,31 @@ namespace tests.Mockups
 
         internal async Task<Message> ReadTillMessageReceived(Expression<Predicate<MessageSentMock>> filter,  TimeSpan? readTimeOut = null)
         {
-            var messageSent = await ReadMockMessage(filter, 
-                readTimeOut ?? DefaultReadTimeout);
-
-            return new Message
+            try
             {
-                Text = messageSent.Text,
-                MessageId = messageSent.Id,
-                ReplyToMessage = null, //todo: get by id from mock tg
-                ReplyMarkup = messageSent.ReplyMarkup as InlineKeyboardMarkup,
-                Chat = new Chat {Id = messageSent.ChatId.Identifier},
-                From = MockConfiguration.MockBotUser
-            };
+                var messageSent = await ReadMockMessage(filter,
+                    readTimeOut ?? DefaultReadTimeout);
+
+                return new Message
+                {
+                    Text = messageSent.Text,
+                    MessageId = messageSent.Id,
+                    ReplyToMessage = null, //todo: get by id from mock tg
+                    ReplyMarkup = messageSent.ReplyMarkup as InlineKeyboardMarkup,
+                    Chat = new Chat { Id = messageSent.ChatId.Identifier },
+                    From = MockConfiguration.MockBotUser
+                };
+            }
+            catch (TimeoutException)
+            {
+                Logger.Error($"Didn't get expected message before timeout");
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Error($"Didn't get expected message before timeout");
+                throw;
+            }
         }
 
 
@@ -231,12 +244,14 @@ namespace tests.Mockups
                 if (!(mockMessage is TMockMessage message))
                 {
                     eatenMessages.Add(mockMessage);
+                    await Task.Delay(10, CancellationToken.None);
                     continue;
                 }
 
                 if (!predicate(message))
                 {
                     eatenMessages.Add(message);
+                    await Task.Delay(10, CancellationToken.None);
                     continue;
                 }
 

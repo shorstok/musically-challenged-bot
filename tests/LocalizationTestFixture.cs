@@ -25,7 +25,7 @@ namespace tests
         [Test]
         public void LocalizationTextShouldHaveValidHTML()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 int validatedCount = 0;
 

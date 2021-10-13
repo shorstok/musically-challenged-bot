@@ -30,7 +30,7 @@ namespace tests
         [Test]
         public async Task ShouldDenyRequestsForNewUsers()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 compartment.Repository.UpdateState(state => state.State, ContestState.Contest);
 
@@ -50,7 +50,7 @@ namespace tests
         [Test]
         public async Task ShouldDiscardOpenRequestsAtNextRound()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var stateController = compartment.Container.Resolve<StateController>();
                 var prepResult = await PrepareCompartmentWithUserHistory(compartment);
@@ -101,7 +101,7 @@ namespace tests
 
                 Assert.That(winnerId, Is.Not.Null);
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Contest),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Contest, false),
                     Is.True, "Failed switching to Contest state");
 
                 await stateController.WaitForStateTransition();
@@ -129,7 +129,7 @@ namespace tests
         [Test]
         public async Task ShouldLimitPostponeAmountForOneRound()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var prepResult = await PrepareCompartmentWithUserHistory(compartment);
 
@@ -223,7 +223,7 @@ namespace tests
                 compartment.GenericScenarios.SupervisorKickstartContest,
                 UserCredentials.Supervisor).ScenarioTask;
 
-            Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null),
+            Assert.That(await compartment.WaitTillStateMatches(state => state.CurrentTaskMessagelId != null, false),
                 Is.True,
                 "Failed kickstarting contest (message id not set)");
 
@@ -265,7 +265,7 @@ namespace tests
         [Test]
         public async Task ShouldDiscardAllOpenRequests()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 for (int i = 0; i < 10; i++)
                 {
@@ -304,7 +304,7 @@ namespace tests
         [Test]
         public async Task ShouldPickLargestPostponeRequest()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var postponeCompletedSource = new TaskCompletionSource<bool>();
                 compartment.ScenarioController.StartUserScenario(async context =>

@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,6 +76,11 @@ namespace musicallychallenged.Services.Telegram
                 cancellationToken, 
                 FaultSource.MessageInChat(chatId,messageId));
         }
+        
+        public async Task DownloadFile(Message message, Stream targetStream, CancellationToken token)
+        {
+            await _client.GetInfoAndDownloadFileAsync(message.Audio.FileId, targetStream, token);
+        }
 
         public async Task<Message> EditMessageTextAsync(
             ChatId chatId,
@@ -91,7 +97,7 @@ namespace musicallychallenged.Services.Telegram
                 cancellationToken,
                 FaultSource.MessageInChat(chatId,messageId));
         }
-
+        
         public async Task AnswerCallbackQueryAsync(string callbackQueryId, string text = null, bool showAlert = false,
             string url = null,
             int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken))

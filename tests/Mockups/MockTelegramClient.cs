@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -100,6 +101,11 @@ namespace tests.Mockups
 
             return null;
         }
+
+        public Task DownloadFile(Message message, Stream targetStream, CancellationToken token) => 
+            Task.CompletedTask;
+
+
 
         public async Task DeleteMessageAsync(ChatId chatId, int messageId,
             CancellationToken cancellationToken = default)

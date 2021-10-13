@@ -1,22 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using log4net;
-using musicallychallenged.Commands;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
-using musicallychallenged.Helpers;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
+using musicallychallenged.Services.Sync;
+using musicallychallenged.Services.Sync.DTO;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
 using Telegram.Bot.Exceptions;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using User = musicallychallenged.Domain.User;
@@ -28,6 +25,7 @@ namespace musicallychallenged.Services
         private static readonly ILog logger = Log.Get(typeof(VotingController));
 
         private readonly ContestController _contestController;
+        private readonly SyncService _syncService;
 
         public override string Prefix { get; } = "v";
 
@@ -53,11 +51,13 @@ namespace musicallychallenged.Services
             BroadcastController broadcastController,
             ContestController contestController,
             TimeService timeService,
+            SyncService syncService,
             Lazy<MidvoteEntryController> midvoteEntryController) 
             : base(client, botConfiguration, repository, loc, 
                   crypticNameResolver, broadcastController,midvoteEntryController, timeService)
         {
             _contestController = contestController;
+            _syncService = syncService;
         }
 
         protected override bool SetOrUpdateVote(User user, int voteVal, int entryId)
@@ -163,10 +163,23 @@ namespace musicallychallenged.Services
                 votingResults.AppendLine($"{user.GetHtmlUserLink()} : {entry.ConsolidatedVoteCount ?? 0}");
             }
 
+            await _syncService.UpdateVotes(activeEntries);
+
             await BroadcastController.AnnounceInMainChannel(Loc.VotigResultsTemplate, false,
                 Tuple.Create(LocTokens.Users, votingResults.ToString()));
 
             return activeEntries;
+        }
+
+        protected override async Task OnVotingStartedAsync()
+        {
+            var state = Repository.GetOrCreateCurrentState();
+            
+            await _syncService.PatchRoundInfo(
+                state.CurrentChallengeRoundNumber, 
+                null,
+                null,
+                BotContestRoundState.Voting);
         }
 
         protected override string GetVoteDescriptionRealVotes(Vote vote) =>
@@ -175,7 +188,7 @@ namespace musicallychallenged.Services
         protected override string GetEntryText(User user, string votingDetails, string extra) =>
             _contestController.GetContestEntryText(user, votingDetails, extra);
 
-        protected async override Task OnWinnerChosen(User winner, ActiveContestEntry winningEntry)
+        protected override async Task OnWinnerChosen(User winner, ActiveContestEntry winningEntry)
         {
             //forward winner's entry to main channel
             var state = Repository.GetOrCreateCurrentState();
@@ -203,13 +216,14 @@ namespace musicallychallenged.Services
         protected override bool IsValidStateToProduceAVotingWinner(int voteCount, int entriesCount) =>
             voteCount >= Configuration.MinAllowedVoteCountForWinners;
 
-        protected override Task OnEnteredFinalization()
+        protected override async Task OnEnteredFinalization()
         {
             var state = Repository.GetOrCreateCurrentState();
+
+            await _syncService.UpdateRoundState(state.CurrentChallengeRoundNumber, BotContestRoundState.Closed);
+            
             Repository.UpdateState(x => x.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);
             logger.Info($"Challenge round number set to {state.CurrentChallengeRoundNumber}");
-
-            return Task.CompletedTask;
         }
 
         protected override List<ActiveContestEntry> _filterConsolidatedEntriesIfEnoughContester(List<ActiveContestEntry> entries)

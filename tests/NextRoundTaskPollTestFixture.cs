@@ -30,7 +30,7 @@ namespace tests
         [Test]
         public async Task ShouldSwitchToNextRoundTakPollStateWhenWinnerInitiatesPoll()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 // Setting up
                 var votingEntities = compartment.GenericScenarios.
@@ -41,7 +41,7 @@ namespace tests
                 await compartment.GenericScenarios.
                     FinishContestAndSimulateVoting(compartment, (winnerCntx, msg) => winnerCntx.SendQuery(nrtpQuery, msg));
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection, false),
                     Is.True, "Didn't switch to TaskSuggestionCollection");
             }
         }
@@ -49,7 +49,7 @@ namespace tests
         [Test]
         public async Task ShouldStartTheNextRoundWithMaxVotedTaskSuggestion()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 TaskSuggestion winningSuggestion = null;
 
@@ -67,7 +67,7 @@ namespace tests
                 await compartment.GenericScenarios.
                     FinishContestAndSimulateVoting(compartment, (winnerCntx, msg) => winnerCntx.SendQuery(nrtpQuery, msg));
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection, false),
                     Is.True, "Didn't switch to TaskSuggestionCollection");
 
                 // creating suggestions
@@ -75,7 +75,7 @@ namespace tests
 
                 // voting
                 winningSuggestion = await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment);
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest, false),
                     Is.True, "Failed to switch to Contest");
 
                 // Assert
@@ -100,7 +100,7 @@ namespace tests
         [Test]
         public async Task ShouldRejectTaskSuggestionsWhenNotInTheCollectionState()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var states = (ContestState[])Enum.GetValues(typeof(ContestState));
                 foreach (var state in states.Where(s => s != ContestState.TaskSuggestionCollection))
@@ -133,7 +133,7 @@ namespace tests
         [Test]
         public async Task ShoudlUpdateTaskSuggestionOnRepeatedSuggestions()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 // setting up a TaskSuggestionCollection state
                 compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
@@ -192,7 +192,7 @@ namespace tests
         [Test]
         public async Task ShoudlScreenHTMLInSuggestions()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 // setting up a TaskSuggestionCollection state
                 var clock = compartment.Container.Resolve<IClock>();
@@ -200,8 +200,13 @@ namespace tests
                 compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
                 await compartment.Container.Resolve<NextRoundTaskPollController>().StartTaskPollAsync();
 
-                var usrScenario = compartment.ScenarioController.StartUserScenario(
-                    context => context.PersistUserChatId());
+                var usrScenario = compartment.ScenarioController.StartUserScenario(context => context.PersistUserChatId());
+
+                for (int i = 0; i < 5; i++)
+                {
+                    //Generate some more fake users
+                    await compartment.ScenarioController.StartUserScenario(context => {}).ScenarioTask;
+                }
 
                 var initialSuggestion = "Initial fake \"'<>'\" suggestion";
                 var screenedSuggestion = ContestController.EscapeTgHtml(initialSuggestion);
@@ -226,14 +231,43 @@ namespace tests
                     Assert.That(screenedMessage.Text, Does.Not.Contain(initialSuggestion),
                         "Didn't properly screen suggestion text");
                     
+                    // Generate some fake suggestions
+                    
+                    await compartment.AddFakeTaskSuggestions(user => user.Id == usrScenario.MockUser.Id ? null: $"fake-from-{user.Id}");
+                    
                     //Check that screened text gets to main announcement in fallthrough case
+
+                    // ffwd
+                    compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
+
+                    Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionVoting, true),
+                        Is.True, "Failed to transition to TaskSuggestionVoting state");
+                    
+                    // Vote for our entry
+                    
+                    var entries = compartment.Repository.GetActiveTaskSuggestions().ToArray();
+                    var users = compartment.Repository.GetAllActiveUsersWithCredentials(UserCredentials.User).ToArray();
+
+                    Logger.Info($"Adding votes for {entries.Length} task suggestions");
+
+                    foreach (var entry in entries)
+                    {
+                        foreach (var user in users)
+                        {
+                            compartment.Repository.SetOrUpdateTaskPollVote(user, entry.Id, 
+                                value: entry.AuthorUserId == usrScenario.MockUser.Id?1 : -1,
+                                out var updated);
+                        }
+                    }
                     
                     // ffwd
                     compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
 
-                    Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
+                    Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest, true),
                         Is.True, "Failed to fallthrough to Contest state");
                     
+                    Logger.Info($"Waiting for announcement in main chat");
+
                     var mainChatMessage = await context.ReadTillMessageReceived(mock=>
                         mock.ChatId.Identifier == MockConfiguration.MainChat.Id &&
                         mock.Text.Contains(screenedSuggestion));
@@ -242,15 +276,17 @@ namespace tests
                         "Didn't properly screen suggestion text");
                     Assert.That(mainChatMessage.Text, Does.Not.Contain(initialSuggestion),
                         "Didn't properly screen suggestion text");
-                    
+
                 }).ScenarioTask;
+                
+
             }
         }
 
         [Test]
         public async Task ShouldExtendCollectionIfNoTaskSuggestions()
         {
-            using var compartment = new TestCompartment();
+            using var compartment = new TestCompartment(TestContext.CurrentContext);
             
             // setting up a TaskSuggestionCollection state
             compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);
@@ -271,7 +307,7 @@ namespace tests
                         await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id, TimeSpan.FromSeconds(2));
 
                     Assert.That(
-                        await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+                        await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection, false),
                         Is.True, "Failed to remain in TaskSuggestionCollection on not enough suggestions");
 
                     //Advance fake clock to the next deadline
@@ -289,7 +325,7 @@ namespace tests
                 
                 Assert.AreEqual(compartment.Localization.GenericStandbyAnnouncement,stopMessage.Text);
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby),
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby, false),
                     Is.True, "Failed to transition to Standby on not enough suggestions and too many postpones");
                 
             }).ScenarioTask;
@@ -305,17 +341,14 @@ namespace tests
         }
         
         [Test]
-        public async Task ShouldFallthroughVotingIfOneTaskSuggestion()
+        public async Task ShouldPostponeVotingIfOneTaskSuggestion()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 TaskSuggestion singleSuggestion = null;
 
                 var enteredContestSource = new TaskCompletionSource<bool>();
-                var assertCorrectTaskGiver = compartment.GenericScenarios.AssertCorrectTaskGiverMainChatAnnouncement(
-                    compartment, enteredContestSource,
-                    () => compartment.Repository.GetExistingUserWithTgId(singleSuggestion.AuthorUserId));
-
+               
                 var configuration = compartment.Container.Resolve<IBotConfiguration>();
                 var clock = compartment.Container.Resolve<IClock>();
                 var mediator = compartment.Container.Resolve<MockMessageMediatorService>();
@@ -333,31 +366,14 @@ namespace tests
                 singleSuggestion = compartment.Repository.GetActiveTaskSuggestions().Single();
 
                 // ffwd
-                compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());
+                var nextDeadline = clock.GetCurrentInstant();
+                compartment.Repository.UpdateState(s => s.NextDeadlineUTC, nextDeadline);
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
-                    Is.True, "Failed to fallthrough to Contest state");
+                //Ensure deadline gets moved further
 
-                //Assert
-                enteredContestSource.SetResult(true);
-                await assertCorrectTaskGiver;
+                var baseline = nextDeadline.Plus(Duration.FromHours(1));
 
-                var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
-                Assert.That(consolidatedEntries.Count(), Is.EqualTo(0),
-                    "Non-consolidated suggestions were left after falling through");
-
-                var state = compartment.Repository.GetOrCreateCurrentState();
-                Assert.That(state.CurrentTaskTemplate, Is.EqualTo(singleSuggestion.Description),
-                    $"Started contest with a wrong task: {state.CurrentTaskTemplate} when should be {singleSuggestion.Description}");
-
-                Assert.That(state.CurrentTaskKind, Is.EqualTo(SelectedTaskKind.Poll),
-                    $"Didn't set CurrentTaskKind properly");
-
-                Assert.That(compartment.Repository.GetLastTaskPollWinnerId(), Is.EqualTo(singleSuggestion.AuthorUserId),
-                    "LastTaskPollWinner wasn't set correctly");
-
-                Assert.That(compartment.Repository.GetActiveTaskSuggestions(), Is.Empty,
-                    "Active suggestions left in post-taskpoll state");
+                await compartment.WaitTillStateMatches(systemState => systemState.NextDeadlineUTC > baseline, true);
             }
 
         }
@@ -365,7 +381,7 @@ namespace tests
         [Test]
         public async Task ShouldGoToStandbyIfNotEnoughVotes()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 var configuration = compartment.Container.Resolve<IBotConfiguration>();
 
@@ -379,7 +395,7 @@ namespace tests
                 await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment,
                     Math.Max(0, configuration.MinAllowedContestEntriesToStartVoting - 1));
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby),
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Standby, false),
                     Is.True, "Failed to switch to Standby on not enough votes");
 
                 var consolidatedEntries = compartment.Repository.CloseNextRoundTaskPollAndConsolidateVotes();
@@ -391,7 +407,7 @@ namespace tests
         [Test]
         public async Task KickstartedPollShouldSucceed()
         {
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 TaskSuggestion winningSuggestion = null;
                 var enteredContestSource = new TaskCompletionSource<bool>();
@@ -416,14 +432,14 @@ namespace tests
                         "Confirmation message was not sent");
                 }, UserCredentials.Supervisor).ScenarioTask;
 
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection),
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.TaskSuggestionCollection, false),
                     Is.True, "Failed to switch to TaskSuggestionCollection on kickstart issued");
 
                 await compartment.GenericScenarios.PopulateWithTaskSuggestionsAndSwitchToVoting(compartment, 2);
 
                 // voting
                 winningSuggestion = await compartment.GenericScenarios.FinishNextRoundTaskPollAndSimulateVoting(compartment);
-                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest),
+                Assert.That(await compartment.WaitTillStateMatches(s => s.State == ContestState.Contest, false),
                     Is.True, "Failed to switch to Contest");
 
                 var state = compartment.Repository.GetOrCreateCurrentState();

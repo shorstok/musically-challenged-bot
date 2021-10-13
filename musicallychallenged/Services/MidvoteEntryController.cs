@@ -8,6 +8,7 @@ using log4net;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Logging;
+using musicallychallenged.Services.Sync;
 using musicallychallenged.Services.Telegram;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -20,6 +21,7 @@ namespace musicallychallenged.Services
         private readonly IRepository _repository;
         private readonly VotingController _votingController;
         private readonly ITelegramClient _client;
+        private readonly SyncService _syncService;
         private readonly ContestController _contestController;
         private static readonly ILog logger = Log.Get(typeof(MidvoteEntryController));
 
@@ -32,11 +34,13 @@ namespace musicallychallenged.Services
         public MidvoteEntryController(IRepository repository,
             VotingController votingController,
             ITelegramClient client,
+            SyncService syncService,
             ContestController contestController)
         {
             _repository = repository;
             _votingController = votingController;
             _client = client;
+            _syncService = syncService;
             _contestController = contestController;
         }
 
@@ -135,6 +139,8 @@ namespace musicallychallenged.Services
                 logger.Info($"Creating vote controls for entry");
                 
                 await _votingController.CreateVotingControlsForEntry(entry);
+
+                await _syncService.AddOrUpdateEntry(container, entry);
             }
             finally
             {

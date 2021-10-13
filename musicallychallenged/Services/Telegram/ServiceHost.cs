@@ -1,25 +1,15 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 using log4net;
-using musicallychallenged.Commands;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
-using Newtonsoft.Json;
-using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InlineQueryResults;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace musicallychallenged.Services.Telegram
 {

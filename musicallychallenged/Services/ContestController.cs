@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -12,11 +10,11 @@ using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
+using musicallychallenged.Services.Sync;
+using musicallychallenged.Services.Sync.DTO;
 using musicallychallenged.Services.Telegram;
-using Newtonsoft.Json.Converters;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
 using User = musicallychallenged.Domain.User;
 
 namespace musicallychallenged.Services
@@ -30,6 +28,7 @@ namespace musicallychallenged.Services
         private readonly ITelegramClient _client;
         private readonly IBotConfiguration _configuration;
         private readonly PostponeService _postponeService;
+        private readonly SyncService _syncService;
         private readonly IRepository _repository;
 
         private static readonly ILog logger = Log.Get(typeof(ContestController));
@@ -43,6 +42,7 @@ namespace musicallychallenged.Services
             ITelegramClient client,
             IBotConfiguration configuration,
             PostponeService postponeService,
+            SyncService syncService,
             IRepository repository)
         {
             _broadcastController = broadcastController;
@@ -52,6 +52,7 @@ namespace musicallychallenged.Services
             _client = client;
             _configuration = configuration;
             _postponeService = postponeService;
+            _syncService = syncService;
             _repository = repository;
 
             _subscriptions = new ISubscription[]
@@ -84,6 +85,7 @@ namespace musicallychallenged.Services
             logger.Info($"Detected that containing message was deleted for entry {deletedEntry.Id}, deleting entry itself");
 
             _repository.DeleteContestEntry(deletedEntry.Id);
+            _syncService.DeleteContestEntry(deletedEntry.Id);
         }
 
         private readonly SemaphoreSlim _messageSemaphoreSlim = new SemaphoreSlim(1,1);
@@ -110,6 +112,8 @@ namespace musicallychallenged.Services
         {
             await _client.EditMessageTextAsync(entry.ContainerChatId, entry.ContainerMesssageId,
                 GetContestEntryText(author,String.Empty, entry.Description),ParseMode.Html);
+            
+            await _syncService.UpdateEntryDescription(entry.Id, entry.Description);
         }
 
         public async Task SubmitNewEntry(Message response, User user)
@@ -140,13 +144,15 @@ namespace musicallychallenged.Services
                 if(null == container)
                     throw new InvalidOperationException($"Could not send {user.GetUsernameOrNameWithCircumflex()} entry to voting channel {state.VotingChannelId}");
 
-                _repository.GetOrCreateContestEntry(user, forwared.Chat.Id, forwared.MessageId, container.MessageId, state.CurrentChallengeRoundNumber,out var previous);
+                var entry = _repository.GetOrCreateContestEntry(user, forwared.Chat.Id, forwared.MessageId, container.MessageId, state.CurrentChallengeRoundNumber,out var previous);
 
                 if (previous != null)
                 {
                     await _client.DeleteMessageAsync(previous.ContainerChatId, previous.ContainerMesssageId);
                     await _client.DeleteMessageAsync(previous.ContainerChatId, previous.ForwardedPayloadMessageId);
                 }
+
+                await _syncService.AddOrUpdateEntry(response,entry);
             }
             finally
             {
@@ -222,20 +228,28 @@ namespace musicallychallenged.Services
                 Tuple.Create(LocTokens.VotingChannelLink,_configuration.VotingChannelInviteLink));
         }
 
-        public void IsolatePreviousRoundTasks()
+        public bool IsolatePreviousRoundTasks()
         {
             var votes = _repository.ConsolidateVotesForActiveEntriesGetAffected();
 
             if (!votes.Any())
-                return;
+                return false;
 
             var state = _repository.GetOrCreateCurrentState();
+            logger.Info($"Setting round number to {state.CurrentChallengeRoundNumber+1}");
             _repository.UpdateState(s => s.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);
+
+            return true;
         }
         
         public Task KickstartContestAsync(string responseText, User user)
         {
-            IsolatePreviousRoundTasks();
+            if (!IsolatePreviousRoundTasks())
+            {
+                var state = _repository.GetOrCreateCurrentState();
+                logger.Info($"Setting round number to {state.CurrentChallengeRoundNumber+1}");
+                _repository.UpdateState(s => s.CurrentChallengeRoundNumber, state.CurrentChallengeRoundNumber + 1);
+            }
 
             _repository.SetCurrentTask(SelectedTaskKind.Manual, responseText);
             _repository.UpdateState(s => s.CurrentWinnerId,user.Id);
@@ -274,6 +288,11 @@ namespace musicallychallenged.Services
             logger.Info($"Closing all unsatisfied postpone requests...");
 
             await _postponeService.CloseAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
+            
+            state = _repository.GetOrCreateCurrentState();
+
+            await _syncService.CreateRound(state.CurrentChallengeRoundNumber, state.CurrentTaskTemplate,
+                state.NextDeadlineUTC);
         }
 
         public async Task UpdateCurrentTaskMessage()
@@ -307,6 +326,12 @@ namespace musicallychallenged.Services
             {
                 logger.Error($"UpdateCurrentTaskMessage:EditMessageTextAsync exception",e);
             }
+
+            await _syncService.PatchRoundInfo(
+                state.CurrentChallengeRoundNumber, 
+                state.CurrentTaskTemplate,
+                state.NextDeadlineUTC,
+                BotContestRoundState.Open);
         }
 
         public async Task AnnounceNewDeadline(string reason)

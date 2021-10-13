@@ -189,7 +189,25 @@ namespace musicallychallenged.Config
 
         [JsonProperty("MinSuggestedTasksBeforeVotingStarts")]
         public int MinSuggestedTasksBeforeVotingStarts { get; set; } = 2;
+
+        [JsonProperty("PesnocloudBaseUri")]
+        public string PesnocloudBaseUri { get; set; } = "http://localhost:3000";
+
+        [ProtectedString]
+        [JsonProperty("PesnocloudBotToken")]
+        public string PesnocloudBotToken { get; set; } = "cleartext:no token";
+
+        [JsonProperty("PesnocloudTimeoutSeconds")]
+        public double PesnocloudTimeoutSeconds { get; set; } = 5;
+
+        [JsonProperty("PesnocloudPollingPeriodMs")]
+        public int PesnocloudPollingPeriodMs { get; set; } = 10000;
+
+        [JsonProperty("FfmpegPath")]
+        public string FfmpegPath { get; set; } = "ffmpeg.exe";
+
         
+
         [JsonProperty("MinSuggestionVoteValue")]
         public int MinSuggestionVoteValue { get; set; } = -1;
 
@@ -239,7 +257,7 @@ namespace musicallychallenged.Config
                 
                 if(string.IsNullOrWhiteSpace(envValue))
                     continue;
-
+                
                 var overrideVal = Convert.ChangeType(envValue, propertyInfo.PropertyType); 
 
                 propertyInfo.SetValue(this, overrideVal);

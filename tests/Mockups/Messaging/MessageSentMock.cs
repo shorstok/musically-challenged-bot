@@ -27,5 +27,10 @@ namespace tests.Mockups.Messaging
             ReplyToMessageId = replyToMessageId;
             ReplyMarkup = replyMarkup;
         }
+
+        public override string ToString()
+        {
+            return $"MessageSentMock: {Id} -> {ChatId.Identifier}: {Text}";
+        }
     }
 }

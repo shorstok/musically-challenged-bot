@@ -26,7 +26,7 @@ namespace tests
         {
             const string mockTaskText = "Lorem ipsum";
 
-            using (var compartment = new TestCompartment())
+            using (var compartment = new TestCompartment(TestContext.CurrentContext))
             {
                 //Setup
 
@@ -48,7 +48,7 @@ namespace tests
 
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting),
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
                         Is.True, "Failed switching to Voting state after deadline hit");
 
                     await context.ReadTillMessageReceived(mock =>
@@ -134,7 +134,7 @@ namespace tests
 
                             //Wait till global verdict
                             Assert.That(await compartment.WaitTillStateMatches(state =>
-                                    state.State == ContestState.Contest),
+                                    state.State == ContestState.Contest, false),
                                 Is.True, "Failed switching to Contest");
 
                             //Check that admin dialog gets recycled 
@@ -159,7 +159,7 @@ namespace tests
                     async winnerCtx =>
                     {
                         Assert.That(await compartment.WaitTillStateMatches(state =>
-                                state.State == ContestState.ChoosingNextTask || state.State == ContestState.Contest),
+                                state.State == ContestState.ChoosingNextTask || state.State == ContestState.Contest, false),
                             Is.True, "Failed switching to ChoosingNextTask or Contest state after deadline hit");
 
                         //Ensure author for entry 1 won

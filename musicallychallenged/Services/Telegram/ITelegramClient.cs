@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace musicallychallenged.Services.Telegram
@@ -40,6 +40,8 @@ namespace musicallychallenged.Services.Telegram
             InlineKeyboardMarkup replyMarkup = null,
             CancellationToken cancellationToken = default);
 
+        Task DownloadFile(Message message, Stream targetStream, CancellationToken token);
+        
         event EventHandler<UpdateEventArgs> OnUpdate;
         event EventHandler<MessageEventArgs> OnMessage;
         event EventHandler<MessageEventArgs> OnMessageEdited;

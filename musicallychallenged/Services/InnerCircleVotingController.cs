@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +11,6 @@ using musicallychallenged.Helpers;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Telegram;
-using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -127,7 +124,7 @@ namespace musicallychallenged.Services
             if (allAdmins.Length == 0)
             {
                 logger.Warn($"Lol, no active administrators found, lol. Auto-approve...");
-                return Tuple.Create<bool?, string>(true, null);
+                return Tuple.Create<bool?, string>(true, state.CurrentTaskTemplate);
             }
 
             var taskInfo = state.CurrentTaskInfo;
