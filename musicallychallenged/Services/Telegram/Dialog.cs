@@ -11,7 +11,7 @@ namespace musicallychallenged.Services.Telegram
     {
         public static int MaxBoundedCapacity = 15; //unread messages throttle by default,
         
-        public int UserId { get; }
+        public long UserId { get; }
         public long ChatId { get; }
         public DateTime LastUpdated { get; private set; }
 
@@ -25,7 +25,7 @@ namespace musicallychallenged.Services.Telegram
         private readonly BufferBlock<Message> _messageBlock;
         private readonly BufferBlock<CallbackQuery> _callbackQueryBlock;
 
-        public Dialog(ITelegramClient telegramClient, long chatId, int userId)
+        public Dialog(ITelegramClient telegramClient, long chatId, long userId)
         {
             TelegramClient = telegramClient;
             ChatId = chatId;

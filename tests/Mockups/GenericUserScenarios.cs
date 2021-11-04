@@ -254,7 +254,7 @@ namespace tests.Mockups
             await ContesterUserScenario(context, null);
 
 
-        public async Task<int?> FinishContestAndSimulateVoting(TestCompartment compartment, 
+        public async Task<long?> FinishContestAndSimulateVoting(TestCompartment compartment, 
             Action<UserScenarioContext, Message> winnerAction = null)
         {
             var entries = _repository.GetActiveContestEntries().ToArray();
@@ -327,7 +327,7 @@ namespace tests.Mockups
 
         }
 
-        public async Task CompleteTaskSelectionAsWinner(TestCompartment compartment, int winnerId,
+        public async Task CompleteTaskSelectionAsWinner(TestCompartment compartment, long winnerId,
             Action<UserScenarioContext, Message> winnerAction = null)
         {
             await compartment.ScenarioController.StartUserScenarioForExistingUser(

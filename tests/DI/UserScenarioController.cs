@@ -64,7 +64,7 @@ namespace tests.DI
             }
         }
 
-        public UserScenarioContext StartUserScenarioForExistingUser(int userId,
+        public UserScenarioContext StartUserScenarioForExistingUser(long userId,
             Func<UserScenarioContext, Task> scenario,
             UserCredentials credentials = UserCredentials.User)
         {
@@ -72,7 +72,7 @@ namespace tests.DI
         }
 
         public UserScenarioContext StartUserScenario(Action<UserScenarioContext> scenario,
-            UserCredentials credentials = UserCredentials.User, int? useExistingUserId = null) =>
+            UserCredentials credentials = UserCredentials.User, long? useExistingUserId = null) =>
             StartUserScenario(context =>
             {
                 scenario(context);
@@ -80,7 +80,7 @@ namespace tests.DI
             }, credentials, useExistingUserId);
 
         public UserScenarioContext StartUserScenario(Func<UserScenarioContext, Task> scenario,
-            UserCredentials credentials = UserCredentials.User, int? useExistingUserId = null)
+            UserCredentials credentials = UserCredentials.User, long? useExistingUserId = null)
         {
             var context = _userScenarioFactory().Value;
 
@@ -144,7 +144,7 @@ namespace tests.DI
             await context.AddMessageToUserQueue(message, token);
         }
 
-        internal async Task SendMessageToMockUser(int userId, MockMessage message, CancellationToken token)
+        internal async Task SendMessageToMockUser(long userId, MockMessage message, CancellationToken token)
         {
             var user = _contexts.Values.FirstOrDefault(u => u.MockUser.Id == userId);
             

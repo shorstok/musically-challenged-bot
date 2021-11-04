@@ -11,7 +11,7 @@ namespace musicallychallenged.Services
 {
     public class CrypticNameResolver
     {
-        private readonly Dictionary<int, string> _namesTaken = new Dictionary<int, string>();
+        private readonly Dictionary<long, string> _namesTaken = new();
         private Stack<string> _namesLeft = new Stack<string>();
         
         private readonly List<string> _namesRepository = new List<string>

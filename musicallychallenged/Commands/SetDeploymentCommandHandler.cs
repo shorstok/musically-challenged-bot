@@ -81,9 +81,8 @@ namespace musicallychallenged.Commands
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
                 $"Select deployment target. Bot is currently in <code>{current?.Name??"unkown"}</code>", 
-                parseMode:ParseMode.Html,
-                replyMarkup: 
-                new InlineKeyboardMarkup(_configuration.Deployments.Select(d=>InlineKeyboardButton.WithCallbackData(d.Name,d.Name))));
+                parseMode: ParseMode.Html,
+                replyMarkup: new InlineKeyboardMarkup(_configuration.Deployments.Select(d=>InlineKeyboardButton.WithCallbackData(d.Name,d.Name))));
 
             response = await dialog.GetCallbackQueryAsync(
                 new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token);

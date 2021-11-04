@@ -76,7 +76,7 @@ namespace tests.Mockups
             _repository.UpdateUser(user,PrivateChat.Id);
         }
 
-        public void UseExistingUser(int userId)
+        public void UseExistingUser(long userId)
         {
             var user = _repository.GetExistingUserWithTgId(userId);
 

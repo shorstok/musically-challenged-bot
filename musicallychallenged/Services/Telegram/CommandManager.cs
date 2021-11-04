@@ -193,8 +193,8 @@ namespace musicallychallenged.Services.Telegram
             }
 
             await _client.SendTextMessageAsync(message.Chat.Id, LocTokens.SubstituteTokens(
-                _loc.UnknownCommandUsageTemplate,
-                Tuple.Create(LocTokens.Details,builder.ToString())),
+                    _loc.UnknownCommandUsageTemplate,
+                    Tuple.Create(LocTokens.Details,builder.ToString())),
                 ParseMode.Html);
         }
     }

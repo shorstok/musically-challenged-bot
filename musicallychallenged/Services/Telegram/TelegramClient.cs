@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -75,14 +76,18 @@ namespace musicallychallenged.Services.Telegram
                 FaultSource.MessageInChat(chatId,messageId));
         }
 
-        public async Task<Message> EditMessageTextAsync(ChatId chatId, int messageId, string text,
-            ParseMode parseMode = ParseMode.Default, bool disableWebPagePreview = false,
-            InlineKeyboardMarkup replyMarkup = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<Message> EditMessageTextAsync(
+            ChatId chatId,
+            int messageId,
+            string text,
+            ParseMode parseMode = default,
+            IEnumerable<MessageEntity> entities = default,
+            bool disableWebPagePreview = default,
+            InlineKeyboardMarkup replyMarkup = default,
+            CancellationToken cancellationToken = default)
         {
             return await ExecuteThrottled(() => _client.EditMessageTextAsync(chatId, messageId, text, parseMode,
-                    disableWebPagePreview, replyMarkup,
-                    cancellationToken),
+                    entities, disableWebPagePreview, replyMarkup, cancellationToken),
                 cancellationToken,
                 FaultSource.MessageInChat(chatId,messageId));
         }
@@ -141,13 +146,16 @@ namespace musicallychallenged.Services.Telegram
 
         public async Task<Message> SendTextMessageAsync(ChatId chatId, string text,
             ParseMode parseMode = ParseMode.Default,
+            IEnumerable<MessageEntity> entities = default,
             bool disableWebPagePreview = false, bool disableNotification = false, int replyToMessageId = 0,
+            bool allowSendingWithoutReply = default,
             IReplyMarkup replyMarkup = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             return await ExecuteThrottled(() => _client.SendTextMessageAsync(chatId, text, parseMode,
+                entities,
                 disableWebPagePreview,
                 disableNotification,
-                replyToMessageId, replyMarkup, cancellationToken), cancellationToken, FaultSource.ForChat(chatId));
+                replyToMessageId,allowSendingWithoutReply, replyMarkup, cancellationToken), cancellationToken, FaultSource.ForChat(chatId));
         }
 
         private struct FaultSource

@@ -10,7 +10,7 @@ namespace musicallychallenged.Domain
         [Key]
         public int Id { get; set; }
 
-        public int AuthorUserId { get; set; }
+        public long AuthorUserId { get; set; }
         public int ChallengeRoundNumber { get; set; }
 
         public Instant Timestamp { get; set; }

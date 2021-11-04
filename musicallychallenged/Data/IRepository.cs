@@ -13,7 +13,7 @@ namespace musicallychallenged.Data
     public interface IRepository
     {
         User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User user);
-        User GetExistingUserWithTgId(int id);
+        User GetExistingUserWithTgId(long id);
         void UpdateUser(User user, long chatId);
 
         User[] GetAllActiveUsersWithCredentials(UserCredentials userCredentials);
@@ -25,8 +25,8 @@ namespace musicallychallenged.Data
         IEnumerable<ActiveContestEntry> GetActiveContestEntries();
         IEnumerable<ActiveContestEntry> ConsolidateVotesForActiveEntriesGetAffected();
         ActiveContestEntry GetExistingEntry(int entryId);
-        ActiveContestEntry GetActiveContestEntryForUser(int userId);
-        int GetFinishedContestEntryCountForUser(int userId);
+        ActiveContestEntry GetActiveContestEntryForUser(long userId);
+        int GetFinishedContestEntryCountForUser(long userId);
         void UpdateContestEntry(ActiveContestEntry entry);
         void DeleteContestEntry(int deletedEntryId);
 
@@ -50,7 +50,7 @@ namespace musicallychallenged.Data
         int GetVoteCountForActiveEntriesForUser(User user);
         bool MaybeCreateVoteForAllActiveEntriesExcept(User user, int entryId, int defaultVoteValue);
         int CloseAllPostponeRequests(PostponeRequestState finalState);
-        PostponeRequest[] GetOpenPostponeRequestsForUser(int authorId);
+        PostponeRequest[] GetOpenPostponeRequestsForUser(long authorId);
         long GetUsedPostponeQuotaForCurrentRoundMinutes();
         PostponeRequest[] CreatePostponeRequestRetrunOpen(User author, Duration postponeDuration);
         void FinalizePostponeRequests(PostponeRequest keyRequest);
@@ -66,8 +66,8 @@ namespace musicallychallenged.Data
         void SetOrUpdateTaskPollVote(User voter, int suggestionId,
             int value, out bool updated);
         bool MaybeCreateVoteForAllActiveSuggestionsExcept(User user, int suggestionId, int defaultVoteValue);
-        void SetNextRoundTaskPollWinner(int? winnerId);
-        int? GetLastTaskPollWinnerId();
+        void SetNextRoundTaskPollWinner(long winnerId);
+        long? GetLastTaskPollWinnerId();
         void DeleteTaskSuggestion(int suggestionId);
     }
 }

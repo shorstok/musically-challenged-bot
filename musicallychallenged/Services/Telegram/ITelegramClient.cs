@@ -17,8 +17,10 @@ namespace musicallychallenged.Services.Telegram
 
 
         Task<Message> SendTextMessageAsync(ChatId chatId, string text, ParseMode parseMode = ParseMode.Default,
+            IEnumerable<MessageEntity> entities = null,
             bool disableWebPagePreview = false, bool disableNotification = false, int replyToMessageId = 0,
-            IReplyMarkup replyMarkup = null, CancellationToken cancellationToken = default(CancellationToken));
+            bool allowSendingWithoutReply = false,
+            IReplyMarkup replyMarkup = null, CancellationToken cancellationToken = default);
 
         Task PinChatMessageAsync(ChatId chatId, int messageId, bool disableNotification = false,
             CancellationToken cancellationToken = default(CancellationToken));
@@ -33,9 +35,10 @@ namespace musicallychallenged.Services.Telegram
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<Message> EditMessageTextAsync(ChatId chatId, int messageId, string text,
-            ParseMode parseMode = ParseMode.Default, bool disableWebPagePreview = false,
+            ParseMode parseMode = ParseMode.Default, IEnumerable<MessageEntity> entities = default,
+            bool disableWebPagePreview = false,
             InlineKeyboardMarkup replyMarkup = null,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         event EventHandler<UpdateEventArgs> OnUpdate;
         event EventHandler<MessageEventArgs> OnMessage;

@@ -28,8 +28,8 @@ namespace tests.Mockups
         private readonly ConcurrentDictionary<Tuple<long, int>, Message> _mockMessages =
             new ConcurrentDictionary<Tuple<long, int>, Message>();
 
-        private readonly ConcurrentDictionary<string, int> _userIdForPendingCallbackQueries =
-            new ConcurrentDictionary<string, int>();
+        private readonly ConcurrentDictionary<string, long> _userIdForPendingCallbackQueries =
+            new ();
 
 
         public MockTelegramClient(UserScenarioController userScenarioController,
@@ -81,6 +81,7 @@ namespace tests.Mockups
 
         public async Task<Message> EditMessageTextAsync(ChatId chatId, int messageId, string text,
             ParseMode parseMode = ParseMode.Default,
+            IEnumerable<MessageEntity> entities = default,
             bool disableWebPagePreview = false, InlineKeyboardMarkup replyMarkup = null,
             CancellationToken cancellationToken = default)
         {
@@ -159,7 +160,9 @@ namespace tests.Mockups
 
         public async Task<Message> SendTextMessageAsync(ChatId chatId, string text,
             ParseMode parseMode = ParseMode.Default,
+            IEnumerable<MessageEntity> entities = null,
             bool disableWebPagePreview = false, bool disableNotification = false, int replyToMessageId = 0,
+            bool allowSendingWithoutReply = default,
             IReplyMarkup replyMarkup = null, CancellationToken cancellationToken = default)
         {
             var id = MockConfiguration.CreateNewMockMessageId();

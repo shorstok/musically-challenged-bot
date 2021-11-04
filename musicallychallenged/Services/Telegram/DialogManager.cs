@@ -13,8 +13,8 @@ namespace musicallychallenged.Services.Telegram
         private readonly ITelegramClient _botService;
         private readonly IBotConfiguration _configuration;
 
-        private readonly ConcurrentDictionary<int, ConcurrentDictionary<Guid, Dialog>> _activeDialogs =
-            new ConcurrentDictionary<int, ConcurrentDictionary<Guid, Dialog>>();
+        private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, Dialog>> _activeDialogs =
+            new();
 
         public DialogManager(ITelegramClient botService, IBotConfiguration configuration)
         {
@@ -22,14 +22,14 @@ namespace musicallychallenged.Services.Telegram
             _configuration = configuration;
         }
 
-        public Dialog GetActiveDialogForUserId(int userId)
+        public Dialog GetActiveDialogForUserId(long userId)
         {
             return !_activeDialogs.TryGetValue(userId, out var dialogs) ? 
                 null : 
                 dialogs.FirstOrDefault().Value;
         }
 
-        public Dialog StartNewDialogExclusive(long chatId, int userId, string tag)
+        public Dialog StartNewDialogExclusive(long chatId, long userId, string tag)
         {
             var dialogs = _activeDialogs.GetOrAdd(userId, new ConcurrentDictionary<Guid, Dialog>());
 

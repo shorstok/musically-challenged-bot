@@ -58,7 +58,7 @@ namespace musicallychallenged.Domain
         public long? VotingChannelId { get; set; }
         public long? MainChannelId { get; set; }
 
-        public int? CurrentWinnerId { get; set; }
+        public long? CurrentWinnerId { get; set; }
         public SelectedTaskKind CurrentTaskKind { get; set; }
         public string CurrentTaskTemplate { get; set; }
 

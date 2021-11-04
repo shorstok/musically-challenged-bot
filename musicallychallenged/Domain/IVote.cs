@@ -10,7 +10,7 @@ namespace musicallychallenged.Domain
     {
         int Id { get; set; }
 
-        int UserId { get; set; }
+        long UserId { get; set; }
 
         int Value { get; set; }
     }

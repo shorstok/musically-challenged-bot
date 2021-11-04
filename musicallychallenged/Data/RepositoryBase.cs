@@ -187,7 +187,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public PostponeRequest[] GetOpenPostponeRequestsForUser(int authorId)
+        public PostponeRequest[] GetOpenPostponeRequestsForUser(long authorId)
         {
             using (var connection = CreateOpenConnection())
             {
@@ -390,7 +390,7 @@ namespace musicallychallenged.Data
             return result;
         }
 
-        public void SetNextRoundTaskPollWinner(int? winnerId)
+        public void SetNextRoundTaskPollWinner(long winnerId)
         {
             using (var connection = CreateOpenConnection())
             {
@@ -415,7 +415,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public int? GetLastTaskPollWinnerId()
+        public long? GetLastTaskPollWinnerId()
         {
             using (var connection = CreateOpenConnection())
             {
@@ -657,7 +657,7 @@ namespace musicallychallenged.Data
             return result;
         }
 
-        public User GetExistingUserWithTgId(int id)
+        public User GetExistingUserWithTgId(long id)
         {
             using (var connection = CreateOpenConnection())
             {
@@ -821,7 +821,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public ActiveContestEntry GetActiveContestEntryForUser(int userId)
+        public ActiveContestEntry GetActiveContestEntryForUser(long userId)
         {
             using (var connection = CreateOpenConnection())
             {
@@ -832,7 +832,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public int GetFinishedContestEntryCountForUser(int userId)
+        public int GetFinishedContestEntryCountForUser(long userId)
         {
             using (var connection = CreateOpenConnection())
             {

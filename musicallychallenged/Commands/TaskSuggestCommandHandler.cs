@@ -65,7 +65,7 @@ namespace musicallychallenged.Commands
             // send the guidelines
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
                 LocTokens.SubstituteTokens(_loc.TaskSuggestCommandHandler_SubmitGuidelines,
-                Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
+                    Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
                 ParseMode.Html);
 
             // get a suggestion message

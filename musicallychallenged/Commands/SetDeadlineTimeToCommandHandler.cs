@@ -91,7 +91,7 @@ namespace musicallychallenged.Commands
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
                 $"Send next deadline date and time (like, <code>11.01.2019 21:00</code>), " +
                 $"date & time specified in <code>{_configuration.AnnouncementTimeZone}</code> timezone!", 
-                parseMode:ParseMode.Html);
+                parseMode: ParseMode.Html);
 
             var date = await dialog.GetMessageInThreadAsync(
                 new CancellationTokenSource(TimeSpan.FromMinutes(_configuration.SubmissionTimeoutMinutes)).Token);

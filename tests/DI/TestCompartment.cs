@@ -144,18 +144,7 @@ namespace tests.DI
             Container = containerBuilder.Build();
         }
 
-        internal static UpdateEventArgs CreateMockUpdateEvent(Update source)
-        {
-            var type = typeof(UpdateEventArgs);
-
-            var constructor = type.GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance,
-                null, new[]
-                {
-                    typeof(Update)
-                }, null);
-
-            return (UpdateEventArgs) constructor.Invoke(new object[] {source});
-        }
+        internal static UpdateEventArgs CreateMockUpdateEvent(Update source) => new(source);
 
         public void Dispose()
         {
