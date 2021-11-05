@@ -18,11 +18,11 @@ namespace musicallychallenged
     {
         private static readonly ILog logger = Log.Get(typeof(Program));
 
-        private static IContainer CreateDiContainer()
+        private static IContainer CreateDiContainer(BotConfiguration botConfiguration)
         {
             var containerBuilder = new ContainerBuilder();
 
-            containerBuilder.RegisterInstance(BotConfiguration.LoadOrCreate(true)).As<IBotConfiguration>().SingleInstance();
+            containerBuilder.RegisterInstance(botConfiguration).As<IBotConfiguration>().SingleInstance();
 
             containerBuilder.RegisterModule<ProductionModule>();
 
@@ -37,14 +37,16 @@ namespace musicallychallenged
 
             logger.Info($"Service data resides in `{PathService.AppData}`");
 
+            var configuration = BotConfiguration.LoadOrCreate(true).UseEnvironmentVariables();
 
             IContainer container;
 
             try
             {
-                RunDbMigrations();
+                RunDbMigrations(configuration);
+                container = CreateDiContainer(configuration);
 
-                container = CreateDiContainer();
+                container.Resolve<DatabaseSeedService>().Run();
             }
             catch (Exception e)
             {
@@ -79,13 +81,13 @@ namespace musicallychallenged
             });
         }
 
-        private static void RunDbMigrations()
+        private static void RunDbMigrations(BotConfiguration botConfiguration)
         {
             var connectionString = SqliteRepository.CreateConnectionString();
 
             logger.Info($"Running migrations for `{connectionString}`...");
 
-            new AdHocMigrationRunner(connectionString).RunMigrations();
+            new AdHocMigrationRunner(connectionString, botConfiguration.CreateRepositoryIfNotExists).RunMigrations();
         }
     }
 }

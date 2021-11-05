@@ -11,10 +11,10 @@ namespace musicallychallenged.Config
     {
         public static string Protect(this string clearText)
         {
-            if (clearText == null)
-                throw new ArgumentNullException(nameof(clearText));
+            if (string.IsNullOrEmpty(clearText))
+                return clearText;
             if (!OperatingSystem.IsWindows())
-                throw new NotSupportedException("Data protection only in Windows");
+                return clearText;   //In non-windows environment pass cleartext transparently
 
             var clearBytes = Encoding.UTF8.GetBytes(clearText);
 
@@ -25,10 +25,10 @@ namespace musicallychallenged.Config
 
         public static string Unprotect(this string encryptedText)
         {
-            if (encryptedText == null)
-                throw new ArgumentNullException(nameof(encryptedText));
+            if (string.IsNullOrEmpty(encryptedText))
+                return encryptedText;
             if (!OperatingSystem.IsWindows())
-                throw new NotSupportedException("Data protection only in Windows");
+                return encryptedText;   //In non-windows environment treat encryptedText as cleartext
             
             var encryptedBytes = Convert.FromBase64String(encryptedText);
 

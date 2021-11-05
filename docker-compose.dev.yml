@@ -1,0 +1,13 @@
+# Dev overrides from env
+
+version: "3"
+services:
+  musicallychallenged:
+    environment: 
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Config__telegram_botkey=${Config__telegram_botkey}  #Picked from .env file
+      - Config__TelegramBotId=${Config__TelegramBotId} #Picked from .env file
+      - Seed__VotingChannelId=${Seed__VotingChannelId} #Picked from .env file
+      - Seed__MainChannelId=${Seed__MainChannelId} #Picked from .env file
+      - Seed_AdministratorIds=${Seed_AdministratorIds} #Picked from .env file
+      - Config__CreateRepositoryIfNotExists=true

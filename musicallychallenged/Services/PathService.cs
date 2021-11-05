@@ -8,6 +8,8 @@ namespace musicallychallenged.Services
         public static string AppData =>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
             "music-challenge-bot");
 
+        public static string BotDbPath => Path.Combine(AppData, @"bot.sqlite");
+
         static PathService()
         {
             

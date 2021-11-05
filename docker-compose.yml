@@ -1,0 +1,11 @@
+# Basic config
+
+version: "3"
+services:
+  musicallychallenged:
+    build: .
+    image: musicallychallenged
+    environment: 
+      - ASPNETCORE_ENVIRONMENT
+      - Config__telegram_botkey
+      - Config__TelegramBotId

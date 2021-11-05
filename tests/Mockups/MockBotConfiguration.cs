@@ -14,6 +14,7 @@ namespace tests.Mockups
         public string TelegramAnnouncerBotKey { get; set; } = "cleartext:dummy_botkey";
 
         public int TelegramBotId { get; set; } = 1234567;
+        public bool CreateRepositoryIfNotExists { get; set; } = true;
 
         public int TelegramMaxMessagesPerSecond { get; set; } = 15;
 

@@ -69,5 +69,6 @@ namespace musicallychallenged.Data
         void SetNextRoundTaskPollWinner(long winnerId);
         long? GetLastTaskPollWinnerId();
         void DeleteTaskSuggestion(int suggestionId);
+        void MarkUserAsAdministrator(long result);
     }
 }

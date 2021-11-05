@@ -119,7 +119,7 @@ namespace tests.DI
         {
             Logger.Info("Applying migrations for in-memory sqlite db...");
 
-            new AdHocMigrationRunner(connectionString).RunMigrations();
+            new AdHocMigrationRunner(connectionString, false).RunMigrations();
 
             Logger.Info("Applied migrations for in-memory sqlite db");
         }

@@ -23,6 +23,8 @@ namespace musicallychallenged
             
             builder.RegisterType<LocStrings>().AsSelf().SingleInstance();           
             
+            builder.RegisterType<DatabaseSeedService>().AsSelf().InstancePerDependency();
+            
             builder.RegisterType<NewTaskSelectorController>().AsSelf().InstancePerDependency();
             builder.RegisterType<InnerCircleVotingController>().AsSelf().InstancePerDependency();
             

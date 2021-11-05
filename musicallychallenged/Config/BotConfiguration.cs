@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization;
 using musicallychallenged.Localization;
 using musicallychallenged.Services;
@@ -95,6 +97,9 @@ namespace musicallychallenged.Config
 
         [JsonProperty("TelegramBotId")]
         public int TelegramBotId { get; set; } = 741897987;
+
+        [JsonProperty("CreateRepositoryIfNotExists")]
+        public bool CreateRepositoryIfNotExists { get; set; } = false;
 
         [JsonProperty("telegram_max_messages_per_sec")]
         public int TelegramMaxMessagesPerSecond { get; set; } = 15;
@@ -212,10 +217,35 @@ namespace musicallychallenged.Config
                     JsonFormatters.IndentedAutotype);
 
                 if (CurrentUserProtectedString.GenerateProtectedPropertiesFromCleartext(existing))
-                    existing.Save();
-
+                    existing?.Save();
+                
                 return existing;
             }
+        }
+
+        public BotConfiguration UseEnvironmentVariables()
+        {
+            var protectedStrings = typeof(BotConfiguration).GetProperties()
+                .Where(pi => pi.GetCustomAttributes(typeof(JsonPropertyAttribute)).Any()).ToArray();
+
+            foreach (var propertyInfo in protectedStrings)
+            {
+                var propName = propertyInfo.GetCustomAttribute<JsonPropertyAttribute>()?.PropertyName;
+                
+                if(string.IsNullOrEmpty(propName))
+                    continue;
+
+                var envValue = Environment.GetEnvironmentVariable($"Config__{propName}");
+                
+                if(string.IsNullOrWhiteSpace(envValue))
+                    continue;
+
+                var overrideVal = Convert.ChangeType(envValue, propertyInfo.PropertyType); 
+
+                propertyInfo.SetValue(this, overrideVal);
+            }
+
+            return this;
         }
 
         public bool Reload()

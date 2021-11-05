@@ -36,7 +36,6 @@ namespace musicallychallenged.Data
             SqlMapper.AddTypeHandler(new InstantHandler());
         }
 
-
         public bool MigrateChat(long fromId, long toId)
         {
             using (var connection = CreateOpenConnection())
@@ -625,6 +624,43 @@ namespace musicallychallenged.Data
             }
         }
 
+        
+        public void MarkUserAsAdministrator(long id)
+        {
+            User result;
+
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    result = connection.Get<User>(id, tx);
+                    
+                    if (null == result)
+                    {
+                        result = new User
+                        {
+                            Id = id,
+                            Credentials = UserCredentials.Admin|UserCredentials.Supervisor,
+                            LastActivityUTC = _clock.GetCurrentInstant(),
+                            State = UserState.Default,
+                            Username = $"@admin-{id}",
+                            Name = $"Admin #{id}",
+                        };
+
+                        connection.Insert(result, tx);
+                    }
+                    else
+                    {
+                        result.Credentials = UserCredentials.Admin | UserCredentials.Supervisor;
+                        connection.Update(result, tx);
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        
         public User CreateOrGetUserByTgIdentity(Telegram.Bot.Types.User source)
         {
             User result;
@@ -949,7 +985,7 @@ namespace musicallychallenged.Data
                     tx.Commit();
                 }
             }
-
+            
             return existing;
         }
 

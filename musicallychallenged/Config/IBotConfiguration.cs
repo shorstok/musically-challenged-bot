@@ -11,6 +11,8 @@ namespace musicallychallenged.Config
         string TelegramAnnouncerBotKey { get; set; }
 
         int TelegramBotId { get; set; }
+        
+        bool CreateRepositoryIfNotExists { get; set; }
 
         int TelegramMaxMessagesPerSecond { get; set; }
 
