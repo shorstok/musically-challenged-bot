@@ -107,13 +107,8 @@ namespace musicallychallenged.Commands
 
         private bool isValidContestMessage(Message message)
         {
-            if (message.Audio != null || message.Video != null)
-                return true;
-
-            if (message.Entities?.Any(e => e.Type == MessageEntityType.Url) == true)
-                return true;
-
-            return false;
+            //Because pesnocloud, we accept only audio entries 
+            return message.Audio != null;
         }
 
     }

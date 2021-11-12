@@ -154,7 +154,7 @@ namespace musicallychallenged.Localization
         public string SubmitContestEntryCommandHandler_InvalidMidvotePin { get; set; } = "Неверный пин :(";
         public string SubmitContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте работу следующим сообщением в виде аудиофайла либо ссылки ⬇️";
 
-        public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только аудиофайлы и ссылки (на вашу работу в youtube, например) 🧐";
+        public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только аудиофайлы 🧐";
         public string SubmitContestEntryCommandHandler_SubmissionSucceeded { get; set; } = "Спасибо за участие! Ваша работа принята";
 
         public string TaskSuggestCommandHandler_Description { get; set; } = "Отправить свой вариант задания для следующего челенджа";
