@@ -53,7 +53,8 @@ namespace musicallychallenged.Services.Sync
         /// </summary>
         private async Task SyncPoller(CancellationToken cancellationToken)
         {
-            bool isAlive = true;
+            bool? isAlive = null;
+            int consecutiveSyncErrors = 0;
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -61,13 +62,13 @@ namespace musicallychallenged.Services.Sync
 
                 if (!await _ingestService.IsAlive(cancellationToken))
                 {
-                    if (isAlive)
+                    if (isAlive!=false)
                         logger.Warn($"Pesnocloud serivce is down...");
                     isAlive = false;
                     continue;
                 }
 
-                if (!isAlive)
+                if (isAlive!=true)
                     logger.Info($"Pesnocloud serivce is up");
 
                 isAlive = true;
@@ -90,7 +91,24 @@ namespace musicallychallenged.Services.Sync
                     }
                     catch (Exception e)
                     {
-                        logger.Error($"Failed syncing event {syncEvent.Id}: {e.Message}, not marking as synced");
+                        var millisecondsDelay = 1000 + 1000 * (int)Math.Pow(2, consecutiveSyncErrors);
+                        
+                        if(consecutiveSyncErrors==0)
+                            logger.Error($"Failed syncing event {syncEvent.Id}: {e.GetType().Name}/{e.Message}, " +
+                                         $"not marking as synced, next attempt in {millisecondsDelay}ms");
+                        else
+                            logger.Error(
+                                $"Failed syncing event {syncEvent.Id}: `{e}`; " +
+                                $"not marking as synced, next attempt in {millisecondsDelay}ms");
+
+
+
+                        await Task.Delay(millisecondsDelay, cancellationToken);
+                        
+                        //Don't grow beyond 30 minutes
+                        if (millisecondsDelay < 30 * 60 * 1000)
+                            consecutiveSyncErrors++;
+                        
                         continue;
                     }
                 }

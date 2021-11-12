@@ -42,7 +42,7 @@ namespace musicallychallenged.Services.Sync
             
             var processStartInfo = new ProcessStartInfo
             {
-                FileName = Path.GetFullPath("ffmpeg.exe"),
+                FileName = Path.GetFullPath(_botConfiguration.FfmpegPath),
                 Arguments = $"-y -i \"{sourceFileName}\" -acodec libmp3lame -b:a 192k \"{desiredResultPath}\"",
                 RedirectStandardError = true,
                 CreateNoWindow = true,
