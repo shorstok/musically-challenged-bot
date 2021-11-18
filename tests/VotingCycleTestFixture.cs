@@ -245,6 +245,14 @@ namespace tests
                     }).ScenarioTask;
                 }
 
+                var countedWinnerVotesCompletionSource = new TaskCompletionSource<int>();
+                var assertCorrectAggregatedVoteCount = compartment.ScenarioController.StartUserScenario(async context =>
+                {
+                    var winnerVotes = await countedWinnerVotesCompletionSource.Task;
+                    await GenericUserScenarios.ReadTillReceivedMessageWithSubstring(context, "(" + winnerVotes,
+                        "Couldn't receive a 'we have winners' message");
+                }).ScenarioTask;
+
                 //Ffwd voting
 
                 await compartment.ScenarioController.StartUserScenario(async context =>
@@ -279,11 +287,11 @@ namespace tests
                             @"select ConsolidatedVoteCount from ActiveContestEntry where AuthorUserId = @UserId",
                             new {UserId = winnerId}).
                         FirstOrDefault();
-
+                    
                     Assert.That(winnerVoteCount,
                         Is.EqualTo(voterCount * MockConfiguration.Snapshot.MaxVoteValue),
                         "Wrong vote sum");
-                    
+
                     var otherVotes = connection.Query<decimal?>(
                             @"select ConsolidatedVoteCount from ActiveContestEntry where AuthorUserId != @UserId",
                             new {UserId = winnerId}).ToArray();
@@ -293,6 +301,9 @@ namespace tests
                     Assert.That(otherVotes,
                         Is.All.EqualTo(voterCount * averageVoteValue),
                         "Wrong vote sum for non-winners");
+                    
+                    countedWinnerVotesCompletionSource.SetResult(Convert.ToInt32(winnerVoteCount));
+                    await assertCorrectAggregatedVoteCount;
                 }
             }
         }       

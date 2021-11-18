@@ -347,11 +347,7 @@ namespace tests
             {
                 TaskSuggestion singleSuggestion = null;
 
-                var enteredContestSource = new TaskCompletionSource<bool>();
-               
-                var configuration = compartment.Container.Resolve<IBotConfiguration>();
                 var clock = compartment.Container.Resolve<IClock>();
-                var mediator = compartment.Container.Resolve<MockMessageMediatorService>();
 
                 // setting up a TaskSuggestionCollection state
                 compartment.Repository.UpdateState(s => s.State, ContestState.TaskSuggestionCollection);

@@ -573,30 +573,36 @@ namespace tests.Mockups
             Logger.Info($"Voting cycle set with {submissionCount} submissions");
         }
 
+        public static async Task<Message> ReadTillReceivedMessageWithSubstring(UserScenarioContext context, string substring, string messageOnFailure)
+        {
+            var token = new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token;
+
+            Message message = null;
+            try
+            {
+                do
+                {
+                    message = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
+                } while (!(message.Text.Contains(substring) || token.IsCancellationRequested));
+            }
+            catch (TimeoutException)
+            {
+                Assert.Fail("Couldn't read any more messages");
+            }
+
+            Assert.True(!token.IsCancellationRequested, messageOnFailure);
+
+            return message;
+        }
+
         public async Task AssertCorrectTaskGiverMainChatAnnouncement(TestCompartment compartment, 
             TaskCompletionSource<bool> enteredContestStateSource, Func<musicallychallenged.Domain.User> winnerSelector)
         {
             await compartment.ScenarioController.StartUserScenario(async context =>
             {
                 await enteredContestStateSource.Task;
-
-                var token = new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token;
                 var curTaskTemplate = compartment.Repository.GetOrCreateCurrentState().CurrentTaskTemplate;
-
-                Message announcement = null;
-                try
-                {
-                    do
-                    {
-                        announcement = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
-                    } while (!(announcement.Text.Contains(curTaskTemplate) || token.IsCancellationRequested));
-                }
-                catch (TimeoutException)
-                {
-                    Assert.Fail("Couldn't read any more messages");
-                }
-
-                Assert.True(!token.IsCancellationRequested,
+                var announcement = await ReadTillReceivedMessageWithSubstring(context, curTaskTemplate, 
                     "Couldn't receive an announcement message");
 
                 Assert.That(announcement.Text, Contains.Substring(winnerSelector().GetHtmlUserLink()),
