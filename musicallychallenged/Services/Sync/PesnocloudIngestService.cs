@@ -98,7 +98,7 @@ namespace musicallychallenged.Services.Sync
                         ["id"] = BuildExternalEntryId(syncEvent.InternalEntryId),
                         ["filename"] = syncEvent.PayloadTitle,
                         ["votes"] = syncEvent.Votes?.ToString() ?? "0",
-                        ["submittedAt"] = syncEvent.SubmissionDate.ToString(CultureInfo.InvariantCulture),
+                        ["submittedAt"] = syncEvent.SubmissionDate.ToString("O",CultureInfo.InvariantCulture),
                         ["authorName"] = syncEvent.Author?.Length > 128
                             ? syncEvent.Author[..128]
                             : syncEvent.Author,
@@ -209,8 +209,8 @@ namespace musicallychallenged.Services.Sync
                     ["roundId"] = BuildExternalEntryId(roundStartedOrUpdated.InternalRoundNumber),
                     ["title"] = roundStartedOrUpdated.RoundTitle,
                     ["state"] = roundStartedOrUpdated.RoundState.ToString(),
-                    ["start"] = roundStartedOrUpdated.StartDate?.ToString(),
-                    ["end"] = roundStartedOrUpdated.EndDate?.ToString(),
+                    ["start"] = roundStartedOrUpdated.StartDate?.ToString("O", CultureInfo.InvariantCulture),
+                    ["end"] = roundStartedOrUpdated.EndDate?.ToString("O", CultureInfo.InvariantCulture),
                 });
 
             using var response = await _httpClient.PutAsync(query, content, cancellationToken);
