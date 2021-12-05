@@ -140,7 +140,7 @@ namespace musicallychallenged.Services
                 
                 await _votingController.CreateVotingControlsForEntry(entry);
 
-                await _syncService.AddOrUpdateEntry(container, entry);
+                await _syncService.AddOrUpdateEntry(message, entry);
             }
             finally
             {
