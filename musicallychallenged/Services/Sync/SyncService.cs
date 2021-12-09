@@ -60,6 +60,11 @@ namespace musicallychallenged.Services.Sync
             {
                 await Task.Delay(_botConfiguration.PesnocloudPollingPeriodMs, cancellationToken);
 
+                var syncEvents = _repository.GetSyncEvents(onlyUnsynced: true).ToArray();
+
+                if(!syncEvents.Any())
+                    continue;
+                
                 if (!await _ingestService.IsAlive(cancellationToken))
                 {
                     if (isAlive!=false)
@@ -72,11 +77,8 @@ namespace musicallychallenged.Services.Sync
                     logger.Info($"Pesnocloud serivce is up");
 
                 isAlive = true;
-
-                var syncEvents = _repository.GetSyncEvents(onlyUnsynced: true).ToArray();
-
-                if (syncEvents.Any())
-                    logger.Info($"Going to process {syncEvents.Length} sync event(s)");
+                
+                logger.Info($"Going to process {syncEvents.Length} sync event(s)");
 
                 foreach (var syncEvent in syncEvents)
                 {
