@@ -87,11 +87,15 @@ namespace musicallychallenged.Commands
 
             var response = await dialog.GetMessageInThreadAsync(
                 new CancellationTokenSource(TimeSpan.FromMinutes(_configuration.SubmissionTimeoutMinutes)).Token);
+
+            var (isValid, error) = ValidateContestMessage(response);
             
-            if(!isValidContestMessage(response))
+            if(!isValid)
             {
-                logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} failed sumbission validation");
-                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, _loc.SubmitContestEntryCommandHandler_SubmissionFailed);
+                error ??= _loc.SubmitContestEntryCommandHandler_SubmissionFailed;
+                
+                logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} failed sumbission validation: {error}");
+                await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, error);
                 return;
             }
 
@@ -105,10 +109,13 @@ namespace musicallychallenged.Commands
             logger.Info($"Contest entry submitted");
         }
 
-        private bool isValidContestMessage(Message message)
+        private (bool isValid, string customError) ValidateContestMessage(Message message)
         {
+            if (message.Audio.FileSize >= 20_000_000)
+                return (isValid: false, customError: _loc.SubmitContestEntryCommandHandler_SubmissionFailedTooLarge);
+
             //Because pesnocloud, we accept only audio entries 
-            return message.Audio != null;
+            return (isValid: message.Audio != null, customError: null);
         }
 
     }

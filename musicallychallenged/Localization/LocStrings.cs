@@ -155,6 +155,7 @@ namespace musicallychallenged.Localization
         public string SubmitContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте работу следующим сообщением в виде аудиофайла либо ссылки ⬇️";
 
         public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только аудиофайлы 🧐";
+        public string SubmitContestEntryCommandHandler_SubmissionFailedTooLarge { get; set; } = "Допустимы только аудиофайлы меньше 20 Мб 🧐 (это ограничение Telegram bot API)";
         public string SubmitContestEntryCommandHandler_SubmissionSucceeded { get; set; } = "Спасибо за участие! Ваша работа принята";
 
         public string TaskSuggestCommandHandler_Description { get; set; } = "Отправить свой вариант задания для следующего челенджа";
