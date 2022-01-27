@@ -111,8 +111,8 @@ namespace musicallychallenged.Services
                 Tuple.Create(LocTokens.VotingChannelLink, _configuration.VotingChannelInviteLink)),
                 true);
             await _broadcastController.AnnounceInVotingChannel(LocTokens.SubstituteTokens(
-                _loc.NextRoundTaskPollController_AnnouncementTemplateVotingChannel),
-                false);
+                    _loc.NextRoundTaskPollController_AnnouncementTemplateVotingChannel),
+                false, silent: false);
 
             if (null == pin)
                 throw new Exception("Invalid bot configuration -- couldn't post contest message");

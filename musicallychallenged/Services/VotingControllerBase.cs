@@ -295,7 +295,7 @@ namespace musicallychallenged.Services
 
         private async Task CreateVotingStatsMessageAsync()
         {
-            var votingStatsMessage = await BroadcastController.AnnounceInVotingChannel(Loc.VotingStatsHeader, false);
+            var votingStatsMessage = await BroadcastController.AnnounceInVotingChannel(Loc.VotingStatsHeader, true, silent: false);
             Repository.UpdateState(x => x.CurrentVotingStatsMessageId, votingStatsMessage?.MessageId);
         }
 

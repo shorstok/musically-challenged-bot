@@ -26,11 +26,12 @@ namespace musicallychallenged.Services
         }
 
         public async Task<Message> AnnounceInVotingChannel(string announcement, bool pin,
+            bool silent,
             params Tuple<string, string>[] templateValues)
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            return await AnnounceInternal(announcement, pin, templateValues,
+            return await AnnounceInternal(announcement, pin, silent, templateValues,
                 state.VotingChannelId);
         }
 
@@ -39,12 +40,13 @@ namespace musicallychallenged.Services
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            return await AnnounceInternal(announcement, pin, templateValues,
+            return await AnnounceInternal(announcement, pin, disableNotification: false, templateValues,
                 state.MainChannelId);
         }
 
         private async Task<Message> AnnounceInternal(string announcement,
             bool doPin,
+            bool disableNotification,
             Tuple<string, string>[] templateValues, long? channelId)
         {
             if (channelId == null)
@@ -67,7 +69,7 @@ namespace musicallychallenged.Services
             {
                 await Task.Delay(100).ConfigureAwait(false);
 
-                await _client.PinChatMessageAsync(message.Chat.Id, message.MessageId)
+                await _client.PinChatMessageAsync(message.Chat.Id, message.MessageId, disableNotification)
                     .ConfigureAwait(false);
 
             }
