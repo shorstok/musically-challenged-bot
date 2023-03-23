@@ -13,6 +13,7 @@ using musicallychallenged.Services;
 using musicallychallenged.Services.Events;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
+using NodaTime.TimeZones;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -77,7 +78,7 @@ namespace musicallychallenged.Commands
                 new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token);
 
             await dialog.TelegramClient.EditMessageReplyMarkupAsync(message.Chat.Id,message.MessageId,
-                replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); //remove
+                replyMarkup: new InlineKeyboardMarkup(Array.Empty<InlineKeyboardButton>())); //remove
 
             if (response?.Data != "y")
             {
@@ -88,8 +89,16 @@ namespace musicallychallenged.Commands
             await dialog.TelegramClient.AnswerCallbackQueryAsync(response.Id);           
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, "Confirmed");
 
+            // Make it suggest a date in 3 weeks from now as it's the most common case
+
+            var sampleDate = _clock.GetCurrentInstant()
+                .InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
+                .Date.Plus(Period.FromWeeks(3)).At(new LocalTime(22, 00))
+                .InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone], Resolvers.LenientResolver)
+                .ToInstant();
+
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                $"Send next deadline date and time (like, <code>11.01.2019 21:00</code>), " +
+                $"Send next deadline date and time (like, <code>{_timeService.FormatDateAndTimeToAnnouncementTimezone(sampleDate)}</code>)" +
                 $"date & time specified in <code>{_configuration.AnnouncementTimeZone}</code> timezone!", 
                 parseMode: ParseMode.Html);
 
@@ -98,6 +107,7 @@ namespace musicallychallenged.Commands
             
             if(!_timeService.TryParseLocalTimeInAnnouncementTimeZone(date.Text,out var overriddenDeadline))
             {
+                logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} submitted invalid date `{date.Text}` that couldn't be parsed, deadline override cancelled");
                 await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,"Failed to parse your message, try again :(");
                 return;
             }
@@ -115,19 +125,41 @@ namespace musicallychallenged.Commands
                 new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token);
 
             await dialog.TelegramClient.EditMessageReplyMarkupAsync(message.Chat.Id,message.MessageId,
-                replyMarkup: new InlineKeyboardMarkup(new InlineKeyboardButton[0])); //remove
+                replyMarkup: new InlineKeyboardMarkup(Array.Empty<InlineKeyboardButton>())); //remove
 
             if (response?.Data != "y")
             {
+                logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} cancelled deadline override");
                 await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,"Cancelled");
                 return;
             }
-            
-            _repository.UpdateState(x=>x.NextDeadlineUTC,overriddenDeadline);
+
+            _repository.UpdateState(x => x.NextDeadlineUTC, overriddenDeadline);
             
             await _contestController.UpdateCurrentTaskMessage();
             await _votingController.UpdateCurrentTaskMessage();
-            await _contestController.AnnounceNewDeadline("божественное вмешательство");
+
+            message = await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
+                $"Should I announce the change?",
+                ParseMode.Html,
+                replyMarkup: new InlineKeyboardMarkup(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("YES","y"),
+                    InlineKeyboardButton.WithCallbackData("NO","n")
+                }));
+
+            response = await dialog.GetCallbackQueryAsync(
+                new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token);
+
+            await dialog.TelegramClient.EditMessageReplyMarkupAsync(message.Chat.Id,message.MessageId,
+                replyMarkup: new InlineKeyboardMarkup(Array.Empty<InlineKeyboardButton>())); //remove
+
+            if (response?.Data == "y")
+                await _contestController.AnnounceNewDeadline("божественное вмешательство");
+            else
+            {
+                logger.Info($"The administrator decided not to announce the change");
+            }
 
             logger.Info($"Deadline submitted");
         }
