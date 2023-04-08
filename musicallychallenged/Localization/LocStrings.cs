@@ -152,9 +152,11 @@ namespace musicallychallenged.Localization
         public string SubmitContestEntryCommandHandler_OnlyAvailableInContestState { get; set; } = "Прием работ (пока) закрыт. Дождитесь начала следующего раунда!";
         public string SubmitContestEntryCommandHandler_ProvideMidvotePin { get; set; } = "Следующим сообщением напишите пин для подачи работы 'по блату'";
         public string SubmitContestEntryCommandHandler_InvalidMidvotePin { get; set; } = "Неверный пин :(";
-        public string SubmitContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте работу следующим сообщением в виде аудиофайла либо ссылки ⬇️";
+        public string SubmitContestEntryCommandHandler_SubmitGuidelines { get; set; } = "Отправьте работу следующим сообщением в виде аудиофайла ⬇️";
 
-        public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Допустимы только аудиофайлы 🧐";
+        public string SubmitContestEntryCommandHandler_SubmissionFailed { get; set; } = "Что-то это не похоже на работу 🧐";
+        public string SubmitContestEntryCommandHandler_SubmissionFailedNoAudio { get; set; } = "Допустимы только аудиофайлы 🧐 " +
+            "Если хочется дать ссылку на youtube, то сделайте это в описании работы";
         public string SubmitContestEntryCommandHandler_SubmissionFailedTooLarge { get; set; } = "Допустимы только аудиофайлы меньше 20 Мб 🧐 (это ограничение Telegram bot API)";
         public string SubmitContestEntryCommandHandler_SubmissionSucceeded { get; set; } = "Спасибо за участие! Ваша работа принята";
 

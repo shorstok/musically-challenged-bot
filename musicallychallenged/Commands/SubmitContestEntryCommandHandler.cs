@@ -111,11 +111,14 @@ namespace musicallychallenged.Commands
 
         private (bool isValid, string customError) ValidateContestMessage(Message message)
         {
-            if (message.Audio.FileSize >= 20_000_000)
+            //Because pesnocloud, we accept only audio entries 
+            if(message.Audio == null)
+                return (isValid: false, customError: _loc.SubmitContestEntryCommandHandler_SubmissionFailedNoAudio);
+            
+            if (message.Audio?.FileSize >= 20_000_000)
                 return (isValid: false, customError: _loc.SubmitContestEntryCommandHandler_SubmissionFailedTooLarge);
 
-            //Because pesnocloud, we accept only audio entries 
-            return (isValid: message.Audio != null, customError: null);
+            return (isValid: true, customError: null);
         }
 
     }
