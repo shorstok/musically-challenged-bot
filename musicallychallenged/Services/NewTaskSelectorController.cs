@@ -76,7 +76,7 @@ namespace musicallychallenged.Services
                     _loc.ChooseNextRoundTaskPrivateMessage, ParseMode.Html,
                     replyMarkup: new InlineKeyboardMarkup(new[]
                     {
-                        InlineKeyboardButton.WithCallbackData(_loc.RandomTaskButtonLabel, RandomTaskCallbackId),
+                        // InlineKeyboardButton.WithCallbackData(_loc.RandomTaskButtonLabel, RandomTaskCallbackId),
                         InlineKeyboardButton.WithCallbackData(_loc.NextRoundTaskPollButtonLabel, NextRoundTaskPollCallbackId),
                     }));
 

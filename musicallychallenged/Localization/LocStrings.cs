@@ -95,7 +95,7 @@ namespace musicallychallenged.Localization
         public string ChooseWiselyPrivateMessage { get; set; } = "Постарайтесь сформулировать задание для следующего раунда с учетом пожеланий Администрации 🧐";
 
         public string RandomTaskButtonLabel { get; set; } = "Давайте случайное";
-        public string NextRoundTaskPollButtonLabel { get; set; } = "создадим Го";
+        public string NextRoundTaskPollButtonLabel { get; set; } = "создадим голосование";
         
         public string RandomTaskSelectedMessage { get; set; } = "Для следующего раунда будет использовано случаное задание";
         public string TaskSelectedMessage { get; set; } = "Задание отправлено Администрации";
