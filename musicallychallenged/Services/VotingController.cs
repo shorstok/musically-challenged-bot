@@ -71,6 +71,13 @@ namespace musicallychallenged.Services
 
             logger.Info($"User {user.GetUsernameOrNameWithCircumflex()} {(updated ? "updated vote" : "voted")} {voteVal} for entry {entryId}");
 
+            // Award coins for new votes only (not updates)
+            if (!updated)
+            {
+                Repository.AddPesnocentsToUser(user.Id, Configuration.PesnocentsAwardedForVote);
+                logger.Info($"Awarded {Configuration.PesnocentsAwardedForVote} pesnocoin to {user.GetUsernameOrNameWithCircumflex()} for voting");
+            }
+
             return updated;
         }
 

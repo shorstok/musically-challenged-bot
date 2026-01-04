@@ -8,7 +8,9 @@ using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
+using musicallychallenged.Services.Telegram;
 using NodaTime;
+using Telegram.Bot.Types.Enums;
 
 namespace musicallychallenged.Services
 {
@@ -20,6 +22,7 @@ namespace musicallychallenged.Services
         private readonly Lazy<ContestController> _contestController;
         private readonly Lazy<VotingController> _votingController;
         private readonly LocStrings _loc;
+        private readonly ITelegramClient _client;
 
         private static readonly ILog Logger = Log.Get(typeof(PostponeService));
 
@@ -31,6 +34,7 @@ namespace musicallychallenged.Services
             AcceptedAndPostponed,
             DeniedNoQuotaLeft,
             DeniedAlreadyHasOpen,
+            DeniedInsufficientBalance,
             GeneralFailure
         }
 
@@ -39,7 +43,8 @@ namespace musicallychallenged.Services
             IClock clock,
             Lazy<ContestController> contestController,
             Lazy<VotingController> votingController,
-            LocStrings loc)
+            LocStrings loc,
+            ITelegramClient client)
         {
             _repository = repository;
             _configuration = configuration;
@@ -47,9 +52,10 @@ namespace musicallychallenged.Services
             _contestController = contestController;
             _votingController = votingController;
             _loc = loc;
+            _client = client;
         }
 
-        public async Task CloseAllPostponeRequests(PostponeRequestState finalState)
+        public async Task CloseRefundAllPostponeRequests(PostponeRequestState finalState)
         {
             if (!await _postponeSemaphore.WaitAsync(TimeSpan.FromSeconds(10)))
             {
@@ -59,11 +65,69 @@ namespace musicallychallenged.Services
 
             try
             {
-                _repository.CloseAllPostponeRequests(finalState);
+                PostponeRequest[] closedRequests = _repository.CloseRefundAllPostponeRequests(finalState,
+                    refund: finalState == PostponeRequestState.ClosedDiscarded);
+
+                if (finalState == PostponeRequestState.ClosedDiscarded)
+                {
+                    await NotifyEachUserAboutRefund(closedRequests);
+                }
             }
             finally
             {
                 _postponeSemaphore.Release();
+            }
+        }
+
+        private async Task NotifyEachUserAboutRefund(PostponeRequest[] requests)
+        {
+            if (requests == null || requests.Length == 0)
+            {
+                Logger.Info("No requests to notify about refunds");
+                return;
+            }
+
+            Logger.Info($"Notifying {requests.Length} users about refunds");
+
+            foreach (var request in requests)
+            {
+                // Only notify for requests that had a cost
+                if (request.CostPesnocents <= 0)
+                    continue;
+
+                try
+                {
+                    // Get user with ChatId
+                    var user = _repository.GetExistingUserWithTgId(request.UserId);
+
+                    if (user == null)
+                    {
+                        Logger.Info($"Cannot notify user {request.UserId} about refund: user not found");
+                        continue;
+                    }
+
+                    if (user.ChatId == null)
+                    {
+                        Logger.Warn($"Cannot notify user {user.GetUsernameOrNameWithCircumflex()} about refund: ChatId is null (user may have blocked bot)");
+                        continue;
+                    }
+
+                    // Format refund amount as pesnocoins (divide by 100)
+                    string refundAmount = (request.CostPesnocents / 100.0m).ToString("0.00");
+
+                    var message = LocTokens.SubstituteTokens(
+                        _loc.PostponeService_RefundNotification,
+                        Tuple.Create(LocTokens.Balance, refundAmount));
+
+                    await _client.SendTextMessageAsync(user.ChatId.Value, message, ParseMode.Html);
+
+                    Logger.Info($"Notified user {user.GetUsernameOrNameWithCircumflex()} about refund of {refundAmount} pesnocoins");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Failed to notify user {request.UserId} about refund for request {request.Id}", ex);
+                    // Continue to next user - don't let one failure stop all notifications
+                }
             }
         }
 
@@ -73,7 +137,7 @@ namespace musicallychallenged.Services
 
             /*
              * attempt to submit postpone request can result in following:
-             *  1. denied: requested duration is exceeds postpone quota left for current round
+             *  (Was - disabled now:) 1. denied: requested duration is exceeds postpone quota left for current round
              *  2. denied: user has unclosed postpone request
              *  3. accepted / accepted & postponed: author has no open requests & duration meets quota.
              *      3.1 accepted & postponed if there is already postpone quorum
@@ -98,19 +162,29 @@ namespace musicallychallenged.Services
                     return PostponeResult.DeniedAlreadyHasOpen;
                 }
 
-                var usedMinutes = _repository.GetUsedPostponeQuotaForCurrentRoundMinutes();
+                // This branch is disabled - we do not limit total postpone quota per user per round
+                // var usedMinutes = _repository.GetUsedPostponeQuotaForCurrentRoundMinutes();
+                //
+                // if (Duration.FromMinutes(usedMinutes) + postponeDuration >
+                //     Duration.FromHours(_configuration.PostponeHoursAllowed))
+                // {
+                //     Logger.Info(
+                //         $"User {author.GetUsernameOrNameWithCircumflex()} already requested postpone for {postponeDuration}, but "+
+                //         $"{usedMinutes} minutes are used already, this plus {postponeDuration} exceeds {_configuration.PostponeHoursAllowed} total hours allowed");
+                //
+                //     return PostponeResult.DeniedNoQuotaLeft;
+                // }
 
-                if (Duration.FromMinutes(usedMinutes) + postponeDuration >
-                    Duration.FromHours(_configuration.PostponeHoursAllowed))
+                // Deduct coins and create postpone request atomically
+                var openRequests = _repository.CreatePostponeRequestWithCoinDeduction(author, postponeDuration,
+                    _configuration.PesnocentsRequiredPerPostponeRequest,
+                    out bool insufficientBalance);
+
+                if (insufficientBalance)
                 {
-                    Logger.Info(
-                        $"User {author.GetUsernameOrNameWithCircumflex()} already requested postpone for {postponeDuration}, but "+
-                        $"{usedMinutes} minutes are used already, this plus {postponeDuration} exceeds {_configuration.PostponeHoursAllowed} total hours allowed");
-
-                    return PostponeResult.DeniedNoQuotaLeft;
+                    Logger.Info($"User {author.GetUsernameOrNameWithCircumflex()} has insufficient balance for postpone vote");
+                    return PostponeResult.DeniedInsufficientBalance;
                 }
-
-                var openRequests = _repository.CreatePostponeRequestRetrunOpen(author, postponeDuration);
 
                 if (openRequests.GroupBy(r => r.UserId).Count() < _configuration.PostponeQuorum)
                 {
@@ -164,7 +238,7 @@ namespace musicallychallenged.Services
             await _votingController.Value.UpdateCurrentTaskMessage();
 
             await _contestController.Value.AnnounceNewDeadline(_loc.PostponeService_DeadlinePostponedQuorumFulfilled);
-            
+
             return true;
         }
     }

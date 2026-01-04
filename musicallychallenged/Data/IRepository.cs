@@ -45,16 +45,22 @@ namespace musicallychallenged.Data
         void DeleteUserWithPrivateChatId(long? chatId);
         bool MigrateChat(long fromId, long toId);
 
+        void AddPesnocentsToUser(long userId, long amount);
+        bool TryDeductPesnocentsFromUser(long userId, long amount);
+
         RandomTask[] GetLeastUsedRandomTasks();
         void UpdateRandomTask(RandomTask task);
         double? GetAverageVoteForUser(User user);
         int GetVoteCountForActiveEntriesForUser(User user);
         bool MaybeCreateVoteForAllActiveEntriesExcept(User user, int entryId, int defaultVoteValue);
-        int CloseAllPostponeRequests(PostponeRequestState finalState);
+        PostponeRequest[] CloseRefundAllPostponeRequests(PostponeRequestState finalState, bool refund);
         PostponeRequest[] GetOpenPostponeRequestsForUser(long authorId);
         long GetUsedPostponeQuotaForCurrentRoundMinutes();
         PostponeRequest[] CreatePostponeRequestRetrunOpen(User author, Duration postponeDuration);
         void FinalizePostponeRequests(PostponeRequest keyRequest);
+        PostponeRequest[] CreatePostponeRequestWithCoinDeduction(User author, Duration postponeDuration,
+            long costPesnocents, out bool insufficientBalance);
+        void RefundPostponeRequests(PostponeRequest[] requests);
 
         NextRoundTaskPoll GetOpenNextRoundTaskPoll();
         void CreateNextRoundTaskPoll();

@@ -166,6 +166,10 @@ namespace musicallychallenged.Services
 
                 _repository.CreateOrUpdateTaskSuggestion(user, descriptionUnescaped,
                     container.Chat.Id, container.MessageId, out var previous);
+                
+                // Add pesnocoins reward for suggesting a task
+                _repository.AddPesnocentsToUser(user.Id, _configuration.PesnocentsAwardedForTaskSuggestion);
+                logger.Info($"Awarded {_configuration.PesnocentsAwardedForTaskSuggestion} pesnocents to {user.GetUsernameOrNameWithCircumflex()} for suggesting a task");
 
                 if (previous != null)
                 {

@@ -25,5 +25,7 @@ namespace musicallychallenged.Domain
         public PostponeRequestState State { get; set; }
 
         public Instant Timestamp { get; set; }
+
+        public long CostPesnocents { get; set; }
     }
 }

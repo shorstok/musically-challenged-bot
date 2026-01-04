@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
 using musicallychallenged.Logging;
@@ -29,19 +30,22 @@ namespace musicallychallenged.Services
             new ConcurrentDictionary<string, object>();
         
         private readonly SemaphoreSlim _messageSemaphoreSlim = new SemaphoreSlim(1,1);
+        private readonly IBotConfiguration _configuration;
 
 
         public MidvoteEntryController(IRepository repository,
             VotingController votingController,
             ITelegramClient client,
             SyncService syncService,
-            ContestController contestController)
+            ContestController contestController, 
+            IBotConfiguration configuration)
         {
             _repository = repository;
             _votingController = votingController;
             _client = client;
             _syncService = syncService;
             _contestController = contestController;
+            _configuration = configuration;
         }
 
         public Task<int> CreateMidvotePin(string pin)
@@ -141,6 +145,13 @@ namespace musicallychallenged.Services
                 await _votingController.CreateVotingControlsForEntry(entry);
 
                 await _syncService.AddOrUpdateEntry(message, entry);
+
+                // Award coins for new midvote submissions only
+                if (previous == null)
+                {
+                    _repository.AddPesnocentsToUser(author.Id, _configuration.PesnocentsAwardedForTrackSubmission); // 1 pesnocoin = 100 pesnocents
+                    logger.Info($"Awarded {_configuration.PesnocentsAwardedForTrackSubmission} pesnocoin to {author.GetUsernameOrNameWithCircumflex()} for midvote submission");
+                }
             }
             finally
             {

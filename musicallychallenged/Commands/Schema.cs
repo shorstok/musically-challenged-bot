@@ -21,6 +21,7 @@ namespace musicallychallenged.Commands
         public const string SubmitCommandName = "submit";
         public const string DescribeCommandName = "describe";
         public const string PostponeCommandName = "postpone";
+        public const string BalanceCommandName = "balance";
 
         public const string TaskSuggestCommandName = "tasksuggest";
     }

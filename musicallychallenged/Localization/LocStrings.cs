@@ -23,6 +23,11 @@ namespace musicallychallenged.Localization
         public const string VotingChannelLink = "%VOTECHANLNK%";
         public const string RulesUrl = "%RULES%";
         public const string TaskFromPreface = "%FROMPREFACE%";
+        public const string Balance = "%BALANCE%";
+        public const string SubmissionReward = "%SUBREWARD%";
+        public const string TaskSuggestionReward = "%TASKREWARD%";
+        public const string VoteReward = "%VOTEREWARD%";
+        public const string PostponeCost = "%POSTPONECOST%";
 
         public static string SubstituteTokens(string template, params Tuple<string, string>[] tokens)
         {
@@ -72,10 +77,31 @@ namespace musicallychallenged.Localization
         public string PostponeService_DeadlinePostponedQuorumFulfilled { get; set; } =
             $"Достаточное количество людей попросило отсрочку";
 
+        public string PostponeCommandHandler_DeniedInsufficientBalance { get; set; } =
+            "Недостаточно песнокоинов для голоса за перенос дедлайна. " +
+            "Необходимо: 1.00 песнокоин. " +
+            "Используйте /balance для проверки баланса.";
+
+        public string BalanceCommandHandler_Description { get; set; } =
+            "Показать баланс песнокоинов";
+
+        public string BalanceCommandHandler_Message { get; set; } =
+            $"💰 {LocTokens.User}, ваш баланс: <b>{LocTokens.Balance}</b> песнокоинов\n\n" +
+            $"Пополнять:\n" +
+            $"• {LocTokens.SubmissionReward} за новую работу\n" +
+            $"• {LocTokens.TaskSuggestionReward} за предложенную тему\n" +
+            $"• {LocTokens.VoteReward} за голос\n\n" +
+            $"Тратить:\n" +
+            $"• {LocTokens.PostponeCost} за голос за заявочку на постпон (/postpone)";
+
+        public string PostponeService_RefundNotification { get; set; } =
+            $"Голосование за перенос дедлайна не набрало кворум и было отменено.\n\n" +
+            $"💰 Ваш песнокоин возвращен. Возврат: <b>{LocTokens.Balance}</b> песнокоинов";
+
         public string ContestController_DeadlinePostponed { get; set; } =
             $"Дедлайн был перенесён на {LocTokens.Deadline}.\n" +
             $"Причина: {LocTokens.Details}";
-        
+
         public string YouAreBanned { get; set; } = "Извините, бот недоступен 🧐";
         public string MissingCredentials { get; set; } = "Извините, команда недоступна";
 

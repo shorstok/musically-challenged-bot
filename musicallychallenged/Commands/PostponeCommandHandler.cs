@@ -103,8 +103,16 @@ namespace musicallychallenged.Commands
 
             availablePostponeOptions.Add(InlineKeyboardButton.WithCallbackData(_loc.CancelButtonLabel, TokCancel));
 
+            var freshUser = _repository.GetExistingUserWithTgId(user.Id);
+            var balance = freshUser.Pesnocent / 100.0;
+            var cost = _configuration.PesnocentsRequiredPerPostponeRequest / 100.0;
+
+            var preambleText = _loc.PostponeCommandHandler_Preamble +
+                $"\n\n💰 Ваш баланс: {balance:F2} песнокоинов" +
+                $"\n💸 Стоимость голоса: {cost:F2} песнокоин";
+
             var message = await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
-                _loc.PostponeCommandHandler_Preamble,
+                preambleText,
                 ParseMode.Html,
                 replyMarkup: new InlineKeyboardMarkup(availablePostponeOptions));
 
@@ -156,6 +164,10 @@ namespace musicallychallenged.Commands
                             Tuple.Create(
                                 LocTokens.Users,
                                 _configuration.PostponeQuorum.ToString())));
+                    break;
+                case PostponeService.PostponeResult.DeniedInsufficientBalance:
+                    await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,
+                        _loc.PostponeCommandHandler_DeniedInsufficientBalance);
                     break;
                 case PostponeService.PostponeResult.GeneralFailure:
                     await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId,

@@ -30,6 +30,8 @@ namespace musicallychallenged.Domain
         public UserState State { get; set; }
         public UserCredentials Credentials { get; set; }
 
+        public long Pesnocent { get; set; }
+
         public string GetUsernameOrNameWithCircumflex() => string.IsNullOrEmpty(Username) ? Name : $"@{Username}";
 
         public string GetHtmlUserLink() => $"<a href=\"tg://user?id={Id}\">🎧{Username ?? Name}</a>";

@@ -83,6 +83,11 @@ namespace tests.Mockups
         public string FfmpegPath { get; set; } = string.Empty;
         public int PesnocloudPollingPeriodMs { get; set; } = 100;
 
+        public long PesnocentsAwardedForTaskSuggestion { get; set; } = 50;
+        public long PesnocentsAwardedForTrackSubmission { get; set; } = 250;
+        public long PesnocentsRequiredPerPostponeRequest { get; set; } = 100;
+        public long PesnocentsAwardedForVote { get; set; } = 15;
+
         public bool Reload() =>
             true;
 

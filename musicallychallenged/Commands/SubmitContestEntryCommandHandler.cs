@@ -105,7 +105,7 @@ namespace musicallychallenged.Commands
                 await _contestController.SubmitNewEntry(response, user);
 
             await dialog.TelegramClient.SendTextMessageAsync(dialog.ChatId, _loc.SubmitContestEntryCommandHandler_SubmissionSucceeded);
-            
+
             logger.Info($"Contest entry submitted");
         }
 

@@ -153,6 +153,13 @@ namespace musicallychallenged.Services
                 }
 
                 await _syncService.AddOrUpdateEntry(response,entry);
+
+                // Award coins for new submissions only (not updates)
+                if (previous == null)
+                {
+                    _repository.AddPesnocentsToUser(user.Id, _configuration.PesnocentsAwardedForTrackSubmission); // 1 pesnocoin = 100 pesnocents
+                    logger.Info($"Awarded {_configuration.PesnocentsAwardedForTrackSubmission} to {user.GetUsernameOrNameWithCircumflex()} for new submission");
+                }
             }
             finally
             {
@@ -287,7 +294,7 @@ namespace musicallychallenged.Services
 
             logger.Info($"Closing all unsatisfied postpone requests...");
 
-            await _postponeService.CloseAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
+            await _postponeService.CloseRefundAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
             
             state = _repository.GetOrCreateCurrentState();
 

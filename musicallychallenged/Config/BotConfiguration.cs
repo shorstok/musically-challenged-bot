@@ -206,7 +206,17 @@ namespace musicallychallenged.Config
         [JsonProperty("FfmpegPath")]
         public string FfmpegPath { get; set; } = "ffmpeg.exe";
 
-        
+        [JsonProperty("PesnocentsAwardedForTaskSuggestion")]
+        public long PesnocentsAwardedForTaskSuggestion { get; set; } = 50; // 0.50 pesnocoin
+
+        [JsonProperty("PesnocentsAwardedForTrackSubmission")]
+        public long PesnocentsAwardedForTrackSubmission { get; set; } = 250; // 2.50 pesnocoins
+
+        [JsonProperty("PesnocentsRequiredPerPostponeRequest")]
+        public long PesnocentsRequiredPerPostponeRequest { get; set; } = 100; // 1.00 pesnocoin
+
+        [JsonProperty("PesnocentsAwardedForVote")]
+        public long PesnocentsAwardedForVote { get; set; } = 15; // 0.15 pesnocoin
 
         [JsonProperty("MinSuggestionVoteValue")]
         public int MinSuggestionVoteValue { get; set; } = -1;

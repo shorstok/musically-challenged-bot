@@ -73,6 +73,11 @@ namespace musicallychallenged.Config
         double PesnocloudTimeoutSeconds { get; set; }
         string FfmpegPath { get; set; }
         int PesnocloudPollingPeriodMs { get; set; }
+        
+        long PesnocentsAwardedForTaskSuggestion { get; }
+        long PesnocentsAwardedForTrackSubmission { get; set; }
+        long PesnocentsRequiredPerPostponeRequest { get; set; }
+        long PesnocentsAwardedForVote { get; }
 
         bool Reload();
 

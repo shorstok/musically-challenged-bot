@@ -160,28 +160,78 @@ namespace musicallychallenged.Data
             }
         }
 
-        public int CloseAllPostponeRequests(PostponeRequestState finalState)
+        public PostponeRequest[] CloseRefundAllPostponeRequests(PostponeRequestState finalState, bool refund)
         {
             using (var connection = CreateOpenConnection())
             {
-                using (var tx = connection.BeginTransaction())
+                using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
                 {
                     //Set finalState for all requests with Open state
+                    if(!refund)
+                    {
+                        int quantity = connection.Execute(
+                            @"UPDATE PostponeRequest set State=@FinalState WHERE State=@FromState",
+                            new
+                            {
+                                FinalState = finalState,
+                                FromState = PostponeRequestState.Open
+                            },
+                            transaction: tx);
 
-                    var quantity = connection.Execute(
-                        @"UPDATE PostponeRequest set State=@FinalState WHERE State=@FromState",
-                        new
+                        logger.Info($"{quantity} postpone requests set to {finalState}");
+
+                        tx.Commit();
+                        return [];
+                    }
+                    else
+                    {
+                        // Fetch all open requests before updating state
+                        var openRequests = connection.Query<PostponeRequest>(
+                            @"SELECT * FROM PostponeRequest WHERE State=@OpenState",
+                            new { OpenState = PostponeRequestState.Open },
+                            transaction: tx).ToArray();
+
+                        if (openRequests.Length == 0)
                         {
-                            FinalState = finalState,
-                            FromState = PostponeRequestState.Open
-                        }, 
-                        transaction:tx);
+                            logger.Info("No open postpone requests to refund");
+                            tx.Commit();
+                            return [];
+                        }
 
-                    logger.Info($"{quantity} postpone requests set to {finalState}");
+                        // Refund coins for requests with cost > 0
+                        foreach (var request in openRequests)
+                        {
+                            if (request.CostPesnocents <= 0) 
+                                continue;
+                            
+                            var user = connection.Get<User>(request.UserId, tx);
+                            if (user != null)
+                            {
+                                user.Pesnocent += request.CostPesnocents;
+                                connection.Update(user, transaction: tx);
+                                logger.Info($"Refunded {request.CostPesnocents} Pesnocent to user {request.UserId} for discarded postpone request {request.Id}, new balance: {user.Pesnocent}");
+                            }
+                            else
+                            {
+                                logger.Warn($"Could not refund request {request.Id}: user {request.UserId} not found");
+                            }
+                        }
 
-                    tx.Commit();
+                        // Update all open requests to final state
+                        int quantity = connection.Execute(
+                            @"UPDATE PostponeRequest SET State=@FinalState WHERE State=@FromState",
+                            new
+                            {
+                                FinalState = finalState,
+                                FromState = PostponeRequestState.Open
+                            },
+                            transaction: tx);
 
-                    return quantity;
+                        logger.Info($"{quantity} postpone requests set to {finalState} with refunds");
+
+                        tx.Commit();
+                        return openRequests;
+                    }
                 }
             }
         }
@@ -247,7 +297,7 @@ namespace musicallychallenged.Data
 
                     connection.Execute(
                         @"UPDATE PostponeRequest set State =
-                            case 
+                            case
                                 when Id=@keyId then @finalSatisfiedState else @finalDiscardedState
                             end
                             WHERE State = @openState",
@@ -263,6 +313,80 @@ namespace musicallychallenged.Data
                     tx.Commit();
                 }
 
+            }
+        }
+
+        public PostponeRequest[] CreatePostponeRequestWithCoinDeduction(User author, Duration postponeDuration,
+            long costPesnocents, out bool insufficientBalance)
+        {
+            insufficientBalance = false;
+
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
+                {
+                    // Check and deduct coins
+                    var user = connection.Get<User>(author.Id, tx);
+                    if (user == null || user.Pesnocent < costPesnocents)
+                    {
+                        insufficientBalance = true;
+                        return [];
+                    }
+
+                    user.Pesnocent -= costPesnocents;
+                    connection.Update(user, transaction: tx);
+
+                    // Create postpone request
+                    var multiInsertQry = @"insert into
+                        PostponeRequest(UserId, ChallengeRoundNumber, AmountMinutes, State, Timestamp, CostPesnocents)
+                        select @UserID, s.CurrentChallengeRoundNumber, @AmountMinutes, @State, @Timestamp, @Cost from SystemState s";
+
+                    connection.Execute(multiInsertQry,
+                        new
+                        {
+                            UserID = author.Id,
+                            AmountMinutes = (long)postponeDuration.TotalMinutes,
+                            State = PostponeRequestState.Open,
+                            Timestamp = _clock.GetCurrentInstant(),
+                            Cost = costPesnocents, // 1 pesnocoin = 100 pesnocents
+                        }, transaction: tx);
+
+                    var openRequests = connection.Query<PostponeRequest>(
+                        "select * from PostponeRequest where State = @State",
+                        new { State = PostponeRequestState.Open },
+                        transaction: tx).ToArray();
+
+                    tx.Commit();
+
+                    logger.Info($"Deducted 100 Pesnocent and created postpone request for user {author.Id}, new balance: {user.Pesnocent}");
+
+                    return openRequests;
+                }
+            }
+        }
+
+        public void RefundPostponeRequests(PostponeRequest[] requests)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    foreach (var request in requests)
+                    {
+                        if (request.CostPesnocents > 0)
+                        {
+                            var user = connection.Get<User>(request.UserId, tx);
+                            if (user != null)
+                            {
+                                user.Pesnocent += request.CostPesnocents;
+                                connection.Update(user, transaction: tx);
+                                logger.Info($"Refunded {request.CostPesnocents} Pesnocent to user {request.UserId} for discarded postpone request {request.Id}, new balance: {user.Pesnocent}");
+                            }
+                        }
+                    }
+
+                    tx.Commit();
+                }
             }
         }
 
@@ -680,7 +804,8 @@ namespace musicallychallenged.Data
                             LastActivityUTC = _clock.GetCurrentInstant(),
                             State = UserState.Default,
                             Username = source.Username,
-                            Name = source.FirstName + " " + source.LastName
+                            Name = source.FirstName + " " + source.LastName,
+                            Pesnocent = 500 // 5.00 pesnocoins starting balance
                         };
 
                         connection.Insert(result, tx);
@@ -1143,6 +1268,61 @@ namespace musicallychallenged.Data
                 var qty = connection.Execute(@"DELETE FROM User WHERE ChatId = @Id", new { Id = chatId });
 
                 logger.Info($"{qty} user(s) with ChatId {chatId} deleted");
+            }
+        }
+
+        public void AddPesnocentsToUser(long userId, long amount)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var user = connection.Get<User>(userId, tx);
+
+                    if (user == null)
+                    {
+                        logger.Warn($"Attempted to add {amount} Pesnocent to non-existent user {userId}");
+                        return;
+                    }
+
+                    user.Pesnocent += amount;
+                    connection.Update(user, transaction: tx);
+
+                    logger.Info($"Added {amount} Pesnocent to user {userId}, new balance: {user.Pesnocent}");
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        public bool TryDeductPesnocentsFromUser(long userId, long amount)
+        {
+            using (var connection = CreateOpenConnection())
+            {
+                using (var tx = connection.BeginTransaction())
+                {
+                    var user = connection.Get<User>(userId, tx);
+
+                    if (user == null)
+                    {
+                        logger.Warn($"Attempted to deduct {amount} Pesnocent from non-existent user {userId}");
+                        return false;
+                    }
+
+                    if (user.Pesnocent < amount)
+                    {
+                        logger.Info($"Insufficient balance for user {userId}: has {user.Pesnocent}, needs {amount}");
+                        return false;
+                    }
+
+                    user.Pesnocent -= amount;
+                    connection.Update(user, transaction: tx);
+
+                    logger.Info($"Deducted {amount} Pesnocent from user {userId}, new balance: {user.Pesnocent}");
+
+                    tx.Commit();
+                    return true;
+                }
             }
         }
 

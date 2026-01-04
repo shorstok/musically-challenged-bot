@@ -280,7 +280,7 @@ namespace tests
 
                 var postponeService = compartment.Container.Resolve<PostponeService>();
 
-                await postponeService.CloseAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
+                await postponeService.CloseRefundAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
 
                 //Ensure requests were assigned correct final states
 
@@ -402,6 +402,228 @@ namespace tests
                 }
             }
         }
-        
+
+        [Test]
+        public async Task ShouldRefundCoinsWhenRequestsDiscarded()
+        {
+            using var compartment = new TestCompartment(TestContext.CurrentContext);
+            
+            compartment.Repository.UpdateState(state => state.State, ContestState.Contest);
+            compartment.Repository.UpdateState(state => state.CurrentChallengeRoundNumber, 100);
+
+            var users = new List<User>();
+            var initialBalances = new Dictionary<long, long>();
+
+            // Create users with initial balances (less than quorum to avoid auto-postpone)
+            for (int i = 0; i < 2; i++)
+            {
+                var fakeUser = compartment.Repository.CreateOrGetUserByTgIdentity(new Telegram.Bot.Types.User
+                {
+                    Id = i + 100,
+                    FirstName = $"test-user-{i}",
+                });
+
+                // Give users initial balance
+                compartment.Repository.AddPesnocentsToUser(fakeUser.Id, 700); // 7.00 pesnocoins
+
+                fakeUser = compartment.Repository.GetExistingUserWithTgId(fakeUser.Id);
+                users.Add(fakeUser);
+                initialBalances[fakeUser.Id] = fakeUser.Pesnocent;
+
+                // Create fake entry for previous round (required to use postpone)
+                compartment.Repository.GetOrCreateContestEntry(fakeUser, 1, 1, 1, 99, out _);
+            }
+
+            var postponeService = compartment.Container.Resolve<PostponeService>();
+
+            // Create postpone requests (costs 100 pesnocents each)
+            foreach (var user in users)
+            {
+                var result = await postponeService.DemandPostponeRequest(user, Duration.FromHours(1));
+                Assert.That(result, Is.EqualTo(PostponeService.PostponeResult.Accepted));
+            }
+
+            // Verify balance was deducted
+            foreach (var user in users)
+            {
+                var updatedUser = compartment.Repository.GetExistingUserWithTgId(user.Id);
+                Assert.That(updatedUser.Pesnocent, Is.EqualTo(600),
+                    $"User {user.Id} should have 600 pesnocents after deduction (700 - 100)");
+            }
+
+            // Close and refund all requests (simulating new round start)
+            await postponeService.CloseRefundAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
+
+            // Verify balance was refunded
+            foreach (var user in users)
+            {
+                var refundedUser = compartment.Repository.GetExistingUserWithTgId(user.Id);
+                Assert.That(refundedUser.Pesnocent, Is.EqualTo(initialBalances[user.Id]),
+                    $"User {user.Id} should have original balance {initialBalances[user.Id]} after refund");
+            }
+
+            // Verify all requests are in ClosedDiscarded state
+            using (var connection = TestCompartment.GetRepositoryDbConnection(compartment.Repository))
+            {
+                var allRequests = connection.Query<PostponeRequest>(@"SELECT * FROM PostponeRequest").ToArray();
+
+                Assert.That(allRequests.Length, Is.EqualTo(2));
+
+                foreach (var request in allRequests)
+                {
+                    Console.WriteLine($"Request {request.Id} from user {request.UserId}: state={request.State}, cost={request.CostPesnocents}");
+                    Assert.That(request.State, Is.EqualTo(PostponeRequestState.ClosedDiscarded));
+                }
+            }
+        }
+
+        [Test]
+        public async Task ShouldNotRefundWhenQuorumReached()
+        {
+            using var compartment = new TestCompartment(TestContext.CurrentContext);
+            
+            var config = compartment.Container.Resolve<IBotConfiguration>();
+
+            compartment.Repository.UpdateState(state => state.State, ContestState.Contest);
+            compartment.Repository.UpdateState(state => state.CurrentChallengeRoundNumber, 100);
+
+            var initialDeadline = Instant.FromUtc(2025, 01, 01, 12, 00);
+            compartment.Repository.UpdateState(state => state.NextDeadlineUTC, initialDeadline);
+
+            var users = new List<User>();
+            var initialBalances = new Dictionary<long, long>();
+
+            // Create enough users to reach quorum
+            for (int i = 0; i < config.PostponeQuorum; i++)
+            {
+                var fakeUser = compartment.Repository.CreateOrGetUserByTgIdentity(new Telegram.Bot.Types.User
+                {
+                    Id = i + 200,
+                    FirstName = $"quorum-user-{i}",
+                });
+
+                compartment.Repository.AddPesnocentsToUser(fakeUser.Id, 700);
+
+                fakeUser = compartment.Repository.GetExistingUserWithTgId(fakeUser.Id);
+                users.Add(fakeUser);
+                initialBalances[fakeUser.Id] = fakeUser.Pesnocent;
+
+                // Create fake entry for previous round
+                compartment.Repository.GetOrCreateContestEntry(fakeUser, 1, 1, 1, 99, out _);
+            }
+
+            var postponeService = compartment.Container.Resolve<PostponeService>();
+
+            // Create requests up to quorum (last one triggers postpone)
+            for (int i = 0; i < config.PostponeQuorum; i++)
+            {
+                var result = await postponeService.DemandPostponeRequest(users[i], Duration.FromHours(2));
+
+                if (i < config.PostponeQuorum - 1)
+                {
+                    Assert.That(result, Is.EqualTo(PostponeService.PostponeResult.Accepted));
+                }
+                else
+                {
+                    Assert.That(result, Is.EqualTo(PostponeService.PostponeResult.AcceptedAndPostponed));
+                }
+            }
+
+            // Verify deadline was changed
+            Assert.That(compartment.Repository.GetOrCreateCurrentState().NextDeadlineUTC,
+                Is.EqualTo(initialDeadline + Duration.FromHours(2)));
+
+            // Verify coins were NOT refunded (one request satisfied, others discarded but no refund on quorum)
+            using (var connection = TestCompartment.GetRepositoryDbConnection(compartment.Repository))
+            {
+                var allRequests = connection.Query<PostponeRequest>(@"SELECT * FROM PostponeRequest").ToArray();
+
+                Assert.That(allRequests.Length, Is.EqualTo(config.PostponeQuorum));
+
+                var satisfiedCount = allRequests.Count(r => r.State == PostponeRequestState.ClosedSatisfied);
+                var discardedCount = allRequests.Count(r => r.State == PostponeRequestState.ClosedDiscarded);
+
+                Assert.That(satisfiedCount, Is.EqualTo(1), "Exactly one request should be satisfied");
+                Assert.That(discardedCount, Is.EqualTo(config.PostponeQuorum - 1), "Other requests should be discarded");
+
+                // Verify NO user got refunded (all still have 600 pesnocents after deduction)
+                foreach (var user in users)
+                {
+                    var finalUser = compartment.Repository.GetExistingUserWithTgId(user.Id);
+                    Assert.That(finalUser.Pesnocent, Is.EqualTo(600),
+                        $"User {user.Id} should NOT be refunded when quorum reached (should have 700 - 100 = 600)");
+                }
+            }
+        }
+
+        [Test]
+        public async Task ShouldHandleRefundEdgeCases()
+        {
+            using var compartment = new TestCompartment(TestContext.CurrentContext);
+            
+            compartment.Repository.UpdateState(state => state.State, ContestState.Contest);
+            compartment.Repository.UpdateState(state => state.CurrentChallengeRoundNumber, 101);
+
+            // Case 1: User with ChatId = null (blocked bot)
+            var userWithoutChat = compartment.Repository.CreateOrGetUserByTgIdentity(new Telegram.Bot.Types.User
+            {
+                Id = 300,
+                FirstName = "no-chat-user",
+            });
+            compartment.Repository.AddPesnocentsToUser(userWithoutChat.Id, 700);
+            userWithoutChat = compartment.Repository.GetExistingUserWithTgId(userWithoutChat.Id);
+            userWithoutChat.ChatId = null; // No chat
+            compartment.Repository.UpdateUser(userWithoutChat, 0);
+            compartment.Repository.GetOrCreateContestEntry(userWithoutChat, 1, 1, 1, 100, out _);
+
+            // Case 2: User with ChatId (normal case)
+            var userWithChat = compartment.Repository.CreateOrGetUserByTgIdentity(new Telegram.Bot.Types.User
+            {
+                Id = 301,
+                FirstName = "normal-user",
+            });
+            compartment.Repository.AddPesnocentsToUser(userWithChat.Id, 700);
+            userWithChat = compartment.Repository.GetExistingUserWithTgId(userWithChat.Id);
+            userWithChat.ChatId = 12345;
+            compartment.Repository.UpdateUser(userWithChat, 0);
+            compartment.Repository.GetOrCreateContestEntry(userWithChat, 1, 1, 1, 100, out _);
+
+            var postponeService = compartment.Container.Resolve<PostponeService>();
+
+            // Both users create requests
+            await postponeService.DemandPostponeRequest(userWithoutChat, Duration.FromHours(1));
+            await postponeService.DemandPostponeRequest(userWithChat, Duration.FromHours(1));
+
+            // Close and refund
+            await postponeService.CloseRefundAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
+
+            // Both users should get refunds regardless of ChatId
+            var refundedUser1 = compartment.Repository.GetExistingUserWithTgId(userWithoutChat.Id);
+            var refundedUser2 = compartment.Repository.GetExistingUserWithTgId(userWithChat.Id);
+
+            Assert.That(refundedUser1.Pesnocent, Is.EqualTo(700), "User without ChatId should still get refund (500 + 200 back to original)");
+            Assert.That(refundedUser2.Pesnocent, Is.EqualTo(700), "User with ChatId should get refund (500 + 200 back to original)");
+        }
+
+        [Test]
+        public async Task ShouldHandleNoRequestsToRefund()
+        {
+            using var compartment = new TestCompartment(TestContext.CurrentContext);
+            
+            compartment.Repository.UpdateState(state => state.State, ContestState.Contest);
+
+            var postponeService = compartment.Container.Resolve<PostponeService>();
+
+            // Call with no open requests
+            await postponeService.CloseRefundAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
+
+            // Should complete without errors
+            using (var connection = TestCompartment.GetRepositoryDbConnection(compartment.Repository))
+            {
+                var allRequests = connection.Query<PostponeRequest>(@"SELECT * FROM PostponeRequest").ToArray();
+                Assert.That(allRequests.Length, Is.EqualTo(0));
+            }
+        }
+
     }
 }
