@@ -177,11 +177,11 @@ namespace musicallychallenged.Services
         {
             var state = _repository.GetOrCreateCurrentState();
 
-            return Period.Between(
-                _clock.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
-                    .LocalDateTime,
-                state.NextDeadlineUTC.InZone(DateTimeZoneProviders.Tzdb[_configuration.AnnouncementTimeZone])
-                    .LocalDateTime).ToDuration();
+            Instant now = _clock.GetCurrentInstant();
+            Instant deadline = state.NextDeadlineUTC;
+
+            var left = deadline - now;
+            return left < Duration.Zero ? Duration.Zero : left;
         }
     }
 }

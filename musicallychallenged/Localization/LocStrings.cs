@@ -94,6 +94,42 @@ namespace musicallychallenged.Localization
             $"📉 Тратить:\n" +
             $"• {LocTokens.PostponeCost} за заявочку на постпон (/postpone)";
 
+        public string BalanceCommandHandler_HistoryHeader { get; set; } =
+            "🧾 История операций (последние {0}):";
+
+        public string BalanceCommandHandler_HistoryEmpty { get; set; } =
+            "🧾 История операций пока пуста";
+
+        public string BalanceCommandHandler_TxOpeningBalance { get; set; } =
+            "Стартовый баланс";
+
+        public string BalanceCommandHandler_TxRewardSubmission { get; set; } =
+            "Награда за работу";
+
+        public string BalanceCommandHandler_TxRewardMidvoteSubmission { get; set; } =
+            "Награда за работу (midvote)";
+
+        public string BalanceCommandHandler_TxRewardVote { get; set; } =
+            "Награда за голос";
+
+        public string BalanceCommandHandler_TxRewardTaskSuggestion { get; set; } =
+            "Награда за тему";
+
+        public string BalanceCommandHandler_TxPostponeHold { get; set; } =
+            "Заявка на перенос";
+
+        public string BalanceCommandHandler_TxPostponeRefund { get; set; } =
+            "Возврат за перенос";
+
+        public string BalanceCommandHandler_TxPostponeCapture { get; set; } =
+            "Списание за перенос";
+
+        public string BalanceCommandHandler_TxLegacyAdjustment { get; set; } =
+            "Корректировка";
+
+        public string BalanceCommandHandler_TxGeneric { get; set; } =
+            "Операция";
+
         public string PostponeService_RefundNotification { get; set; } =
             $"Голосование за перенос дедлайна не набрало кворум и было отменено.\n\n" +
             $"💰 Ваш песнокоин возвращен. Возврат: <b>{LocTokens.Balance}</b> песнокоинов";
