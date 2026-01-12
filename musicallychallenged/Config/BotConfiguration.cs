@@ -216,7 +216,7 @@ namespace musicallychallenged.Config
         public long PesnocentsRequiredPerPostponeRequest { get; set; } = 100; // 1.00 pesnocoin
 
         [JsonProperty("PesnocentsAwardedForVote")]
-        public long PesnocentsAwardedForVote { get; set; } = 15; // 0.15 pesnocoin
+        public long PesnocentsAwardedForVote { get; set; } = 25; // 0.25 pesnocoin
 
         [JsonProperty("MinSuggestionVoteValue")]
         public int MinSuggestionVoteValue { get; set; } = -1;

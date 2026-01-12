@@ -10,6 +10,7 @@ using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services;
+using musicallychallenged.Services.Ledger;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
 using Telegram.Bot.Types;
@@ -27,6 +28,7 @@ namespace musicallychallenged.Commands
         private readonly PostponeService _postponeService;
         private readonly TimeService _timeService;
         private readonly LocStrings _loc;
+        private readonly ILedgerService _ledgerService;
 
         public string CommandName { get; } = Schema.PostponeCommandName;
         public string UserFriendlyDescription => _loc.PostponeCommandHandler_Description;
@@ -40,7 +42,8 @@ namespace musicallychallenged.Commands
             ContestController contestController,
             PostponeService postponeService,
             TimeService timeService,
-            LocStrings loc)
+            LocStrings loc,
+            ILedgerService ledgerService)
         {
             _repository = repository;
             _configuration = configuration;
@@ -48,6 +51,7 @@ namespace musicallychallenged.Commands
             _postponeService = postponeService;
             _timeService = timeService;
             _loc = loc;
+            _ledgerService = ledgerService;
         }
 
         public async Task ProcessCommandAsync(Dialog dialog, User user)
@@ -103,8 +107,7 @@ namespace musicallychallenged.Commands
 
             availablePostponeOptions.Add(InlineKeyboardButton.WithCallbackData(_loc.CancelButtonLabel, TokCancel));
 
-            var freshUser = _repository.GetExistingUserWithTgId(user.Id);
-            var balance = freshUser.Pesnocent / 100.0;
+            var balance = _ledgerService.GetUserWalletBalancePesnocents(user.Id) / 100.0;
             var cost = _configuration.PesnocentsRequiredPerPostponeRequest / 100.0;
 
             var preambleText = _loc.PostponeCommandHandler_Preamble +

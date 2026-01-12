@@ -46,7 +46,6 @@ namespace musicallychallenged.Data
         bool MigrateChat(long fromId, long toId);
 
         void AddPesnocentsToUser(long userId, long amount);
-        bool TryDeductPesnocentsFromUser(long userId, long amount);
 
         RandomTask[] GetLeastUsedRandomTasks();
         void UpdateRandomTask(RandomTask task);
@@ -58,14 +57,14 @@ namespace musicallychallenged.Data
         long GetUsedPostponeQuotaForCurrentRoundMinutes();
         PostponeRequest[] CreatePostponeRequestRetrunOpen(User author, Duration postponeDuration);
         void FinalizePostponeRequests(PostponeRequest keyRequest);
-        PostponeRequest[] CreatePostponeRequestWithCoinDeduction(User author, Duration postponeDuration,
+        PostponeRequest[] CreatePostponeRequestWithLedgerHold(User author, Duration postponeDuration,
             long costPesnocents, out bool insufficientBalance);
         void RefundPostponeRequests(PostponeRequest[] requests);
 
         NextRoundTaskPoll GetOpenNextRoundTaskPoll();
         void CreateNextRoundTaskPoll();
         IEnumerable<TaskSuggestion> CloseNextRoundTaskPollAndConsolidateVotes();
-        void CreateOrUpdateTaskSuggestion(User author, string description, long containerChatId,
+        TaskSuggestion CreateOrUpdateTaskSuggestion(User author, string description, long containerChatId,
             int containerMessageId, out TaskSuggestion previous);
         IEnumerable<TaskSuggestion> GetActiveTaskSuggestions();
         TaskSuggestion GetExistingTaskSuggestion(int suggestionId);

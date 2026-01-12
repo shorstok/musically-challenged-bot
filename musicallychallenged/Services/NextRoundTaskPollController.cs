@@ -2,9 +2,11 @@
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
+using musicallychallenged.Domain.Ledger;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
+using musicallychallenged.Services.Ledger;
 using musicallychallenged.Services.Telegram;
 using System;
 using System.Linq;
@@ -28,6 +30,7 @@ namespace musicallychallenged.Services
         private readonly ContestController _contestController;
         private readonly BroadcastController _broadcastController;
         private readonly IEventAggregator _aggregator;
+        private readonly ILedgerService _ledgerService;
 
         private readonly ISubscription[] _subscriptions;
 
@@ -42,7 +45,8 @@ namespace musicallychallenged.Services
             TimeService timeService,
             ContestController contestController,
             BroadcastController broadcastController,
-            IEventAggregator eventAggregator)
+            IEventAggregator eventAggregator,
+            ILedgerService ledgerService)
         {
             _repository = repository;
             _clock = clock;
@@ -53,6 +57,7 @@ namespace musicallychallenged.Services
             _contestController = contestController;
             _broadcastController = broadcastController;
             _aggregator = eventAggregator;
+            _ledgerService = ledgerService;
 
             _subscriptions = new ISubscription[]
             {
@@ -164,11 +169,19 @@ namespace musicallychallenged.Services
                 if (container == null)
                     throw new InvalidOperationException($"Could not send {user.GetUsernameOrNameWithCircumflex()} suggestion to voting channel {state.VotingChannelId}");
 
-                _repository.CreateOrUpdateTaskSuggestion(user, descriptionUnescaped,
+                var suggestion = _repository.CreateOrUpdateTaskSuggestion(user, descriptionUnescaped,
                     container.Chat.Id, container.MessageId, out var previous);
+
+                if (suggestion == null)
+                    return;
                 
                 // Add pesnocoins reward for suggesting a task
-                _repository.AddPesnocentsToUser(user.Id, _configuration.PesnocentsAwardedForTaskSuggestion);
+                _ledgerService.AwardToUser(
+                    user.Id,
+                    _configuration.PesnocentsAwardedForTaskSuggestion,
+                    LedgerTransactionType.RewardTaskSuggestion,
+                    $"task_suggestion:{suggestion.Id}",
+                    $"Reward for task suggestion {suggestion.Id}");
                 logger.Info($"Awarded {_configuration.PesnocentsAwardedForTaskSuggestion} pesnocents to {user.GetUsernameOrNameWithCircumflex()} for suggesting a task");
 
                 if (previous != null)

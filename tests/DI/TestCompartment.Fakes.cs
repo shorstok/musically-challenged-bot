@@ -36,8 +36,8 @@ namespace tests.DI
 
                 //And respective suggest records
                 
-                Repository.CreateOrUpdateTaskSuggestion(Repository.GetExistingUserWithTgId(user.Id),
-                    suggestion, msg.Chat.Id,msg.MessageId,out var _);
+                _ = Repository.CreateOrUpdateTaskSuggestion(Repository.GetExistingUserWithTgId(user.Id),
+                    suggestion, msg.Chat.Id, msg.MessageId, out var _);
             }
 
         }

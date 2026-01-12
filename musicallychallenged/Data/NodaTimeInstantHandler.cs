@@ -34,14 +34,15 @@ namespace musicallychallenged.Data
 
             if (value is string iso)
             {
-                try
-                {
-                    return InstantPattern.General.Parse(iso).Value;
-                }
-                catch (Exception)
-                {
-                    return Instant.MinValue;                    
-                }
+                var general = InstantPattern.General.Parse(iso);
+                if (general.Success)
+                    return general.Value;
+
+                var extended = InstantPattern.ExtendedIso.Parse(iso);
+                if (extended.Success)
+                    return extended.Value;
+
+                return Instant.MinValue;
             }
 
             if (value is DateTimeOffset dateTimeOffset)

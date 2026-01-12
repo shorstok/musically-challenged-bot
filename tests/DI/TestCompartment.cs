@@ -18,6 +18,7 @@ using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services;
+using musicallychallenged.Services.Ledger;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
 using NUnit.Framework;
@@ -42,6 +43,7 @@ namespace tests.DI
         public IBotConfiguration Configuration { get; private set; }
         public TweakableClockService Clock { get; private set; }
         public ITelegramClient TelegramClient { get; private set; }
+        public ILedgerService LedgerService { get; private set; }
 
 
         public TestCompartment(TestContext currentContext)
@@ -139,6 +141,7 @@ namespace tests.DI
             GenericScenarios = Container.Resolve<GenericUserScenarios>();
             TelegramClient = Container.Resolve<ITelegramClient>();
             Clock = (TweakableClockService)Container.Resolve<IClock>();
+            LedgerService = Container.Resolve<ILedgerService>();
         }
 
 
@@ -192,7 +195,7 @@ namespace tests.DI
             RunSqliteMigrations(testSqlite.CreateConnectionString());
 
             containerBuilder.RegisterInstance(clock).As<IClock>().SingleInstance();
-            containerBuilder.RegisterInstance(testSqlite).As<IRepository>().SingleInstance();
+            containerBuilder.RegisterInstance(testSqlite).As<IRepository>().As<IDbConnectionFactory>().SingleInstance();
 
             containerBuilder.RegisterInstance(this).AsSelf().SingleInstance();
 

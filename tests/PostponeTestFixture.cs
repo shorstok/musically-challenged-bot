@@ -424,11 +424,11 @@ namespace tests
                 });
 
                 // Give users initial balance
-                compartment.Repository.AddPesnocentsToUser(fakeUser.Id, 700); // 7.00 pesnocoins
+                LedgerTestHelper.CreditUserToExactBalance(compartment, fakeUser.Id, 700); // 7.00 pesnocoins
 
                 fakeUser = compartment.Repository.GetExistingUserWithTgId(fakeUser.Id);
                 users.Add(fakeUser);
-                initialBalances[fakeUser.Id] = fakeUser.Pesnocent;
+                initialBalances[fakeUser.Id] = LedgerTestHelper.GetBalance(compartment.LedgerService, fakeUser.Id);
 
                 // Create fake entry for previous round (required to use postpone)
                 compartment.Repository.GetOrCreateContestEntry(fakeUser, 1, 1, 1, 99, out _);
@@ -446,8 +446,8 @@ namespace tests
             // Verify balance was deducted
             foreach (var user in users)
             {
-                var updatedUser = compartment.Repository.GetExistingUserWithTgId(user.Id);
-                Assert.That(updatedUser.Pesnocent, Is.EqualTo(600),
+                var balance = LedgerTestHelper.GetBalance(compartment.LedgerService, user.Id);
+                Assert.That(balance, Is.EqualTo(600),
                     $"User {user.Id} should have 600 pesnocents after deduction (700 - 100)");
             }
 
@@ -457,8 +457,8 @@ namespace tests
             // Verify balance was refunded
             foreach (var user in users)
             {
-                var refundedUser = compartment.Repository.GetExistingUserWithTgId(user.Id);
-                Assert.That(refundedUser.Pesnocent, Is.EqualTo(initialBalances[user.Id]),
+                var balance = LedgerTestHelper.GetBalance(compartment.LedgerService, user.Id);
+                Assert.That(balance, Is.EqualTo(initialBalances[user.Id]),
                     $"User {user.Id} should have original balance {initialBalances[user.Id]} after refund");
             }
 
@@ -502,11 +502,11 @@ namespace tests
                     FirstName = $"quorum-user-{i}",
                 });
 
-                compartment.Repository.AddPesnocentsToUser(fakeUser.Id, 700);
+                LedgerTestHelper.CreditUserToExactBalance(compartment, fakeUser.Id, 700);
 
                 fakeUser = compartment.Repository.GetExistingUserWithTgId(fakeUser.Id);
                 users.Add(fakeUser);
-                initialBalances[fakeUser.Id] = fakeUser.Pesnocent;
+                initialBalances[fakeUser.Id] = LedgerTestHelper.GetBalance(compartment.LedgerService, fakeUser.Id);
 
                 // Create fake entry for previous round
                 compartment.Repository.GetOrCreateContestEntry(fakeUser, 1, 1, 1, 99, out _);
@@ -549,8 +549,8 @@ namespace tests
                 // Verify NO user got refunded (all still have 600 pesnocents after deduction)
                 foreach (var user in users)
                 {
-                    var finalUser = compartment.Repository.GetExistingUserWithTgId(user.Id);
-                    Assert.That(finalUser.Pesnocent, Is.EqualTo(600),
+                    var balance = LedgerTestHelper.GetBalance(compartment.LedgerService, user.Id);
+                    Assert.That(balance, Is.EqualTo(600),
                         $"User {user.Id} should NOT be refunded when quorum reached (should have 700 - 100 = 600)");
                 }
             }
@@ -570,7 +570,7 @@ namespace tests
                 Id = 300,
                 FirstName = "no-chat-user",
             });
-            compartment.Repository.AddPesnocentsToUser(userWithoutChat.Id, 700);
+            LedgerTestHelper.CreditUserToExactBalance(compartment, userWithoutChat.Id, 700);
             userWithoutChat = compartment.Repository.GetExistingUserWithTgId(userWithoutChat.Id);
             userWithoutChat.ChatId = null; // No chat
             compartment.Repository.UpdateUser(userWithoutChat, 0);
@@ -582,7 +582,7 @@ namespace tests
                 Id = 301,
                 FirstName = "normal-user",
             });
-            compartment.Repository.AddPesnocentsToUser(userWithChat.Id, 700);
+            LedgerTestHelper.CreditUserToExactBalance(compartment, userWithChat.Id, 700);
             userWithChat = compartment.Repository.GetExistingUserWithTgId(userWithChat.Id);
             userWithChat.ChatId = 12345;
             compartment.Repository.UpdateUser(userWithChat, 0);
@@ -598,11 +598,11 @@ namespace tests
             await postponeService.CloseRefundAllPostponeRequests(PostponeRequestState.ClosedDiscarded);
 
             // Both users should get refunds regardless of ChatId
-            var refundedUser1 = compartment.Repository.GetExistingUserWithTgId(userWithoutChat.Id);
-            var refundedUser2 = compartment.Repository.GetExistingUserWithTgId(userWithChat.Id);
+            var balance1 = LedgerTestHelper.GetBalance(compartment.LedgerService, userWithoutChat.Id);
+            var balance2 = LedgerTestHelper.GetBalance(compartment.LedgerService, userWithChat.Id);
 
-            Assert.That(refundedUser1.Pesnocent, Is.EqualTo(700), "User without ChatId should still get refund (500 + 200 back to original)");
-            Assert.That(refundedUser2.Pesnocent, Is.EqualTo(700), "User with ChatId should get refund (500 + 200 back to original)");
+            Assert.That(balance1, Is.EqualTo(700), "User without ChatId should still get refund (500 + 200 back to original)");
+            Assert.That(balance2, Is.EqualTo(700), "User with ChatId should get refund (500 + 200 back to original)");
         }
 
         [Test]

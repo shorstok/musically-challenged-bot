@@ -8,7 +8,9 @@ using log4net;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
+using musicallychallenged.Domain.Ledger;
 using musicallychallenged.Logging;
+using musicallychallenged.Services.Ledger;
 using musicallychallenged.Services.Sync;
 using musicallychallenged.Services.Telegram;
 using Telegram.Bot.Types;
@@ -24,6 +26,7 @@ namespace musicallychallenged.Services
         private readonly ITelegramClient _client;
         private readonly SyncService _syncService;
         private readonly ContestController _contestController;
+        private readonly ILedgerService _ledgerService;
         private static readonly ILog logger = Log.Get(typeof(MidvoteEntryController));
 
         private readonly ConcurrentDictionary<string, object> _activeMidvotePins =
@@ -38,7 +41,8 @@ namespace musicallychallenged.Services
             ITelegramClient client,
             SyncService syncService,
             ContestController contestController, 
-            IBotConfiguration configuration)
+            IBotConfiguration configuration,
+            ILedgerService ledgerService)
         {
             _repository = repository;
             _votingController = votingController;
@@ -46,6 +50,7 @@ namespace musicallychallenged.Services
             _syncService = syncService;
             _contestController = contestController;
             _configuration = configuration;
+            _ledgerService = ledgerService;
         }
 
         public Task<int> CreateMidvotePin(string pin)
@@ -149,7 +154,12 @@ namespace musicallychallenged.Services
                 // Award coins for new midvote submissions only
                 if (previous == null)
                 {
-                    _repository.AddPesnocentsToUser(author.Id, _configuration.PesnocentsAwardedForTrackSubmission); // 1 pesnocoin = 100 pesnocents
+                    _ledgerService.AwardToUser(
+                        author.Id,
+                        _configuration.PesnocentsAwardedForTrackSubmission,
+                        LedgerTransactionType.RewardMidvoteSubmission,
+                        $"midvote_submission:{entry.Id}",
+                        $"Reward for midvote submission {entry.Id}");
                     logger.Info($"Awarded {_configuration.PesnocentsAwardedForTrackSubmission} pesnocoin to {author.GetUsernameOrNameWithCircumflex()} for midvote submission");
                 }
             }

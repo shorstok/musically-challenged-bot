@@ -7,8 +7,10 @@ using log4net;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
+using musicallychallenged.Domain.Ledger;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
+using musicallychallenged.Services.Ledger;
 using musicallychallenged.Services.Sync;
 using musicallychallenged.Services.Sync.DTO;
 using musicallychallenged.Services.Telegram;
@@ -26,6 +28,7 @@ namespace musicallychallenged.Services
 
         private readonly ContestController _contestController;
         private readonly SyncService _syncService;
+        private readonly ILedgerService _ledgerService;
 
         public override string Prefix { get; } = "v";
 
@@ -52,12 +55,14 @@ namespace musicallychallenged.Services
             ContestController contestController,
             TimeService timeService,
             SyncService syncService,
-            Lazy<MidvoteEntryController> midvoteEntryController) 
+            Lazy<MidvoteEntryController> midvoteEntryController,
+            ILedgerService ledgerService) 
             : base(client, botConfiguration, repository, loc, 
                   crypticNameResolver, broadcastController,midvoteEntryController, timeService)
         {
             _contestController = contestController;
             _syncService = syncService;
+            _ledgerService = ledgerService;
         }
 
         protected override bool SetOrUpdateVote(User user, int voteVal, int entryId)
@@ -74,7 +79,12 @@ namespace musicallychallenged.Services
             // Award coins for new votes only (not updates)
             if (!updated)
             {
-                Repository.AddPesnocentsToUser(user.Id, Configuration.PesnocentsAwardedForVote);
+                _ledgerService.AwardToUser(
+                    user.Id,
+                    Configuration.PesnocentsAwardedForVote,
+                    LedgerTransactionType.RewardVote,
+                    $"vote:{user.Id}:{entryId}",
+                    $"Reward for vote {entryId}");
                 logger.Info($"Awarded {Configuration.PesnocentsAwardedForVote} pesnocoin to {user.GetUsernameOrNameWithCircumflex()} for voting");
             }
 

@@ -7,9 +7,11 @@ using log4net;
 using musicallychallenged.Config;
 using musicallychallenged.Data;
 using musicallychallenged.Domain;
+using musicallychallenged.Domain.Ledger;
 using musicallychallenged.Localization;
 using musicallychallenged.Logging;
 using musicallychallenged.Services.Events;
+using musicallychallenged.Services.Ledger;
 using musicallychallenged.Services.Sync;
 using musicallychallenged.Services.Sync.DTO;
 using musicallychallenged.Services.Telegram;
@@ -30,6 +32,7 @@ namespace musicallychallenged.Services
         private readonly PostponeService _postponeService;
         private readonly SyncService _syncService;
         private readonly IRepository _repository;
+        private readonly ILedgerService _ledgerService;
 
         private static readonly ILog logger = Log.Get(typeof(ContestController));
 
@@ -43,7 +46,8 @@ namespace musicallychallenged.Services
             IBotConfiguration configuration,
             PostponeService postponeService,
             SyncService syncService,
-            IRepository repository)
+            IRepository repository,
+            ILedgerService ledgerService)
         {
             _broadcastController = broadcastController;
             _timeService = timeService;
@@ -54,6 +58,7 @@ namespace musicallychallenged.Services
             _postponeService = postponeService;
             _syncService = syncService;
             _repository = repository;
+            _ledgerService = ledgerService;
 
             _subscriptions = new ISubscription[]
             {
@@ -157,7 +162,12 @@ namespace musicallychallenged.Services
                 // Award coins for new submissions only (not updates)
                 if (previous == null)
                 {
-                    _repository.AddPesnocentsToUser(user.Id, _configuration.PesnocentsAwardedForTrackSubmission); // 1 pesnocoin = 100 pesnocents
+                    _ledgerService.AwardToUser(
+                        user.Id,
+                        _configuration.PesnocentsAwardedForTrackSubmission,
+                        LedgerTransactionType.RewardSubmission,
+                        $"submission:{entry.Id}",
+                        $"Reward for submission {entry.Id}");
                     logger.Info($"Awarded {_configuration.PesnocentsAwardedForTrackSubmission} to {user.GetUsernameOrNameWithCircumflex()} for new submission");
                 }
             }

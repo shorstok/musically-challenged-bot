@@ -15,12 +15,14 @@ using Dapper.Contrib;
 using Dapper.Contrib.Extensions;
 using log4net;
 using musicallychallenged.Logging;
+using musicallychallenged.Domain.Ledger;
 using musicallychallenged.Services.Events;
+using musicallychallenged.Services.Ledger;
 using NodaTime;
 
 namespace musicallychallenged.Data
 {
-    public abstract class RepositoryBase : IRepository
+    public abstract class RepositoryBase : IRepository, IDbConnectionFactory
     {
         private static readonly ILog logger = Log.Get(typeof(RepositoryBase));
 
@@ -28,6 +30,8 @@ namespace musicallychallenged.Data
 
 
         protected abstract DbConnection CreateOpenConnection();
+
+        DbConnection IDbConnectionFactory.CreateOpenConnection() => CreateOpenConnection();
 
 
         protected RepositoryBase(IClock clock)
@@ -169,6 +173,29 @@ namespace musicallychallenged.Data
                     //Set finalState for all requests with Open state
                     if(!refund)
                     {
+                        var openRequests = connection.Query<PostponeRequest>(
+                            @"SELECT * FROM PostponeRequest WHERE State=@OpenState",
+                            new { OpenState = PostponeRequestState.Open },
+                            transaction: tx).ToArray();
+
+                        var now = _clock.GetCurrentInstant();
+
+                        foreach (var request in openRequests)
+                        {
+                            if (request.CostPesnocents <= 0)
+                                continue;
+
+                            LedgerStore.TryPostTransaction(
+                                connection,
+                                tx,
+                                LedgerTransactionType.PostponeCapture,
+                                $"postpone_capture:{request.Id}",
+                                $"Capture postpone request {request.Id}",
+                                now,
+                                (LedgerStore.SysPostponeEscrowCode, EntryDirection.Debit, request.CostPesnocents),
+                                (LedgerStore.SysPostponeRevenueCode, EntryDirection.Credit, request.CostPesnocents));
+                        }
+
                         int quantity = connection.Execute(
                             @"UPDATE PostponeRequest set State=@FinalState WHERE State=@FromState",
                             new
@@ -198,23 +225,23 @@ namespace musicallychallenged.Data
                             return [];
                         }
 
+                        var now = _clock.GetCurrentInstant();
+
                         // Refund coins for requests with cost > 0
                         foreach (var request in openRequests)
                         {
                             if (request.CostPesnocents <= 0) 
                                 continue;
-                            
-                            var user = connection.Get<User>(request.UserId, tx);
-                            if (user != null)
-                            {
-                                user.Pesnocent += request.CostPesnocents;
-                                connection.Update(user, transaction: tx);
-                                logger.Info($"Refunded {request.CostPesnocents} Pesnocent to user {request.UserId} for discarded postpone request {request.Id}, new balance: {user.Pesnocent}");
-                            }
-                            else
-                            {
-                                logger.Warn($"Could not refund request {request.Id}: user {request.UserId} not found");
-                            }
+
+                            LedgerStore.TryPostTransaction(
+                                connection,
+                                tx,
+                                LedgerTransactionType.PostponeRefund,
+                                $"postpone_refund:{request.Id}",
+                                $"Refund postpone request {request.Id}",
+                                now,
+                                (LedgerStore.SysPostponeEscrowCode, EntryDirection.Debit, request.CostPesnocents),
+                                (LedgerStore.GetUserWalletCode(request.UserId), EntryDirection.Credit, request.CostPesnocents));
                         }
 
                         // Update all open requests to final state
@@ -293,6 +320,11 @@ namespace musicallychallenged.Data
             {
                 using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
                 {
+                    var openRequests = connection.Query<PostponeRequest>(
+                        @"SELECT * FROM PostponeRequest WHERE State=@OpenState",
+                        new { OpenState = PostponeRequestState.Open },
+                        transaction: tx).ToArray();
+
                     //Set 'ClosedSatisfied' on keyRequest and 'ClosedDiscarded' on other open requests
 
                     connection.Execute(
@@ -309,6 +341,24 @@ namespace musicallychallenged.Data
                             keyId = keyRequest.Id,
                         }, transaction: tx);
 
+                    var now = _clock.GetCurrentInstant();
+
+                    foreach (var request in openRequests)
+                    {
+                        if (request.CostPesnocents <= 0)
+                            continue;
+
+                        LedgerStore.TryPostTransaction(
+                            connection,
+                            tx,
+                            LedgerTransactionType.PostponeCapture,
+                            $"postpone_capture:{request.Id}",
+                            $"Capture postpone request {request.Id}",
+                            now,
+                            (LedgerStore.SysPostponeEscrowCode, EntryDirection.Debit, request.CostPesnocents),
+                            (LedgerStore.SysPostponeRevenueCode, EntryDirection.Credit, request.CostPesnocents));
+                    }
+
 
                     tx.Commit();
                 }
@@ -316,7 +366,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public PostponeRequest[] CreatePostponeRequestWithCoinDeduction(User author, Duration postponeDuration,
+        public PostponeRequest[] CreatePostponeRequestWithLedgerHold(User author, Duration postponeDuration,
             long costPesnocents, out bool insufficientBalance)
         {
             insufficientBalance = false;
@@ -325,31 +375,53 @@ namespace musicallychallenged.Data
             {
                 using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
                 {
-                    // Check and deduct coins
+                    var now = _clock.GetCurrentInstant();
+
                     var user = connection.Get<User>(author.Id, tx);
-                    if (user == null || user.Pesnocent < costPesnocents)
+                    if (user == null)
                     {
                         insufficientBalance = true;
                         return [];
                     }
 
-                    user.Pesnocent -= costPesnocents;
-                    connection.Update(user, transaction: tx);
+                    var balance = LedgerStore.GetUserWalletBalance(connection, tx, author.Id, now);
+                    if (balance < costPesnocents)
+                    {
+                        insufficientBalance = true;
+                        return [];
+                    }
 
-                    // Create postpone request
-                    var multiInsertQry = @"insert into
-                        PostponeRequest(UserId, ChallengeRoundNumber, AmountMinutes, State, Timestamp, CostPesnocents)
-                        select @UserID, s.CurrentChallengeRoundNumber, @AmountMinutes, @State, @Timestamp, @Cost from SystemState s";
+                    var state = GetOrCreateSystemStateInternal(connection, tx);
 
-                    connection.Execute(multiInsertQry,
-                        new
-                        {
-                            UserID = author.Id,
-                            AmountMinutes = (long)postponeDuration.TotalMinutes,
-                            State = PostponeRequestState.Open,
-                            Timestamp = _clock.GetCurrentInstant(),
-                            Cost = costPesnocents, // 1 pesnocoin = 100 pesnocents
-                        }, transaction: tx);
+                    var request = new PostponeRequest
+                    {
+                        UserId = (int)author.Id,
+                        ChallengeRoundNumber = (int)state.CurrentChallengeRoundNumber,
+                        AmountMinutes = (long)postponeDuration.TotalMinutes,
+                        State = PostponeRequestState.Open,
+                        Timestamp = now,
+                        CostPesnocents = costPesnocents
+                    };
+
+                    request.Id = (int)connection.Insert(request, tx);
+
+                    try
+                    {
+                        LedgerStore.TryPostTransaction(
+                            connection,
+                            tx,
+                            LedgerTransactionType.PostponeHold,
+                            $"postpone_hold:{request.Id}",
+                            $"Postpone hold for request {request.Id}",
+                            now,
+                            (LedgerStore.GetUserWalletCode(author.Id), EntryDirection.Debit, costPesnocents),
+                            (LedgerStore.SysPostponeEscrowCode, EntryDirection.Credit, costPesnocents));
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        insufficientBalance = true;
+                        return [];
+                    }
 
                     var openRequests = connection.Query<PostponeRequest>(
                         "select * from PostponeRequest where State = @State",
@@ -358,7 +430,7 @@ namespace musicallychallenged.Data
 
                     tx.Commit();
 
-                    logger.Info($"Deducted 100 Pesnocent and created postpone request for user {author.Id}, new balance: {user.Pesnocent}");
+                    logger.Info($"Held {costPesnocents} Pesnocent and created postpone request for user {author.Id}");
 
                     return openRequests;
                 }
@@ -371,17 +443,21 @@ namespace musicallychallenged.Data
             {
                 using (var tx = connection.BeginTransaction())
                 {
+                    var now = _clock.GetCurrentInstant();
+
                     foreach (var request in requests)
                     {
                         if (request.CostPesnocents > 0)
                         {
-                            var user = connection.Get<User>(request.UserId, tx);
-                            if (user != null)
-                            {
-                                user.Pesnocent += request.CostPesnocents;
-                                connection.Update(user, transaction: tx);
-                                logger.Info($"Refunded {request.CostPesnocents} Pesnocent to user {request.UserId} for discarded postpone request {request.Id}, new balance: {user.Pesnocent}");
-                            }
+                            LedgerStore.TryPostTransaction(
+                                connection,
+                                tx,
+                                LedgerTransactionType.PostponeRefund,
+                                $"postpone_refund:{request.Id}",
+                                $"Refund postpone request {request.Id}",
+                                now,
+                                (LedgerStore.SysPostponeEscrowCode, EntryDirection.Debit, request.CostPesnocents),
+                                (LedgerStore.GetUserWalletCode(request.UserId), EntryDirection.Credit, request.CostPesnocents));
                         }
                     }
 
@@ -557,7 +633,7 @@ namespace musicallychallenged.Data
             }
         }
 
-        public void CreateOrUpdateTaskSuggestion(
+        public TaskSuggestion CreateOrUpdateTaskSuggestion(
             User author, 
             string descriptionUnescaped, 
             long containerChatId, 
@@ -565,6 +641,7 @@ namespace musicallychallenged.Data
             out TaskSuggestion previous)
         {
             previous = null;
+            TaskSuggestion result = null;
 
             using (var connection = CreateOpenConnection())
             {
@@ -575,7 +652,7 @@ namespace musicallychallenged.Data
                     if (poll == null)
                     {
                         logger.Error("Tried creating/updating a TaskSuggestion when no NextRoundTaskPoll is open");
-                        return;
+                        return null;
                     }
 
                     // get the existing suggestions if exists
@@ -611,13 +688,17 @@ namespace musicallychallenged.Data
                     existing.Timestamp = _clock.GetCurrentInstant();
 
                     if (create)
-                        connection.Insert(existing, transaction: tx);
+                        existing.Id = (int)connection.Insert(existing, transaction: tx);
                     else
                         connection.Update(existing, transaction: tx);
+
+                    result = existing;
 
                     tx.Commit();
                 }
             }
+
+            return result;
         }
 
         public IEnumerable<TaskSuggestion> GetActiveTaskSuggestions()
@@ -1271,57 +1352,28 @@ namespace musicallychallenged.Data
             }
         }
 
+        [Obsolete("Use ILedgerService to award pesnocents instead.")]
         public void AddPesnocentsToUser(long userId, long amount)
         {
             using (var connection = CreateOpenConnection())
             {
-                using (var tx = connection.BeginTransaction())
+                using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
                 {
-                    var user = connection.Get<User>(userId, tx);
+                    var now = _clock.GetCurrentInstant();
 
-                    if (user == null)
-                    {
-                        logger.Warn($"Attempted to add {amount} Pesnocent to non-existent user {userId}");
-                        return;
-                    }
+                    LedgerStore.TryPostTransaction(
+                        connection,
+                        tx,
+                        LedgerTransactionType.LegacyAdjustment,
+                        $"legacy_adjustment:{userId}:{Guid.NewGuid()}",
+                        "Legacy balance adjustment",
+                        now,
+                        (LedgerStore.SysRewardsExpenseCode, EntryDirection.Debit, amount),
+                        (LedgerStore.GetUserWalletCode(userId), EntryDirection.Credit, amount));
 
-                    user.Pesnocent += amount;
-                    connection.Update(user, transaction: tx);
-
-                    logger.Info($"Added {amount} Pesnocent to user {userId}, new balance: {user.Pesnocent}");
+                    logger.Info($"Added {amount} Pesnocent to user {userId} via ledger");
 
                     tx.Commit();
-                }
-            }
-        }
-
-        public bool TryDeductPesnocentsFromUser(long userId, long amount)
-        {
-            using (var connection = CreateOpenConnection())
-            {
-                using (var tx = connection.BeginTransaction())
-                {
-                    var user = connection.Get<User>(userId, tx);
-
-                    if (user == null)
-                    {
-                        logger.Warn($"Attempted to deduct {amount} Pesnocent from non-existent user {userId}");
-                        return false;
-                    }
-
-                    if (user.Pesnocent < amount)
-                    {
-                        logger.Info($"Insufficient balance for user {userId}: has {user.Pesnocent}, needs {amount}");
-                        return false;
-                    }
-
-                    user.Pesnocent -= amount;
-                    connection.Update(user, transaction: tx);
-
-                    logger.Info($"Deducted {amount} Pesnocent from user {userId}, new balance: {user.Pesnocent}");
-
-                    tx.Commit();
-                    return true;
                 }
             }
         }

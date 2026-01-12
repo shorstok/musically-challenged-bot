@@ -87,12 +87,12 @@ namespace musicallychallenged.Localization
 
         public string BalanceCommandHandler_Message { get; set; } =
             $"💰 {LocTokens.User}, ваш баланс: <b>{LocTokens.Balance}</b> песнокоинов\n\n" +
-            $"Пополнять:\n" +
+            $"📈 Пополнять:\n" +
             $"• {LocTokens.SubmissionReward} за новую работу\n" +
             $"• {LocTokens.TaskSuggestionReward} за предложенную тему\n" +
-            $"• {LocTokens.VoteReward} за голос\n\n" +
-            $"Тратить:\n" +
-            $"• {LocTokens.PostponeCost} за голос за заявочку на постпон (/postpone)";
+            $"• {LocTokens.VoteReward} за участие в голосовании\n\n" +
+            $"📉 Тратить:\n" +
+            $"• {LocTokens.PostponeCost} за заявочку на постпон (/postpone)";
 
         public string PostponeService_RefundNotification { get; set; } =
             $"Голосование за перенос дедлайна не набрало кворум и было отменено.\n\n" +

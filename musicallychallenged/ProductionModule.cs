@@ -11,6 +11,7 @@ using musicallychallenged.Domain;
 using musicallychallenged.Localization;
 using musicallychallenged.Services;
 using musicallychallenged.Services.Events;
+using musicallychallenged.Services.Ledger;
 using musicallychallenged.Services.Sync;
 using musicallychallenged.Services.Telegram;
 using NodaTime;
@@ -52,10 +53,12 @@ namespace musicallychallenged
             builder.RegisterType<TimeService>().AsSelf().SingleInstance();
             builder.RegisterType<PollingStateScheduler>().As<IStateScheduler>().SingleInstance();
 
+            builder.RegisterType<LedgerService>().As<ILedgerService>().SingleInstance();
+
             builder.RegisterType<NextRoundTaskPollController>().AsSelf().SingleInstance();
             builder.RegisterType<NextRoundTaskPollVotingController>().AsSelf().SingleInstance();
 
-            builder.RegisterType<SqliteRepository>().As<IRepository>().SingleInstance();
+            builder.RegisterType<SqliteRepository>().As<IRepository>().As<IDbConnectionFactory>().SingleInstance();
             builder.RegisterType<TelegramClient>().As<ITelegramClient>().SingleInstance();
 
             // builder.RegisterType<VotingControllerHelper<ActiveContestEntry, Vote>>().SingleInstance();

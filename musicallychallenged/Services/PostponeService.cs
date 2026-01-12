@@ -176,7 +176,7 @@ namespace musicallychallenged.Services
                 // }
 
                 // Deduct coins and create postpone request atomically
-                var openRequests = _repository.CreatePostponeRequestWithCoinDeduction(author, postponeDuration,
+                var openRequests = _repository.CreatePostponeRequestWithLedgerHold(author, postponeDuration,
                     _configuration.PesnocentsRequiredPerPostponeRequest,
                     out bool insufficientBalance);
 
