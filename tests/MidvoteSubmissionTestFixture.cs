@@ -36,7 +36,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -107,7 +107,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -161,7 +161,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -196,7 +196,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToArray();
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -224,7 +224,7 @@ namespace tests
                     PrepareVotingCycle(MockConfiguration.Snapshot.MinAllowedContestEntriesToStartVoting + 1).
                     ToList();
 
-                Assert.That(await compartment.WaitTillStateMatches(stateVar => stateVar.State == ContestState.Voting, false),
+                Assert.That(await compartment.WaitTillStateMatches(stateVar => stateVar.State == ContestState.Voting, false, stabilizeDeadline: true),
                        Is.True, "Failed switching to Voting state after deadline hit");
 
                 // Creating a pin
@@ -281,9 +281,11 @@ namespace tests
                 Assert.That(pinCount, Is.EqualTo(0),
                     $"Current pinCount is {pinCount}, expected 0");
 
+                Assert.That(await compartment.WaitTillStateMatches(
+                        s => s.CurrentVotingStatsMessageId != null, false),
+                    Is.True,
+                    "state.CurrentVotingStatsMessageId was not set in time");
                 var state = compartment.Repository.GetOrCreateCurrentState();
-                Assert.That(state.CurrentVotingStatsMessageId, Is.Not.Null,
-                    "state.CurrentVotingStatsMessageId is null before finalization");
 
                 //await compartment.GenericScenarios.FinishContestAndSimulateVoting(compartment);
                 compartment.Repository.UpdateState(s => s.NextDeadlineUTC, clock.GetCurrentInstant());

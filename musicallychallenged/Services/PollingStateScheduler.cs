@@ -151,6 +151,8 @@ namespace musicallychallenged.Services
 
         public void Dispose()
         {
+            Stop();
+
             foreach (var subscription in _subscriptions)
             {
                 subscription.Dispose();

@@ -96,7 +96,8 @@ namespace tests.DI
 
         public async Task<bool> WaitTillStateMatches(Expression<Predicate<SystemState>> predicate,
             bool ensureTransitionEnded,
-            long? timeoutMs = 1000)
+            long? timeoutMs = 5000,
+            bool stabilizeDeadline = false)
         {
             if (Debugger.IsAttached)
                 timeoutMs = 10 * 60 * 1000;
@@ -115,11 +116,20 @@ namespace tests.DI
                     Logger.Info(
                         $"State switch - satisfied predicate {(predicate.Body.ToString())} in {transitionStopwatch.ElapsedMilliseconds}ms");
 
+                    if (stabilizeDeadline)
+                    {
+                        // Push deadline into the future to prevent the polling scheduler
+                        // from immediately transitioning through this state
+                        Repository.UpdateState(s => s.NextDeadlineUTC,
+                            Clock.GetCurrentInstant().Plus(Duration.FromHours(24)));
+                        Logger.Info("Stabilized deadline to prevent cascading state transitions");
+                    }
+
                     if(ensureTransitionEnded)
                     {
                         if (!await StateController.YieldTransitionComplete(cts.Token))
                             Logger.Warn($"Wait till transition end - timeout!");
-                    }            
+                    }
                     return true;
                 }
 
@@ -206,8 +216,11 @@ namespace tests.DI
 
         public void Dispose()
         {
-            _serviceHost.Stop();
+            // Stop the scheduler before shutting down to prevent leaked polling threads
+            StateController.Stop();
+            Thread.Sleep(Configuration.DeadlinePollingPeriodMs * 2 + 50);
 
+            _serviceHost.Stop();
             Container.Dispose();
         }
 

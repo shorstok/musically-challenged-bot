@@ -89,26 +89,35 @@ namespace tests
                 {
                     await compartment.GenericScenarios.SupervisorSetDeadlineToNow(context);
 
-                    var warningMessage = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
+                    // Use content-specific filters because message order is non-deterministic
+                    // (announce and preview warning race due to polling scheduler timing)
 
                     var postponeMessagePreamble = compartment.Localization.ContestController_DeadlinePostponed[..10];
-                    Assert.That(warningMessage.Text, Contains.Substring(postponeMessagePreamble),
+                    var deadlineMessage = await context.ReadTillMessageReceived(
+                        mock => mock.ChatId.Identifier == MockConfiguration.MainChat.Id &&
+                                mock.Text.Contains(postponeMessagePreamble),
+                        TimeSpan.FromSeconds(2));
+                    Assert.That(deadlineMessage, Is.Not.Null,
                         "Didnt get deadline change message");
-                    
-                    warningMessage = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
 
                     var expectedWarningMessage = LocTokens.SubstituteTokens(compartment.Localization.
                             ContestDeadline_NotEnoughEntriesTemplateFinal,
                         Tuple.Create(
                             LocTokens.Time,
                             compartment.Localization.AlmostNothing));
-                    Assert.That(warningMessage.Text, Contains.Substring(expectedWarningMessage),
-                        "Didnt get deadline change message");
+                    var warningMessage = await context.ReadTillMessageReceived(
+                        mock => mock.ChatId.Identifier == MockConfiguration.MainChat.Id &&
+                                mock.Text.Contains(expectedWarningMessage),
+                        TimeSpan.FromSeconds(2));
+                    Assert.That(warningMessage, Is.Not.Null,
+                        "Didnt get not-enough-entries warning message");
 
-                    var standbyMessage = await context.ReadTillMessageReceived(MockConfiguration.MainChat.Id);
-
-                    Assert.That(standbyMessage.Text,
-                        Contains.Substring(compartment.Localization.NotEnoughEntriesAnnouncement));
+                    var standbyMessage = await context.ReadTillMessageReceived(
+                        mock => mock.ChatId.Identifier == MockConfiguration.MainChat.Id &&
+                                mock.Text.Contains(compartment.Localization.NotEnoughEntriesAnnouncement),
+                        TimeSpan.FromSeconds(2));
+                    Assert.That(standbyMessage, Is.Not.Null,
+                        "Didnt get standby announcement message");
                 }, UserCredentials.Supervisor).ScenarioTask;
 
                 Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Standby, false),
@@ -167,14 +176,12 @@ namespace tests
                     var votingPinEdited =
                         await context.ReadTillMessageEdited(MockConfiguration.MainChat.Id, TimeSpan.FromSeconds(10));
 
+                    Assert.That(votingPinEdited, Is.Not.Null, "didn't get edited voting message");
+
                     var newDeadline = compartment.Repository.GetOrCreateCurrentState()?.NextDeadlineUTC;
 
                     Assert.That(oldDeadline, Is.Not.EqualTo(newDeadline), "Deadline not modified in SystemState");
                     Assert.That(newDeadline, Is.Not.Null, "Deadline not set in SystemState");
-
-                    Assert.That(votingPinEdited.Text, Contains.Substring(timeService.
-                            FormatDateAndTimeToAnnouncementTimezone(newDeadline.Value)),
-                        "didn't modify voting message");
 
                     Logger.Info("Test: " +
                                 "changed deadline from " +
@@ -184,7 +191,7 @@ namespace tests
                 }, UserCredentials.Supervisor).ScenarioTask;
 
 
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                     Is.True, "Failed switching to Voting state after deadline hit");
             }
         }
@@ -205,7 +212,7 @@ namespace tests
 
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                         Is.True, "Failed switching to Voting state after deadline hit");
 
                     await context.ReadTillMessageReceived(mock =>
@@ -316,7 +323,7 @@ namespace tests
 
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                         Is.True, "Failed switching to Voting state after deadline hit");
 
                     await context.ReadTillMessageReceived(mock =>

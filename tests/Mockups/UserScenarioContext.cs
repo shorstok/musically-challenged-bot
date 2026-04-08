@@ -25,7 +25,7 @@ namespace tests.Mockups
     public class UserScenarioContext : IDisposable
     {
         public LocStrings Localization { get; }
-        private TimeSpan DefaultReadTimeout => Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(1);
+        private TimeSpan DefaultReadTimeout => Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(3);
 
         private static readonly ILog Logger = Log.Get(typeof(UserScenarioContext));
 

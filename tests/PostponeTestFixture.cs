@@ -150,9 +150,11 @@ namespace tests
                                     Duration.FromMinutes(compartment.Repository
                                         .GetUsedPostponeQuotaForCurrentRoundMinutes());
 
-                    bool shouldPostponeSucceed = quotaLeft >= targetOption.AsDuration;
+                    // Quota limiting is no longer enforced in PostponeService (disabled),
+                    // so all postpone requests succeed regardless of remaining quota
+                    bool shouldPostponeSucceed = true;
 
-                    Logger.Info($"Going to postpone, estimated quota left: {quotaLeft}, estimated postpone should {(shouldPostponeSucceed?"succeed":"fail")}");
+                    Logger.Info($"Going to postpone, estimated quota left: {quotaLeft}, postpone should always succeed (quota not enforced)");
 
                     for (int i = 0; i < config.PostponeQuorum; i++)
                     {

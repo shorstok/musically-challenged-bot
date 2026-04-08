@@ -25,6 +25,11 @@ namespace tests.DI
         private readonly ConcurrentDictionary<long, UserScenarioContext> _contexts =
             new ConcurrentDictionary<long, UserScenarioContext>();
 
+        // Buffer for messages sent to users whose contexts aren't registered yet.
+        // When a context is registered, buffered messages are delivered.
+        private readonly ConcurrentDictionary<long, ConcurrentQueue<MockMessage>> _pendingMessages =
+            new ConcurrentDictionary<long, ConcurrentQueue<MockMessage>>();
+
         public UserScenarioController(UserScenarioContext.Factory userScenarioFactory, IRepository repository)
         {
             _userScenarioFactory = userScenarioFactory;
@@ -87,6 +92,13 @@ namespace tests.DI
 
             _contexts[context.PrivateChat.Id] = context;
 
+            // Deliver any messages that were buffered while no context was registered for this chat
+            if (_pendingMessages.TryRemove(context.PrivateChat.Id, out var pendingQueue))
+            {
+                while (pendingQueue.TryDequeue(out var pendingMsg))
+                    context.AddMessageToUserQueue(pendingMsg, CancellationToken.None).GetAwaiter().GetResult();
+            }
+
             Task.Run(async () =>
             {
                 try
@@ -133,7 +145,10 @@ namespace tests.DI
 
             if (!_contexts.TryGetValue(chatId.Identifier, out var context))
             {
-                Logger.Warn($"MockUser with chat id {chatId} not registered with this MockTelegramClient");
+                // Buffer the message for later delivery when the user's context is registered
+                Logger.Info($"MockUser with chat id {chatId} not registered yet, buffering message for later delivery");
+                var queue = _pendingMessages.GetOrAdd(chatId.Identifier, _ => new ConcurrentQueue<MockMessage>());
+                queue.Enqueue(message);
                 return;
             }
 

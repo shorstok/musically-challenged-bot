@@ -564,6 +564,11 @@ namespace musicallychallenged.Services
             await _scheduler.Activate();
         }
 
+        public void Stop()
+        {
+            _scheduler.Stop();
+        }
+
         private void SetCurrentState(ContestState currentState)
         {
             _repository.UpdateState(s=>s.State, currentState);            

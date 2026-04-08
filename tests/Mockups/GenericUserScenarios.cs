@@ -104,6 +104,23 @@ namespace tests.Mockups
 
             context.SendQuery(yesButton.CallbackData, prompt);
 
+            //Should I announce the change? - answer YES
+
+            var announcePrompt = await context.ReadTillMessageReceived(context.PrivateChat.Id);
+
+            Assert.That(announcePrompt.Text, Contains.Substring("announce"),
+                "Didn't get 'should I announce' prompt");
+            Assert.That(announcePrompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.Any(),
+                Is.True,
+                "Announce prompt didn't have reply buttons");
+
+            yesButton = announcePrompt.ReplyMarkup?.InlineKeyboard?.FirstOrDefault()?.
+                FirstOrDefault(b => b.Text == "YES");
+
+            Assert.That(yesButton, Is.Not.Null, "'yes' button not found in announce prompt");
+
+            context.SendQuery(yesButton.CallbackData, announcePrompt);
+
             Logger.Info($"Test: set deadline to {preNow}/{MockConfiguration.Snapshot.AnnouncementTimeZone} ok!");
         }
 
@@ -284,10 +301,11 @@ namespace tests.Mockups
             _repository.UpdateState(state => state.NextDeadlineUTC, _clock.GetCurrentInstant());
 
             await Task.Delay(100);
-            
+
             await compartment.ScenarioController.StartUserScenario(async context =>
             {
-                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false,
+                        stabilizeDeadline: true),
                     Is.True, "Failed switching to Voting state after deadline hit");
 
                 await context.ReadTillMessageReceived(mock =>
@@ -332,20 +350,23 @@ namespace tests.Mockups
             }
 
             //Ffwd voting
+            // Register winner context BEFORE setting deadline to ensure the congrats
+            // message (sent during state transition) reaches the winner's message buffer.
+            // StartUserScenarioForExistingUser registers the context synchronously,
+            // while the scenario function runs asynchronously via Task.Run.
 
-            _repository.UpdateState(state => state.NextDeadlineUTC,
-                _clock.GetCurrentInstant());
-
-            await CompleteTaskSelectionAsWinner(compartment, entries[0].AuthorUserId, winnerAction);
+            await CompleteTaskSelectionAsWinner(compartment, entries[0].AuthorUserId, winnerAction,
+                () => _repository.UpdateState(state => state.NextDeadlineUTC, _clock.GetCurrentInstant()));
 
             return entries[0].AuthorUserId;
 
         }
 
         public async Task CompleteTaskSelectionAsWinner(TestCompartment compartment, long winnerId,
-            Action<UserScenarioContext, Message> winnerAction = null)
+            Action<UserScenarioContext, Message> winnerAction = null,
+            Action triggerVotingDeadline = null)
         {
-            await compartment.ScenarioController.StartUserScenarioForExistingUser(
+            var scenarioCtx = compartment.ScenarioController.StartUserScenarioForExistingUser(
                 winnerId,
                 async winnerCtx =>
                 {
@@ -370,15 +391,21 @@ namespace tests.Mockups
                             msg.Text == compartment.Localization.ChooseNextRoundTaskPrivateMessage,
                         TimeSpan.FromSeconds(1));
 
-                    Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(2),
-                        "Winner task selector should have 2 reply buttons (for random task selection and starting the next round task poll)");
+                    Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(1),
+                        "Winner task selector should have 1 reply button (for starting the next round task poll)");
 
                     winnerAction ??= ((context, _) => context.SendMessage("mock task", context.PrivateChat));
                     winnerAction(winnerCtx, messageWithControls);
 
                     Logger.Info($"Completed task selection as winner");
 
-                }).ScenarioTask;
+                });
+
+            // Now that the winner's context is registered, trigger the voting deadline
+            // so that the congrats message reaches the registered context
+            triggerVotingDeadline?.Invoke();
+
+            await scenarioCtx.ScenarioTask;
 
         }
 

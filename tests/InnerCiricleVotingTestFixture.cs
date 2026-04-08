@@ -48,7 +48,7 @@ namespace tests
 
                 await compartment.ScenarioController.StartUserScenario(async context =>
                 {
-                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false),
+                    Assert.That(await compartment.WaitTillStateMatches(state => state.State == ContestState.Voting, false, stabilizeDeadline: true),
                         Is.True, "Failed switching to Voting state after deadline hit");
 
                     await context.ReadTillMessageReceived(mock =>
@@ -179,8 +179,8 @@ namespace tests
                                 msg.Text == compartment.Localization.ChooseNextRoundTaskPrivateMessage,
                             TimeSpan.FromSeconds(1));
 
-                        Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(2),
-                            "Winner task selector should have 2 reply buttons (for random task selection and starting the next round task poll)");
+                        Assert.That(messageWithControls.ReplyMarkup.InlineKeyboard.FirstOrDefault().Count(), Is.EqualTo(1),
+                            "Winner task selector should have 1 reply button (for starting the next round task poll)");
 
                         winnerCtx.SendMessage(mockTaskText, winnerCtx.PrivateChat);
 
